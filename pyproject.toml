@@ -1,0 +1,54 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nymrel-mcp-hub"
+version = "1.0.0"
+description = "Unified Model Context Protocol (MCP) server aggregating all 14 Nymrel open-source agent tools into a single zero-dependency hub"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [
+    { name = "Nymrel / JalenBuilds LLC", email = "contact@jalenbuilds.com" }
+]
+keywords = [
+    "mcp",
+    "model-context-protocol",
+    "nymrel",
+    "ai-agents",
+    "claude-desktop",
+    "cursor",
+    "codex",
+    "zero-dependency"
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries"
+]
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0"
+]
+
+[project.scripts]
+nymrel-mcp = "nymrel_mcp_hub.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["python"]
+include = ["nymrel_mcp_hub*"]
+
+[tool.pytest.ini_options]
+pythonpath = ["python"]
+addopts = "-p no:asyncio"
+testpaths = ["tests"]

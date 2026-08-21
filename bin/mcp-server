@@ -1,0 +1,6 @@
+#!/usr/bin/env node
+/**
+ * @nymrel/mcp-hub - Executable wrapper for UNIX environments
+ * Copyright (c) 2026 Nymrel / JalenBuilds LLC
+ */
+import './mcp-server.js';

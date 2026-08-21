@@ -1,0 +1,58 @@
+{
+  "name": "@nymrel/mcp-hub",
+  "version": "1.0.0",
+  "description": "Unified Model Context Protocol (MCP) server aggregating all 14 Nymrel open-source agent tools into a zero-dependency hub for Claude Desktop, Cursor, Codex, and OpenAI agents.",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "nymrel",
+    "ai-agents",
+    "claude-desktop",
+    "cursor",
+    "codex",
+    "swarm-protocol",
+    "machine-trust",
+    "agent-surety",
+    "proof-ledger",
+    "zero-dependency"
+  ],
+  "homepage": "https://github.com/nymrel/nymrel-mcp-hub#readme",
+  "bugs": {
+    "url": "https://github.com/nymrel/nymrel-mcp-hub/issues"
+  },
+  "license": "MIT",
+  "author": "Nymrel / JalenBuilds LLC <contact@jalenbuilds.com>",
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
+  "type": "module",
+  "bin": {
+    "nymrel-mcp": "./bin/mcp-server.js"
+  },
+  "files": [
+    "dist",
+    "bin",
+    "README.md",
+    "LICENSE",
+    "SECURITY.md",
+    "llms.txt"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "tsc && node --test dist/test/*.test.js",
+    "start": "node ./bin/mcp-server.js",
+    "clean": "node -e \"const fs=require('fs'); fs.rmSync('dist', {recursive:true, force:true});\""
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.0",
+    "typescript": "^5.7.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nymrel/nymrel-mcp-hub.git"
+  }
+}
