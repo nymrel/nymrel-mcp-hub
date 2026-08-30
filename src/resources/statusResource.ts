@@ -6,6 +6,7 @@
 import * as os from 'node:os';
 import { MCPResourceDefinition } from '../types/index.js';
 import { ALL_MCP_TOOLS } from '../tools/index.js';
+import { LEGACY_PROTOCOL_VERSIONS, MODERN_PROTOCOL_VERSION } from '../protocol.js';
 
 export const statusResourceDefinition: MCPResourceDefinition = {
   uri: 'nymrel://status',
@@ -19,7 +20,10 @@ export function getStatusResourceContent(): string {
   const status = {
     server: '@nymrel/mcp-hub',
     version: '1.0.0',
-    protocolVersion: '2024-11-05',
+    protocolVersions: {
+      modern: MODERN_PROTOCOL_VERSION,
+      legacy: [...LEGACY_PROTOCOL_VERSIONS]
+    },
     status: 'HEALTHY_ONLINE',
     registeredToolsCount: ALL_MCP_TOOLS.length,
     registeredTools: ALL_MCP_TOOLS.map(t => t.name),

@@ -2,7 +2,7 @@
 
 [![npm version](https://img.shields.io/npm/v/@nymrel/mcp-hub.svg?style=flat-square&color=2A332E)](https://www.npmjs.com/package/@nymrel/mcp-hub)
 [![License: MIT](https://img.shields.io/badge/License-MIT-A8541F.svg?style=flat-square)](https://opensource.org/licenses/MIT)
-[![MCP Spec](https://img.shields.io/badge/MCP_Spec-2024--11--05-2A332E.svg?style=flat-square)](https://modelcontextprotocol.io/)
+[![MCP Spec](https://img.shields.io/badge/MCP_Spec-2026--07--28-2A332E.svg?style=flat-square)](https://modelcontextprotocol.io/specification/2026-07-28)
 [![Zero Dependency](https://img.shields.io/badge/Dependencies-Zero-success.svg?style=flat-square)](https://github.com/nymrel/nymrel-mcp-hub)
 [![Dual Engine](https://img.shields.io/badge/Engine-TypeScript_%2B_Python-FAF8F2.svg?style=flat-square)](https://github.com/nymrel/nymrel-mcp-hub)
 
@@ -36,13 +36,25 @@
   |  - nymrel_beacon_ping                    - Python 3.11-3.14 (Zero-dependency Package)             |
   |  - nymrel_headless_quote                                                                          |
   |  - nymrel_local_forge                    [ PROTOCOL COMPLIANCE ]                                  |
-  |  - nymrel_open_ucp                       - Specification Version 2024-11-05                       |
+  |  - nymrel_open_ucp                       - MCP 2026-07-28 + initialize-era compatibility         |
   |  - nymrel_sandstorm                      - RFC-6962 Merkle Tree Hashing                           |
   |  - nymrel_a2ui_render                    - RFC-x402 Micropayment Headers                          |
   |  - nymrel_swarm_bus                      - Google A2UI v0.8 Specification                         |
   |  - nymrel_proof_verify                   - Schema.org JSON-LD Hierarchy                           |
   +---------------------------------------------------------------------------------------------------+
 ```
+
+---
+
+## 🔌 Dual-Era Protocol Contract
+
+The stdio server supports both MCP behavior families without changing the tool, resource, or prompt catalog:
+
+- **Modern (`2026-07-28`)** — `server/discover` advertises the supported modern revision and capabilities. Every modern request carries the protocol revision and client capabilities in `params._meta`; successful results carry `resultType: "complete"` and the server identity in result `_meta`. Static list/discovery results include public TTL hints.
+- **Legacy (`2024-10-07` through `2025-11-25`)** — `initialize` negotiates only initialize-era revisions and keeps modern-only fields out of legacy results. A modern version offered through `initialize` receives the preferred legacy counter-offer rather than a false modern handshake.
+- **Fail-closed boundaries** — unsupported modern revisions return MCP error `-32022` with the supported revision. Missing or malformed modern metadata returns `-32602`. `ping` and `notifications/initialized` remain legacy-only; modern list-change subscriptions are not advertised because this server does not implement `subscriptions/listen`.
+
+This repository currently ships stdio entry points. It does not claim a Streamable HTTP endpoint, registry publication, or hosted transport receipt.
 
 ---
 

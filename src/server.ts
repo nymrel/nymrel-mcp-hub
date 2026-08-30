@@ -1,6 +1,6 @@
 /**
  * Model Context Protocol (MCP) JSON-RPC 2.0 Server
- * Implements MCP Specification 2024-11-05 for Claude Desktop, Cursor, Codex, and OpenAI agents
+ * Serves the MCP 2026-07-28 stateless era and initialize-based legacy revisions.
  * Copyright (c) 2026 Nymrel / JalenBuilds LLC
  */
 
@@ -9,12 +9,21 @@ import { JSONRPCRequest, JSONRPCResponse } from './types/index.js';
 import { ALL_MCP_TOOLS, dispatchToolCall } from './tools/index.js';
 import { ALL_MCP_RESOURCES, readResourceByUri } from './resources/index.js';
 import { ALL_MCP_PROMPTS, renderPrompt } from './prompts/index.js';
+import {
+  classifyProtocolRequest,
+  isRecord,
+  legacyCapabilities,
+  MODERN_PROTOCOL_VERSION,
+  modernCapabilities,
+  negotiateLegacyProtocolVersion,
+  SERVER_INFO,
+  SERVER_INSTRUCTIONS,
+  stampModernSuccess,
+  type MCPProtocolEra
+} from './protocol.js';
 
 export class MCPServer {
   private isRunning: boolean = false;
-  private readonly serverName: string = '@nymrel/mcp-hub';
-  private readonly serverVersion: string = '1.0.0';
-  private readonly protocolVersion: string = '2024-11-05';
 
   async handleRequest(req: JSONRPCRequest): Promise<JSONRPCResponse | null> {
     // JSON-RPC 2.0 section 4.1: a Notification is a valid Request object
@@ -25,7 +34,13 @@ export class MCPServer {
     const isNotification = isObject && !hasIdMember;
     const id = hasIdMember ? ((req as JSONRPCRequest).id ?? null) : null;
 
-    if (!req || typeof req !== 'object' || req.jsonrpc !== '2.0' || !req.method) {
+    if (
+      !req ||
+      typeof req !== 'object' ||
+      req.jsonrpc !== '2.0' ||
+      typeof req.method !== 'string' ||
+      req.method.length === 0
+    ) {
       return {
         jsonrpc: '2.0',
         id,
@@ -36,9 +51,15 @@ export class MCPServer {
       };
     }
 
+    const protocol = classifyProtocolRequest(req, id);
+    if (protocol.error) return isNotification ? null : protocol.error;
+
     try {
-      const response = await this.executeMethod(req, id);
-      return isNotification ? null : response;
+      const response = await this.executeMethod(req, id, protocol.era);
+      const encoded = protocol.era === 'modern'
+        ? stampModernSuccess(response, req.method)
+        : response;
+      return isNotification ? null : encoded;
     } catch (err: any) {
       // Even on handler failure a notification must stay unanswered.
       if (isNotification) return null;
@@ -46,37 +67,51 @@ export class MCPServer {
         jsonrpc: '2.0',
         id,
         error: {
-          code: -32000,
+          code: protocol.era === 'modern' ? -32603 : -32000,
           message: err.message || String(err)
         }
       };
     }
   }
 
-  private async executeMethod(req: JSONRPCRequest, id: string | number | null): Promise<JSONRPCResponse> {
+  private async executeMethod(
+    req: JSONRPCRequest,
+    id: string | number | null,
+    era: MCPProtocolEra
+  ): Promise<JSONRPCResponse> {
+    if (era === 'modern' && ['initialize', 'notifications/initialized', 'ping'].includes(req.method)) {
+      return {
+        jsonrpc: '2.0',
+        id,
+        error: {
+          code: -32601,
+          message: `Method not supported by MCP ${MODERN_PROTOCOL_VERSION}: ${req.method}`
+        }
+      };
+    }
+
     switch (req.method) {
+      case 'server/discover': {
+        return {
+          jsonrpc: '2.0',
+          id,
+          result: {
+            supportedVersions: [MODERN_PROTOCOL_VERSION],
+            capabilities: modernCapabilities(),
+            instructions: SERVER_INSTRUCTIONS
+          }
+        };
+      }
+
       case 'initialize': {
         return {
           jsonrpc: '2.0',
           id,
           result: {
-            protocolVersion: this.protocolVersion,
-            capabilities: {
-              tools: {
-                listChanged: false
-              },
-              resources: {
-                listChanged: false
-              },
-              prompts: {
-                listChanged: false
-              }
-            },
-            serverInfo: {
-              name: this.serverName,
-              version: this.serverVersion
-            },
-            instructions: 'Unified Nymrel MCP Hub providing 14 zero-dependency agent tools, resources, and prompt templates.'
+            protocolVersion: negotiateLegacyProtocolVersion(req.params),
+            capabilities: legacyCapabilities(),
+            serverInfo: SERVER_INFO,
+            instructions: SERVER_INSTRUCTIONS
           }
         };
       }
@@ -100,17 +135,17 @@ export class MCPServer {
       }
 
       case 'tools/call': {
-        const params = req.params || {};
+        const params = isRecord(req.params) ? req.params : {};
         const toolName = params.name;
-        const toolArgs = params.arguments || {};
+        const toolArgs = params.arguments === undefined ? {} : params.arguments;
 
-        if (!toolName || typeof toolName !== 'string') {
+        if (!toolName || typeof toolName !== 'string' || !isRecord(toolArgs)) {
           return {
             jsonrpc: '2.0',
             id,
             error: {
               code: -32602,
-              message: 'Invalid params: Missing or invalid "name" in tools/call request'
+              message: 'Invalid params: tools/call requires a string "name" and object "arguments"'
             }
           };
         }
@@ -138,7 +173,7 @@ export class MCPServer {
       }
 
       case 'resources/read': {
-        const params = req.params || {};
+        const params = isRecord(req.params) ? req.params : {};
         const uri = params.uri;
 
         if (!uri || typeof uri !== 'string') {
@@ -180,17 +215,17 @@ export class MCPServer {
       }
 
       case 'prompts/get': {
-        const params = req.params || {};
+        const params = isRecord(req.params) ? req.params : {};
         const promptName = params.name;
-        const promptArgs = params.arguments || {};
+        const promptArgs = params.arguments === undefined ? {} : params.arguments;
 
-        if (!promptName || typeof promptName !== 'string') {
+        if (!promptName || typeof promptName !== 'string' || !isRecord(promptArgs)) {
           return {
             jsonrpc: '2.0',
             id,
             error: {
               code: -32602,
-              message: 'Invalid params: Missing or invalid "name" in prompts/get request'
+              message: 'Invalid params: prompts/get requires a string "name" and object "arguments"'
             }
           };
         }
