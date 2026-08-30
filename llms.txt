@@ -10,6 +10,13 @@
 ## Overview
 `@nymrel/mcp-hub` is a zero-dependency, dual-engine (TypeScript/Node.js + Python) Model Context Protocol (MCP) server. It aggregates 14 specialized agent tools, 3 live resources, and 3 workflow prompts for seamless integration with Claude Desktop, Claude Code, Cursor, Codex, and OpenAI agents.
 
+## Protocol Contract
+- Modern MCP revision: `2026-07-28`, using `server/discover` and per-request `params._meta`.
+- Legacy compatibility: initialize-era revisions `2024-10-07`, `2024-11-05`, `2025-03-26`, `2025-06-18`, and `2025-11-25`.
+- Modern successful results include `resultType: "complete"` and `io.modelcontextprotocol/serverInfo`; discovery and static lists include cache hints.
+- Unsupported modern revisions fail with `-32022`. Missing or malformed modern metadata fails with `-32602`.
+- Transport shipped here: stdio. No Streamable HTTP endpoint or hosted/registry release is implied.
+
 ## 14 Registered MCP Tools
 1. \`nymrel_ucp_audit\` - 7-layer AI Commerce Readiness & JSON-LD schema scorecard.
 2. \`nymrel_surety_guard\` - Pre-execution destructive command firewall and path jail.

@@ -1,6 +1,6 @@
 /**
  * Model Context Protocol (MCP) TypeScript Type Definitions
- * Specification Version: 2024-11-05
+ * Supported eras: MCP 2026-07-28 stateless requests and initialize-based legacy revisions.
  * Copyright (c) 2026 Nymrel / JalenBuilds LLC
  */
 
