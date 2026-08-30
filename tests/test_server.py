@@ -8,9 +8,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
 from nymrel_mcp_hub.server import MCPServer
-from nymrel_mcp_hub.tools import ALL_TOOLS, dispatch_tool_call
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 

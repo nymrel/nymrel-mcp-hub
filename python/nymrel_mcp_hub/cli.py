@@ -28,7 +28,7 @@ Options:
         sys.exit(0)
 
     if "--list-tools" in args:
-        print(f"=== 14 Registered Nymrel Tools ===")
+        print("=== 14 Registered Nymrel Tools ===")
         for i, t in enumerate(ALL_TOOLS, 1):
             print(f"{i}. [{t['name']}] - {t['description']}")
         sys.exit(0)

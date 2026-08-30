@@ -29,7 +29,10 @@
     "nymrel-mcp": "./bin/mcp-server.js"
   },
   "files": [
-    "dist",
+    "dist/src/**/*.js",
+    "dist/src/**/*.js.map",
+    "dist/src/**/*.d.ts",
+    "dist/src/**/*.d.ts.map",
     "bin",
     "README.md",
     "LICENSE",
@@ -41,15 +44,34 @@
     "build:watch": "tsc --watch",
     "typecheck": "tsc --noEmit",
     "test": "tsc && node --test dist/test/*.test.js",
+    "test:ci": "node --test test/ci-contract.test.mjs",
+    "verify:toolchain": "node scripts/verify-toolchain.mjs",
+    "verify:package": "tsc && corepack npm@12.0.2 pack --dry-run --json --ignore-scripts | node scripts/verify-npm-package.mjs",
+    "verify": "node scripts/verify-toolchain.mjs && tsc --noEmit && tsc && node --test dist/test/*.test.js && node --test test/ci-contract.test.mjs && corepack npm@12.0.2 pack --dry-run --json --ignore-scripts | node scripts/verify-npm-package.mjs",
     "start": "node ./bin/mcp-server.js",
-    "clean": "node -e \"const fs=require('fs'); fs.rmSync('dist', {recursive:true, force:true});\""
+    "clean": "node -e \"const fs=require('fs'); fs.rmSync('dist', {recursive:true, force:true});\"",
+    "prepack": "tsc",
+    "prepublishOnly": "corepack npm@12.0.2 run verify"
   },
   "devDependencies": {
-    "@types/node": "^22.13.0",
-    "typescript": "^5.7.3"
+    "@types/node": "24.13.3",
+    "typescript": "7.0.2"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=22 <25"
+  },
+  "packageManager": "npm@12.0.2",
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": ">=22 <25",
+      "onFail": "error"
+    },
+    "packageManager": {
+      "name": "npm",
+      "version": "12.0.2",
+      "onFail": "error"
+    }
   },
   "repository": {
     "type": "git",

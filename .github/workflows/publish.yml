@@ -1,90 +1,174 @@
-name: Release & Publish (npm + PyPI)
+name: Release nymrel-mcp-hub
 
 on:
   push:
-    branches: [main, master]
     tags:
-      - 'v*'
-  pull_request:
-    branches: [main, master]
-  workflow_dispatch:
+      - "v*"
 
 permissions:
   contents: read
-  id-token: write
+
+concurrency:
+  group: nymrel-mcp-hub-release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  test-node:
-    name: Test Node.js (${{ matrix.node-version }})
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        node-version: [18.x, 20.x, 22.x]
+  build-npm:
+    name: Build accepted npm artifact
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          node-version: ${{ matrix.node-version }}
-          cache: 'npm'
-        continue-on-error: true
+          persist-credentials: false
+          fetch-depth: 0
 
-      - name: Install dependencies
-        run: npm ci || npm install
-
-      - name: Build bundle
-        run: npm run build
-
-      - name: Run Node.js test suite
-        run: npm test
-
-  security-audit:
-    name: Security & DevSecOps Audit
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js 20.x
-        uses: actions/setup-node@v4
+      - name: Use Node.js 24.20.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 20.x
+          node-version: "24.20.0"
+          package-manager-cache: false
 
-      - name: NPM Security Audit
+      - name: Confirm the reviewed npm toolchain
+        run: corepack npm@12.0.2 --version
+
+      - name: Require the release commit to be on main
+        run: git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+
+      - name: Match the tag to package.json
+        run: >-
+          node -e "const p=require('./package.json');
+          if (process.env.GITHUB_REF_NAME !== 'v' + p.version) {
+          throw new Error('tag/version mismatch: ' + process.env.GITHUB_REF_NAME + ' vs v' + p.version); }"
+
+      - name: Install, verify, and audit
         run: |
-          npm audit --audit-level=high || echo "::warning ::NPM audit reported potential high-severity advisories"
+          corepack npm@12.0.2 ci
+          corepack npm@12.0.2 run verify
+          corepack npm@12.0.2 audit --audit-level=high
+          corepack npm@12.0.2 audit --omit=dev --audit-level=high
+          corepack npm@12.0.2 install-scripts ls
+
+      - name: Pack the npm artifact
+        run: |
+          mkdir -p "$RUNNER_TEMP/npm-dist"
+          corepack npm@12.0.2 pack --pack-destination "$RUNNER_TEMP/npm-dist"
+
+      - name: Retain the accepted npm artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: npm-package
+          path: ${{ runner.temp }}/npm-dist/*.tgz
+          if-no-files-found: error
+          retention-days: 1
+
+  build-python:
+    name: Build accepted Python artifacts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Use Python 3.14
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14"
+
+      - name: Install the reviewed Python toolchain
+        run: |
+          python -m pip install --upgrade pip==26.2.1
+          python -m pip install --requirement requirements-dev.txt
+          python -m pip install --editable .
+
+      - name: Require the release commit to be on main
+        run: git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+
+      - name: Match the tag to pyproject.toml
+        run: >-
+          python -c "import os, pathlib, tomllib;
+          version=tomllib.loads(pathlib.Path('pyproject.toml').read_text(encoding='utf-8'))['project']['version'];
+          assert os.environ['GITHUB_REF_NAME'] == f'v{version}',
+          f'tag/version mismatch: {os.environ[\"GITHUB_REF_NAME\"]} vs v{version}'"
+
+      - name: Verify Python behavior and security
+        run: |
+          python -m pip check
+          python -m ruff check python tests
+          python -m bandit -q -r python/nymrel_mcp_hub
+          python -m compileall -q python tests
+          python -m pytest -q
+          python -m pip uninstall --yes nymrel-mcp-hub
+          python -m pip_audit --strict
+
+      - name: Build isolated Python artifacts
+        run: python -m build --outdir "$RUNNER_TEMP/python-dist"
+
+      - name: Validate Python artifact metadata
+        run: python -m twine check "$RUNNER_TEMP/python-dist/"*
+
+      - name: Retain the accepted Python artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: python-package
+          path: ${{ runner.temp }}/python-dist/*
+          if-no-files-found: error
+          retention-days: 1
 
   publish-npm:
-    name: Publish to npm (OIDC Provenance)
-    needs: [test-node, security-audit]
-    if: startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-latest
+    name: Publish npm with OIDC provenance
+    needs: [build-npm, build-python]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: npm
     permissions:
       contents: read
-      id-token: write
+      id-token: write # Required for npm Trusted Publishing; no long-lived write token is used.
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js 20.x
-        uses: actions/setup-node@v4
+      - name: Use Node.js 24.20.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 20.x
-          registry-url: 'https://registry.npmjs.org'
+          node-version: "24.20.0"
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
 
-      - name: Install dependencies
-        run: npm ci || npm install
+      - name: Confirm the reviewed npm toolchain
+        run: corepack npm@12.0.2 --version
 
-      - name: Prepublish validation (build & test)
-        run: npm run build && npm test
+      - name: Retrieve the accepted npm artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: npm-package
+          path: ${{ runner.temp }}/npm-dist
 
-      - name: Publish package to npm with OIDC provenance
-        run: npm publish --access public --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_CONFIG_PROVENANCE: true
+      - name: Publish the accepted npm artifact
+        run: corepack npm@12.0.2 publish "$RUNNER_TEMP/npm-dist/"*.tgz --access public --provenance
+
+  publish-pypi:
+    name: Publish PyPI with Trusted Publishing
+    needs: [build-npm, build-python]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: pypi
+    permissions:
+      contents: read
+      id-token: write # Required for PyPI Trusted Publishing; no long-lived API token is used.
+
+    steps:
+      - name: Retrieve the accepted Python artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: python-package
+          path: ${{ runner.temp }}/python-dist
+
+      - name: Publish the accepted Python artifacts
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
+        with:
+          packages-dir: ${{ runner.temp }}/python-dist

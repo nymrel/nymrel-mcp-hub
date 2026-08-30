@@ -32,8 +32,8 @@
   |  - nymrel_swarm_claim                    - nymrel://llms-manifest      - init-two-seat-mission    |
   |  - nymrel_machine_trust                                                                           |
   |  - nymrel_proof_ledger                   [ DUAL-ENGINE CORE ]                                     |
-  |  - nymrel_crawler_mesh                   - Node.js 18+ (Pure TypeScript ESM)                      |
-  |  - nymrel_beacon_ping                    - Python 3.10+ (Zero-dependency Package)                 |
+  |  - nymrel_crawler_mesh                   - Node.js 22/24 (Pure TypeScript ESM)                    |
+  |  - nymrel_beacon_ping                    - Python 3.11-3.14 (Zero-dependency Package)             |
   |  - nymrel_headless_quote                                                                          |
   |  - nymrel_local_forge                    [ PROTOCOL COMPLIANCE ]                                  |
   |  - nymrel_open_ucp                       - Specification Version 2024-11-05                       |
@@ -163,19 +163,34 @@ Every tool within `@nymrel/mcp-hub` is engineered under the **Dual-Audience Cont
 
 ## 🧪 Validation & Test Suite
 
+The repository pins npm 12.0.2 and validates Node.js 22/24 plus Python 3.11-3.14 on Ubuntu and Windows. Use the same fail-closed gates locally:
+
 ```bash
-# 1. Typecheck TypeScript
-npm run typecheck
+# Node: locked install, protocol tests, CI contracts, and dependency audits
+corepack npm@12.0.2 ci
+corepack npm@12.0.2 run verify
+corepack npm@12.0.2 audit --audit-level=high
+corepack npm@12.0.2 audit --omit=dev --audit-level=high
+corepack npm@12.0.2 install-scripts ls
 
-# 2. Build TypeScript distribution
-npm run build
+# Python: reviewed tooling, package install, lint, security scan, and tests
+python -m pip install --requirement requirements-dev.txt
+python -m pip install --editable .
+python -m pip check
+python -m ruff check python tests
+python -m bandit -q -r python/nymrel_mcp_hub
+python -m pytest -q
+python -m pip uninstall --yes nymrel-mcp-hub
+python -m pip_audit --strict
 
-# 3. Run Node.js native test runner
-npm test
-
-# 4. Run Python pytest test suite
-pytest
+# Build Python artifacts separately from the TypeScript distribution
+python -m build --outdir dist-py
+python -m twine check dist-py/*
 ```
+
+The npm package allowlist ships only compiled runtime modules, the executable wrapper, and public documentation; compiled tests are excluded. Python wheels likewise exclude repository tests.
+
+Matching `v<package-version>` tags invoke a separate tag-only release workflow. npm and PyPI jobs consume already-validated artifacts and request short-lived OIDC credentials only inside dedicated `npm` and `pypi` environments. Registry trusted-publisher relationships and those protected environments remain operator-controlled external gates; a local build or GitHub artifact is not proof of registry publication.
 
 ---
 
