@@ -70,6 +70,16 @@ test("CI covers supported Node and Python lines on current hosted runners", () =
   assert(ci.includes('node: ["22.23.2", "24.20.0"]'));
   assert(ci.includes('python: ["3.11", "3.12", "3.13", "3.14"]'));
   assert(!ci.includes("npm install --global"));
+  assert(!ci.includes("cache: npm"), "setup-node must not invoke npm before the pinned toolchain");
+  assert.equal(
+    (ci.match(/package-manager-cache: false/gu) ?? []).length,
+    1,
+    "the Node bootstrap must explicitly disable setup-node's implicit npm cache",
+  );
+  assert(
+    ci.indexOf("package-manager-cache: false") < ci.indexOf("corepack npm@12.0.2 --version"),
+    "the cache boundary must be declared before npm 12 is activated",
+  );
   assert(ci.includes("corepack npm@12.0.2 ci"));
   assert(ci.includes("python -m pip install --upgrade pip==26.2.1"));
   assert(ci.includes("python -m pip uninstall --yes nymrel-mcp-hub"));
