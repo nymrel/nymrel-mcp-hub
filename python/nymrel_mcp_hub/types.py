@@ -2,7 +2,7 @@
 Python type definitions for Model Context Protocol
 """
 
-from typing import Dict, Any, List, Optional, Union
+from typing import Dict, Any, List, Optional
 from dataclasses import dataclass
 
 @dataclass
