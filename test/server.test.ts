@@ -5,6 +5,8 @@
 
 import test from 'node:test';
 import assert from 'node:assert';
+import { spawn } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { MCPServer } from '../src/server.js';
 
 test('MCP Server: initialize method returns specification compliance', async () => {
@@ -136,4 +138,99 @@ test('MCP Server: handles unknown methods and errors gracefully', async () => {
 
   assert.strictEqual(res?.id, 99);
   assert.strictEqual(res?.error?.code, -32601);
+});
+
+test('JSON-RPC 2.0: unknown-method notification with no id produces no response', async () => {
+  const server = new MCPServer();
+  const res = await server.handleRequest({
+    jsonrpc: '2.0',
+    method: 'unknown/notification'
+  });
+
+  assert.strictEqual(res, null);
+});
+
+test('MCP Server: notifications/initialized remains silent', async () => {
+  const server = new MCPServer();
+  const res = await server.handleRequest({
+    jsonrpc: '2.0',
+    method: 'notifications/initialized'
+  });
+
+  assert.strictEqual(res, null);
+});
+
+test('JSON-RPC 2.0: explicit id null is a request, not a notification', async () => {
+  const server = new MCPServer();
+
+  const pingRes = await server.handleRequest({
+    jsonrpc: '2.0',
+    id: null,
+    method: 'ping'
+  });
+  assert.strictEqual(pingRes?.id, null);
+  assert.deepStrictEqual(pingRes?.result, {});
+
+  const unknownRes = await server.handleRequest({
+    jsonrpc: '2.0',
+    id: null,
+    method: 'unknown/method'
+  });
+  assert.strictEqual(unknownRes?.id, null);
+  assert.strictEqual(unknownRes?.error?.code, -32601);
+});
+
+test('JSON-RPC 2.0: malformed request responds -32600 with id null', async () => {
+  const server = new MCPServer();
+  const res = await server.handleRequest({
+    jsonrpc: '1.0',
+    method: 'ping'
+  } as any);
+
+  assert.strictEqual(res?.id, null);
+  assert.strictEqual(res?.error?.code, -32600);
+});
+
+test('stdio: notification does not corrupt the following request response', async () => {
+  const binPath = fileURLToPath(new URL('../../bin/mcp-server.js', import.meta.url));
+  const child = spawn(process.execPath, [binPath], {
+    stdio: ['pipe', 'pipe', 'pipe']
+  });
+
+  let stdout = '';
+  let stderr = '';
+  child.stderr.on('data', (chunk) => { stderr += chunk.toString(); });
+
+  const exitCode = await new Promise<number | null>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      child.kill();
+      reject(new Error(`timed out waiting for correlated ping response; stderr: ${stderr}`));
+    }, 15000);
+
+    child.stdout.on('data', (chunk) => {
+      stdout += chunk.toString();
+      if (stdout.includes('"id":42')) {
+        clearTimeout(timer);
+        resolve(null);
+      }
+    });
+
+    child.on('exit', (code) => {
+      clearTimeout(timer);
+      resolve(code);
+    });
+
+    child.stdin.write(JSON.stringify({ jsonrpc: '2.0', method: 'unknown/notification' }) + '\n');
+    child.stdin.write(JSON.stringify({ jsonrpc: '2.0', id: 42, method: 'ping' }) + '\n');
+  });
+
+  child.kill();
+
+  const lines = stdout.trim().split('\n').filter((line) => line.trim().length > 0);
+  assert.strictEqual(lines.length, 1, `expected exactly one stdout line, got: ${JSON.stringify(lines)}`);
+  const parsed = JSON.parse(lines[0]);
+  assert.strictEqual(parsed.jsonrpc, '2.0');
+  assert.strictEqual(parsed.id, 42);
+  assert.deepStrictEqual(parsed.result, {});
+  assert.ok(exitCode === null || typeof exitCode === 'number');
 });

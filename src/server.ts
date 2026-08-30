@@ -17,7 +17,13 @@ export class MCPServer {
   private readonly protocolVersion: string = '2024-11-05';
 
   async handleRequest(req: JSONRPCRequest): Promise<JSONRPCResponse | null> {
-    const id = req.id ?? null;
+    // JSON-RPC 2.0 section 4.1: a Notification is a valid Request object
+    // WITHOUT an "id" member and MUST NOT be answered. An explicit
+    // "id": null is a Request, not a Notification, and stays response-bearing.
+    const isObject = !!req && typeof req === 'object';
+    const hasIdMember = isObject && 'id' in req;
+    const isNotification = isObject && !hasIdMember;
+    const id = hasIdMember ? ((req as JSONRPCRequest).id ?? null) : null;
 
     if (!req || typeof req !== 'object' || req.jsonrpc !== '2.0' || !req.method) {
       return {
@@ -31,176 +37,11 @@ export class MCPServer {
     }
 
     try {
-      switch (req.method) {
-        case 'initialize': {
-          return {
-            jsonrpc: '2.0',
-            id,
-            result: {
-              protocolVersion: this.protocolVersion,
-              capabilities: {
-                tools: {
-                  listChanged: false
-                },
-                resources: {
-                  listChanged: false
-                },
-                prompts: {
-                  listChanged: false
-                }
-              },
-              serverInfo: {
-                name: this.serverName,
-                version: this.serverVersion
-              },
-              instructions: 'Unified Nymrel MCP Hub providing 14 zero-dependency agent tools, resources, and prompt templates.'
-            }
-          };
-        }
-
-        case 'notifications/initialized': {
-          // MCP notification handshake - no return response required
-          return null;
-        }
-
-        case 'ping': {
-          return {
-            jsonrpc: '2.0',
-            id,
-            result: {}
-          };
-        }
-
-        case 'tools/list': {
-          return {
-            jsonrpc: '2.0',
-            id,
-            result: {
-              tools: ALL_MCP_TOOLS
-            }
-          };
-        }
-
-        case 'tools/call': {
-          const params = req.params || {};
-          const toolName = params.name;
-          const toolArgs = params.arguments || {};
-
-          if (!toolName || typeof toolName !== 'string') {
-            return {
-              jsonrpc: '2.0',
-              id,
-              error: {
-                code: -32602,
-                message: 'Invalid params: Missing or invalid "name" in tools/call request'
-              }
-            };
-          }
-
-          const executionResult = await dispatchToolCall(toolName, toolArgs);
-
-          return {
-            jsonrpc: '2.0',
-            id,
-            result: {
-              content: executionResult.content,
-              isError: executionResult.isError || false
-            }
-          };
-        }
-
-        case 'resources/list': {
-          return {
-            jsonrpc: '2.0',
-            id,
-            result: {
-              resources: ALL_MCP_RESOURCES
-            }
-          };
-        }
-
-        case 'resources/read': {
-          const params = req.params || {};
-          const uri = params.uri;
-
-          if (!uri || typeof uri !== 'string') {
-            return {
-              jsonrpc: '2.0',
-              id,
-              error: {
-                code: -32602,
-                message: 'Invalid params: Missing or invalid "uri" in resources/read request'
-              }
-            };
-          }
-
-          const resource = readResourceByUri(uri);
-
-          return {
-            jsonrpc: '2.0',
-            id,
-            result: {
-              contents: [
-                {
-                  uri: resource.uri,
-                  mimeType: resource.mimeType,
-                  text: resource.text
-                }
-              ]
-            }
-          };
-        }
-
-        case 'prompts/list': {
-          return {
-            jsonrpc: '2.0',
-            id,
-            result: {
-              prompts: ALL_MCP_PROMPTS
-            }
-          };
-        }
-
-        case 'prompts/get': {
-          const params = req.params || {};
-          const promptName = params.name;
-          const promptArgs = params.arguments || {};
-
-          if (!promptName || typeof promptName !== 'string') {
-            return {
-              jsonrpc: '2.0',
-              id,
-              error: {
-                code: -32602,
-                message: 'Invalid params: Missing or invalid "name" in prompts/get request'
-              }
-            };
-          }
-
-          const rendered = renderPrompt(promptName, promptArgs);
-
-          return {
-            jsonrpc: '2.0',
-            id,
-            result: {
-              description: rendered.description,
-              messages: rendered.messages
-            }
-          };
-        }
-
-        default: {
-          return {
-            jsonrpc: '2.0',
-            id,
-            error: {
-              code: -32601,
-              message: `Method not found: ${req.method}`
-            }
-          };
-        }
-      }
+      const response = await this.executeMethod(req, id);
+      return isNotification ? null : response;
     } catch (err: any) {
+      // Even on handler failure a notification must stay unanswered.
+      if (isNotification) return null;
       return {
         jsonrpc: '2.0',
         id,
@@ -209,6 +50,173 @@ export class MCPServer {
           message: err.message || String(err)
         }
       };
+    }
+  }
+
+  private async executeMethod(req: JSONRPCRequest, id: string | number | null): Promise<JSONRPCResponse> {
+    switch (req.method) {
+      case 'initialize': {
+        return {
+          jsonrpc: '2.0',
+          id,
+          result: {
+            protocolVersion: this.protocolVersion,
+            capabilities: {
+              tools: {
+                listChanged: false
+              },
+              resources: {
+                listChanged: false
+              },
+              prompts: {
+                listChanged: false
+              }
+            },
+            serverInfo: {
+              name: this.serverName,
+              version: this.serverVersion
+            },
+            instructions: 'Unified Nymrel MCP Hub providing 14 zero-dependency agent tools, resources, and prompt templates.'
+          }
+        };
+      }
+
+      case 'ping': {
+        return {
+          jsonrpc: '2.0',
+          id,
+          result: {}
+        };
+      }
+
+      case 'tools/list': {
+        return {
+          jsonrpc: '2.0',
+          id,
+          result: {
+            tools: ALL_MCP_TOOLS
+          }
+        };
+      }
+
+      case 'tools/call': {
+        const params = req.params || {};
+        const toolName = params.name;
+        const toolArgs = params.arguments || {};
+
+        if (!toolName || typeof toolName !== 'string') {
+          return {
+            jsonrpc: '2.0',
+            id,
+            error: {
+              code: -32602,
+              message: 'Invalid params: Missing or invalid "name" in tools/call request'
+            }
+          };
+        }
+
+        const executionResult = await dispatchToolCall(toolName, toolArgs);
+
+        return {
+          jsonrpc: '2.0',
+          id,
+          result: {
+            content: executionResult.content,
+            isError: executionResult.isError || false
+          }
+        };
+      }
+
+      case 'resources/list': {
+        return {
+          jsonrpc: '2.0',
+          id,
+          result: {
+            resources: ALL_MCP_RESOURCES
+          }
+        };
+      }
+
+      case 'resources/read': {
+        const params = req.params || {};
+        const uri = params.uri;
+
+        if (!uri || typeof uri !== 'string') {
+          return {
+            jsonrpc: '2.0',
+            id,
+            error: {
+              code: -32602,
+              message: 'Invalid params: Missing or invalid "uri" in resources/read request'
+            }
+          };
+        }
+
+        const resource = readResourceByUri(uri);
+
+        return {
+          jsonrpc: '2.0',
+          id,
+          result: {
+            contents: [
+              {
+                uri: resource.uri,
+                mimeType: resource.mimeType,
+                text: resource.text
+              }
+            ]
+          }
+        };
+      }
+
+      case 'prompts/list': {
+        return {
+          jsonrpc: '2.0',
+          id,
+          result: {
+            prompts: ALL_MCP_PROMPTS
+          }
+        };
+      }
+
+      case 'prompts/get': {
+        const params = req.params || {};
+        const promptName = params.name;
+        const promptArgs = params.arguments || {};
+
+        if (!promptName || typeof promptName !== 'string') {
+          return {
+            jsonrpc: '2.0',
+            id,
+            error: {
+              code: -32602,
+              message: 'Invalid params: Missing or invalid "name" in prompts/get request'
+            }
+          };
+        }
+
+        const rendered = renderPrompt(promptName, promptArgs);
+
+        return {
+          jsonrpc: '2.0',
+          id,
+          result: {
+            description: rendered.description,
+            messages: rendered.messages
+          }
+        };
+      }
+
+      default: {
+        return {
+          jsonrpc: '2.0',
+          id,
+          error: {
+            code: -32601,
+            message: `Method not found: ${req.method}`
+          }
+        };
+      }
     }
   }
 
