@@ -27,11 +27,8 @@ Options:
   --help, -h         Show this help message
 
 Integration Quickstart:
-  Claude Desktop:
-    { "mcpServers": { "nymrel": { "command": "npx", "args": ["@nymrel/mcp-hub"] } } }
-
-  Cursor / Codex / Antigravity:
-    command: npx @nymrel/mcp-hub
+  Registry packages are not currently published. Build a verified source checkout, then configure:
+    { "mcpServers": { "nymrel": { "command": "node", "args": ["/absolute/path/to/nymrel-mcp-hub/bin/mcp-server.js", "--stdio"] } } }
 `);
   process.exit(0);
 }

@@ -10,7 +10,7 @@ readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [
-    { name = "Nymrel / JalenBuilds LLC", email = "contact@jalenbuilds.com" }
+    { name = "Nymrel", email = "contact@nymrel.com" }
 ]
 keywords = [
     "mcp",

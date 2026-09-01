@@ -1,6 +1,6 @@
 # @nymrel/mcp-hub
 
-[![npm version](https://img.shields.io/npm/v/@nymrel/mcp-hub.svg?style=flat-square&color=2A332E)](https://www.npmjs.com/package/@nymrel/mcp-hub)
+[![Distribution: source checkout](https://img.shields.io/badge/Distribution-source_checkout-A8541F.svg?style=flat-square)](https://github.com/nymrel/nymrel-mcp-hub)
 [![License: MIT](https://img.shields.io/badge/License-MIT-A8541F.svg?style=flat-square)](https://opensource.org/licenses/MIT)
 [![MCP Spec](https://img.shields.io/badge/MCP_Spec-2026--07--28-2A332E.svg?style=flat-square)](https://modelcontextprotocol.io/specification/2026-07-28)
 [![Zero Dependency](https://img.shields.io/badge/Dependencies-Zero-success.svg?style=flat-square)](https://github.com/nymrel/nymrel-mcp-hub)
@@ -58,65 +58,51 @@ This repository currently ships stdio entry points. It does not claim a Streamab
 
 ---
 
-## ⚡ 1-Line Installation Recipes
+## 📦 Registry Status and Source Installation
 
-### 1. Claude Desktop
-Add `@nymrel/mcp-hub` to your `claude_desktop_config.json` file:
+No npm or PyPI release is currently verified. Package metadata and a release workflow exist in this repository, but neither is a registry publication receipt.
 
-**macOS / Linux:** `~/Library/Application Support/Claude/claude_desktop_config.json`  
-**Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
+| Distribution | Public registry status | Supported path today |
+|---|---|---|
+| npm `@nymrel/mcp-hub` | Not published | Node.js source checkout |
+| PyPI `nymrel-mcp-hub` | Not published | Python source checkout |
 
-```json
-{
-  "mcpServers": {
-    "nymrel": {
-      "command": "npx",
-      "args": ["@nymrel/mcp-hub"]
-    }
-  }
-}
-```
+Do not use registry-based `npx` or `pip install` recipes until the corresponding public registry page shows a verified release.
 
----
+### Node.js source checkout
 
-### 2. Cursor (Composer & Agent Mode)
-Create or update `.cursor/mcp.json` in your workspace root:
-
-```json
-{
-  "mcpServers": {
-    "nymrel-hub": {
-      "command": "npx",
-      "args": ["@nymrel/mcp-hub"]
-    }
-  }
-}
-```
-
----
-
-### 3. Codex CLI & Native Workers
-Add to your Codex MCP configuration file:
-
-```json
-{
-  "mcpServers": {
-    "nymrel": {
-      "command": "npx",
-      "args": ["@nymrel/mcp-hub"],
-      "env": {}
-    }
-  }
-}
-```
-
----
-
-### 4. Python Engine (Pip)
 ```bash
-pip install nymrel-mcp-hub
-nymrel-mcp --stdio
+git clone https://github.com/nymrel/nymrel-mcp-hub.git
+cd nymrel-mcp-hub
+corepack npm@12.0.2 ci
+corepack npm@12.0.2 run build
+node ./bin/mcp-server.js --stdio
 ```
+
+Configure Claude Desktop, Cursor, Codex, or another stdio MCP client with the absolute path to the built checkout:
+
+```json
+{
+  "mcpServers": {
+    "nymrel": {
+      "command": "node",
+      "args": ["/absolute/path/to/nymrel-mcp-hub/bin/mcp-server.js", "--stdio"]
+    }
+  }
+}
+```
+
+### Python source checkout
+
+From the same cloned repository:
+
+```bash
+python -m venv .venv
+./.venv/bin/python -m pip install --editable .
+./.venv/bin/nymrel-mcp --stdio
+```
+
+On Windows, use `.venv\Scripts\python.exe` and `.venv\Scripts\nymrel-mcp.exe` instead.
 
 ---
 
@@ -127,7 +113,7 @@ nymrel-mcp --stdio
 | 1 | `nymrel_ucp_audit` | `@nymrel/agentic-ucp-scanner` | Commerce | 7-layer AI Commerce Readiness scorecard, JSON-LD verifier, and /llms.txt compliance grader. |
 | 2 | `nymrel_surety_guard` | `@nymrel/agent-surety` | Security | Pre-execution safety firewall intercepting destructive shell commands (`rm -rf`, `DROP`, `format`). |
 | 3 | `nymrel_swarm_claim` | `@nymrel/swarm-protocol` | Swarms | Distributed directory lock and multi-agent lease coordinator with monotonically increasing fencing tokens. |
-| 4 | `nymrel_machine_trust` | `@nymrel/machine-trust` | Trust | Dual-Audience engine generating Schema.org JSON-LD (`Nymrel -> JalenBuilds LLC`), `/llms.txt`, and robots.txt. |
+| 4 | `nymrel_machine_trust` | `@nymrel/machine-trust` | Trust | Dual-Audience engine generating Schema.org JSON-LD organization graphs, `/llms.txt`, and robots.txt. |
 | 5 | `nymrel_proof_ledger` | `@nymrel/proof-ledger` | Security | Attests agent execution with RFC-6962 SHA-256 binary Merkle trees and digital signature receipts. |
 | 6 | `nymrel_crawler_mesh` | `@nymrel/crawler-mesh` | Data | High-throughput clean web crawler & Markdown AST extractor optimized for LLM token savings. |
 | 7 | `nymrel_beacon_ping` | `@nymrel/agent-beacon` | Telemetry | Agent liveness heartbeat emitter and active multi-agent fleet presence monitor. |
@@ -169,7 +155,7 @@ The MCP server exposes live, dynamic resources accessible via the `resources/rea
 
 Every tool within `@nymrel/mcp-hub` is engineered under the **Dual-Audience Contract**:
 - **For Human Visitors:** Elegant, accessible UI styled in warm, lighter tones (**Warm Paper** `#FAF8F2`, cedar green `#2A332E`, terracotta `#A8541F`).
-- **For Autonomous Machines:** Cryptographically verifiable machine trust, RFC-6962 Merkle proofs, RFC-x402 payment headers, and hierarchical Schema.org JSON-LD entity graphs (`parentOrganization: Nymrel -> JalenBuilds LLC`).
+- **For Autonomous Machines:** Cryptographically verifiable machine trust, RFC-6962 Merkle proofs, RFC-x402 payment headers, and hierarchical Schema.org JSON-LD organization graphs.
 
 ---
 
@@ -208,7 +194,6 @@ Matching `v<package-version>` tags invoke a separate tag-only release workflow. 
 
 ## 📄 License & Organization
 
-- **Brand:** Nymrel
-- **Parent Entity:** JalenBuilds LLC
-- **Contact:** `contact@jalenbuilds.com`
+- **Organization:** Nymrel
+- **Contact:** `contact@nymrel.com`
 - **License:** MIT License (2026)

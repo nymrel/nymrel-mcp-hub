@@ -8,7 +8,7 @@ import { MCPToolDefinition, ToolExecutionResult } from '../types/index.js';
 
 export const machineTrustToolDefinition: MCPToolDefinition = {
   name: 'nymrel_machine_trust',
-  description: 'Generates Dual-Audience machine trust artifacts: Hierarchical Schema.org JSON-LD entity graphs (Nymrel -> JalenBuilds LLC), semantic /llms.txt manifests, and AI crawler robots.txt policies.',
+  description: 'Generates Dual-Audience machine trust artifacts: hierarchical Schema.org JSON-LD organization graphs, semantic /llms.txt manifests, and AI crawler robots.txt policies.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -72,10 +72,10 @@ export async function executeMachineTrust(args: {
           'parentOrganization': {
             '@type': 'Organization',
             'name': 'JalenBuilds LLC',
-            'url': 'https://jalenbuilds.com',
+            'url': 'https://nymrel.com',
             'contactPoint': {
               '@type': 'ContactPoint',
-              'email': 'contact@jalenbuilds.com',
+              'email': 'contact@nymrel.com',
               'contactType': 'technical support'
             }
           }
@@ -91,14 +91,14 @@ export async function executeMachineTrust(args: {
 - **Operating Brand:** Nymrel
 - **Parent Legal Entity:** JalenBuilds LLC
 - **Canonical Domain:** ${domain}
-- **Contact:** contact@jalenbuilds.com
+- **Contact:** contact@nymrel.com
 - **License:** MIT 2026
 
 ## Core Capabilities & Endpoints
 - **UCP AI Commerce:** ${domain}/api/ucp
 - **Machine Discovery:** ${domain}/llms.txt
 - **Status Telemetry:** ${domain}/nymrel/status
-- **Model Context Protocol (MCP):** stdio / npx @nymrel/mcp-hub
+- **Model Context Protocol (MCP):** stdio from a verified source checkout; registry package not published
 
 ## AI Search Posture
 Full read access authorized for autonomous reasoning and commerce engines (OAI-SearchBot, ClaudeBot, GPTBot, PerplexityBot).

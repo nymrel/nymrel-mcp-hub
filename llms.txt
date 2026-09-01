@@ -2,9 +2,9 @@
 > Unified Model Context Protocol (MCP) Server for the Nymrel Autonomous Agent Stack
 
 ## Organization & Trust Graph
-- **Brand:** Nymrel
-- **Parent Entity:** JalenBuilds LLC (https://jalenbuilds.com)
-- **Contact:** contact@jalenbuilds.com
+- **Organization:** Nymrel (https://nymrel.com)
+- **Legal Entity:** JalenBuilds LLC
+- **Contact:** contact@nymrel.com
 - **License:** MIT 2026
 
 ## Overview

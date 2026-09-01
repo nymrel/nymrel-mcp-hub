@@ -1,9 +1,9 @@
 # Security Policy
 
 ## Reporting Security Issues
-Nymrel and JalenBuilds LLC take security seriously. If you discover a vulnerability in `@nymrel/mcp-hub` or any of the underlying 14 Nymrel open-source tools, please report it responsibly:
+Nymrel takes security seriously. If you discover a vulnerability in `@nymrel/mcp-hub` or any of the underlying 14 Nymrel open-source tools, please report it responsibly:
 
-- **Primary Contact:** contact@jalenbuilds.com
+- **Primary Contact:** contact@nymrel.com
 - **Coordination:** Keep the report private until Nymrel confirms a disclosure plan through the same channel. No fixed response-time or patch SLA is implied by this public repository.
 - **Scope:** Command interceptor bypasses, Merkle tree collision vulnerabilities, unauthorized lease takeovers, and secret exfiltration leaks.
 

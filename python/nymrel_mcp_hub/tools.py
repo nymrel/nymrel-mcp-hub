@@ -257,7 +257,7 @@ def dispatch_tool_call(name: str, args: Dict[str, Any]) -> Dict[str, Any]:
                 "name": args.get("entityName", "Nymrel Hub"),
                 "author": {"@type": "Organization", "name": "Nymrel", "parentOrganization": {"@type": "Organization", "name": "JalenBuilds LLC"}}
             },
-            "llmsTxt": "# Nymrel Hub\nOperating Brand: Nymrel\nParent: JalenBuilds LLC"
+            "llmsTxt": "# Nymrel Hub\nOrganization: Nymrel\nLegal Entity: JalenBuilds LLC"
         }
         return {"content": [{"type": "text", "text": json.dumps(res, indent=2)}]}
 

@@ -19,8 +19,9 @@ export function getLlmsManifestResourceContent(): string {
 ## Core MCP Hub Architecture
 - Package: \`@nymrel/mcp-hub\`
 - Protocol: Model Context Protocol (MCP) JSON-RPC 2.0
-- Runtime: Zero-dependency Node.js 18+ & Python 3.10+ dual-engine
-- Organization: Nymrel -> JalenBuilds LLC (contact@jalenbuilds.com)
+- Runtime: Zero-dependency Node.js 22/24 & Python 3.11-3.14 dual-engine
+- Organization: Nymrel (contact@nymrel.com)
+- Legal entity: JalenBuilds LLC
 - License: MIT 2026
 
 ## 14 Registered Tools
