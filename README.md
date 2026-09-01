@@ -1,191 +1,169 @@
-# @nymrel/mcp-hub
+# Nymrel MCP Hub
 
-[![npm version](https://img.shields.io/npm/v/@nymrel/mcp-hub.svg?style=flat-square&color=2A332E)](https://www.npmjs.com/package/@nymrel/mcp-hub)
-[![License: MIT](https://img.shields.io/badge/License-MIT-A8541F.svg?style=flat-square)](https://opensource.org/licenses/MIT)
-[![MCP Spec](https://img.shields.io/badge/MCP_Spec-2026--07--28-2A332E.svg?style=flat-square)](https://modelcontextprotocol.io/specification/2026-07-28)
-[![Zero Dependency](https://img.shields.io/badge/Dependencies-Zero-success.svg?style=flat-square)](https://github.com/nymrel/nymrel-mcp-hub)
-[![Dual Engine](https://img.shields.io/badge/Engine-TypeScript_%2B_Python-FAF8F2.svg?style=flat-square)](https://github.com/nymrel/nymrel-mcp-hub)
+[![Registry status](https://img.shields.io/badge/registry%20publication-unverified-lightgrey.svg?style=flat-square)](#distribution-status)
+[![License: MIT](https://img.shields.io/badge/License-MIT-A8541F.svg?style=flat-square)](./LICENSE)
+[![MCP Spec](https://img.shields.io/badge/MCP-2026--07--28-2A332E.svg?style=flat-square)](https://modelcontextprotocol.io/specification/2026-07-28)
+[![Runtime dependencies](https://img.shields.io/badge/runtime%20dependencies-0-success.svg?style=flat-square)](#validation)
+[![Engines](https://img.shields.io/badge/engines-TypeScript%20%2B%20Python-FAF8F2.svg?style=flat-square)](#run-from-source)
 
-> **The Premier Unified Model Context Protocol (MCP) Server for Autonomous AI Agents.**  
-> Aggregates all 14 Nymrel open-source developer toolchains, execution sandboxes, cryptographic ledgers, and machine-trust engines into a single, zero-dependency MCP server for **Claude Desktop**, **Claude Code**, **Cursor**, **Codex**, and **OpenAI** agents.
+A dual-engine Model Context Protocol server exposing 14 Nymrel tools, 3 resources, and 3 prompt templates through TypeScript/Node.js and Python stdio entry points.
 
----
+The repository supports the modern MCP `2026-07-28` request model while retaining initialize-era compatibility through `2025-11-25`. It does not currently claim a hosted transport or verified npm/PyPI publication.
 
-## 🏛️ System Architecture
+## Distribution status
 
-```
-                                  +---------------------------------------+
-                                  |   AI Agent Execution Surface          |
-                                  |  (Claude Code / Cursor / Codex / GPT) |
-                                  +-------------------+-------------------+
-                                                      |
-                                                      | MCP JSON-RPC 2.0 (stdio)
-                                                      v
-  +---------------------------------------------------------------------------------------------------+
-  |                                       @nymrel/mcp-hub                                             |
-  |                            Unified Model Context Protocol Server                                 |
-  +---------------------------------------------------------------------------------------------------+
-  |                                                                                                   |
-  |  [ TOOLS (14) ]                          [ RESOURCES (3) ]             [ PROMPTS (3) ]            |
-  |  - nymrel_ucp_audit                      - nymrel://status             - audit-website-ucp        |
-  |  - nymrel_surety_guard                   - nymrel://ecosystem          - secure-agent-command     |
-  |  - nymrel_swarm_claim                    - nymrel://llms-manifest      - init-two-seat-mission    |
-  |  - nymrel_machine_trust                                                                           |
-  |  - nymrel_proof_ledger                   [ DUAL-ENGINE CORE ]                                     |
-  |  - nymrel_crawler_mesh                   - Node.js 22/24 (Pure TypeScript ESM)                    |
-  |  - nymrel_beacon_ping                    - Python 3.11-3.14 (Zero-dependency Package)             |
-  |  - nymrel_headless_quote                                                                          |
-  |  - nymrel_local_forge                    [ PROTOCOL COMPLIANCE ]                                  |
-  |  - nymrel_open_ucp                       - MCP 2026-07-28 + initialize-era compatibility         |
-  |  - nymrel_sandstorm                      - RFC-6962 Merkle Tree Hashing                           |
-  |  - nymrel_a2ui_render                    - RFC-x402 Micropayment Headers                          |
-  |  - nymrel_swarm_bus                      - Google A2UI v0.8 Specification                         |
-  |  - nymrel_proof_verify                   - Schema.org JSON-LD Hierarchy                           |
-  +---------------------------------------------------------------------------------------------------+
-```
+> [!IMPORTANT]
+> **Registry publication is unverified.** As of September 1, 2026, this repository contains npm and Python package manifests and gated release workflows, but it does not contain a registry receipt proving that `@nymrel/mcp-hub` or `nymrel-mcp-hub` is publicly installable.
 
----
+Until an npm or PyPI receipt is independently verified:
 
-## 🔌 Dual-Era Protocol Contract
+- do not use `npx @nymrel/mcp-hub` as a documented installation path;
+- do not use `pip install nymrel-mcp-hub` as a documented installation path;
+- run the server from a pinned source checkout using the instructions below;
+- treat a local build, GitHub artifact, tag, or workflow result as distinct from registry publication.
 
-The stdio server supports both MCP behavior families without changing the tool, resource, or prompt catalog:
+Publishing, releasing, tagging, and trusted-publisher configuration are intentionally outside this documentation correction.
 
-- **Modern (`2026-07-28`)** — `server/discover` advertises the supported modern revision and capabilities. Every modern request carries the protocol revision and client capabilities in `params._meta`; successful results carry `resultType: "complete"` and the server identity in result `_meta`. Static list/discovery results include public TTL hints.
-- **Legacy (`2024-10-07` through `2025-11-25`)** — `initialize` negotiates only initialize-era revisions and keeps modern-only fields out of legacy results. A modern version offered through `initialize` receives the preferred legacy counter-offer rather than a false modern handshake.
-- **Fail-closed boundaries** — unsupported modern revisions return MCP error `-32022` with the supported revision. Missing or malformed modern metadata returns `-32602`. `ping` and `notifications/initialized` remain legacy-only; modern list-change subscriptions are not advertised because this server does not implement `subscriptions/listen`.
+## Run from source
 
-This repository currently ships stdio entry points. It does not claim a Streamable HTTP endpoint, registry publication, or hosted transport receipt.
+### TypeScript / Node.js
 
----
+Requirements: Node.js 22 or 24 and Corepack.
 
-## ⚡ 1-Line Installation Recipes
-
-### 1. Claude Desktop
-Add `@nymrel/mcp-hub` to your `claude_desktop_config.json` file:
-
-**macOS / Linux:** `~/Library/Application Support/Claude/claude_desktop_config.json`  
-**Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
-
-```json
-{
-  "mcpServers": {
-    "nymrel": {
-      "command": "npx",
-      "args": ["@nymrel/mcp-hub"]
-    }
-  }
-}
-```
-
----
-
-### 2. Cursor (Composer & Agent Mode)
-Create or update `.cursor/mcp.json` in your workspace root:
-
-```json
-{
-  "mcpServers": {
-    "nymrel-hub": {
-      "command": "npx",
-      "args": ["@nymrel/mcp-hub"]
-    }
-  }
-}
-```
-
----
-
-### 3. Codex CLI & Native Workers
-Add to your Codex MCP configuration file:
-
-```json
-{
-  "mcpServers": {
-    "nymrel": {
-      "command": "npx",
-      "args": ["@nymrel/mcp-hub"],
-      "env": {}
-    }
-  }
-}
-```
-
----
-
-### 4. Python Engine (Pip)
 ```bash
-pip install nymrel-mcp-hub
+git clone https://github.com/nymrel/nymrel-mcp-hub.git
+cd nymrel-mcp-hub
+corepack npm@12.0.2 ci
+corepack npm@12.0.2 run build
+node ./bin/mcp-server.js --help
+node ./bin/mcp-server.js --stdio
+```
+
+Point an MCP client at the built source checkout with an absolute path:
+
+```json
+{
+  "mcpServers": {
+    "nymrel": {
+      "command": "node",
+      "args": [
+        "/absolute/path/to/nymrel-mcp-hub/bin/mcp-server.js",
+        "--stdio"
+      ]
+    }
+  }
+}
+```
+
+The Node entry point imports compiled files from `dist/`, so run the build before starting the server.
+
+### Python
+
+Requirements: Python 3.11 through 3.14.
+
+```bash
+git clone https://github.com/nymrel/nymrel-mcp-hub.git
+cd nymrel-mcp-hub
+python -m venv .venv
+# macOS/Linux: source .venv/bin/activate
+# Windows PowerShell: .venv\Scripts\Activate.ps1
+python -m pip install --editable .
+nymrel-mcp --help
 nymrel-mcp --stdio
 ```
 
----
+For an MCP client, use the absolute path to the virtual environment's `nymrel-mcp` executable. On Windows, that executable is under `.venv\Scripts`; on macOS and Linux, it is under `.venv/bin`.
 
-## 🧰 The 14 Aggregated Nymrel Tools
+## Protocol contract
 
-| # | MCP Tool Name | Origin Repo | Category | Description |
-|---|---|---|---|---|
-| 1 | `nymrel_ucp_audit` | `@nymrel/agentic-ucp-scanner` | Commerce | 7-layer AI Commerce Readiness scorecard, JSON-LD verifier, and /llms.txt compliance grader. |
-| 2 | `nymrel_surety_guard` | `@nymrel/agent-surety` | Security | Pre-execution safety firewall intercepting destructive shell commands (`rm -rf`, `DROP`, `format`). |
-| 3 | `nymrel_swarm_claim` | `@nymrel/swarm-protocol` | Swarms | Distributed directory lock and multi-agent lease coordinator with monotonically increasing fencing tokens. |
-| 4 | `nymrel_machine_trust` | `@nymrel/machine-trust` | Trust | Dual-Audience engine generating Schema.org JSON-LD (`Nymrel -> JalenBuilds LLC`), `/llms.txt`, and robots.txt. |
-| 5 | `nymrel_proof_ledger` | `@nymrel/proof-ledger` | Security | Attests agent execution with RFC-6962 SHA-256 binary Merkle trees and digital signature receipts. |
-| 6 | `nymrel_crawler_mesh` | `@nymrel/crawler-mesh` | Data | High-throughput clean web crawler & Markdown AST extractor optimized for LLM token savings. |
-| 7 | `nymrel_beacon_ping` | `@nymrel/agent-beacon` | Telemetry | Agent liveness heartbeat emitter and active multi-agent fleet presence monitor. |
-| 8 | `nymrel_headless_quote` | `@nymrel/headless-quote` | Commerce | Instant dynamic pricing formula calculator with Nymrel Warm Paper presets. |
-| 9 | `nymrel_local_forge` | `@nymrel/local-forge` | Models | Probes local GPU/Ollama status, calculates token dollar savings, and routes tasks across Luna/Terra/Sol tiers. |
-| 10 | `nymrel_open_ucp` | `@nymrel/open-ucp` | Commerce | Universal Commerce Protocol x402 HTTP micropayment challenge handler and AP2 cart negotiation. |
-| 11 | `nymrel_sandstorm` | `@nymrel/agent-sandstorm` | Security | Zero-Trust Copy-on-Write workspace isolation and secret exfiltration token masking firewall. |
-| 12 | `nymrel_a2ui_render` | `a2ui-warm-paper` | UI | Google A2UI v0.8 declarative JSON decision cards in signature Warm Paper tokens (`#FAF8F2`, `#2A332E`). |
-| 13 | `nymrel_swarm_bus` | `@nymrel/swarm-protocol` | Swarms | Studio task bus message queuing, envelope dispatch, and inter-agent coordination broadcasting. |
-| 14 | `nymrel_proof_verify` | `@nymrel/proof-ledger` | Security | Cryptographically validates RFC-6962 Merkle receipts and digital signatures against tampering. |
+The stdio engines support two MCP behavior families without changing the exposed tool, resource, or prompt catalog.
 
----
+### Modern requests
 
-## 📡 Live MCP Resources
+- Protocol revision: `2026-07-28`.
+- Discovery method: `server/discover`.
+- Each modern request carries protocol and client capability metadata in `params._meta`.
+- Successful results include `resultType: "complete"` plus server identity metadata.
+- Discovery and static list results may include bounded public cache hints.
 
-The MCP server exposes live, dynamic resources accessible via the `resources/read` protocol:
+### Initialize-era compatibility
 
-1. **`nymrel://status` (`application/json`)**  
-   Real-time MCP server telemetry, node/python runtime version, memory RSS footprint, and registered tool counts.
-2. **`nymrel://ecosystem` (`application/json`)**  
-   Complete directory catalog of all 14 Nymrel repositories, npm packages, GitHub URLs, categories, and descriptions.
-3. **`nymrel://llms-manifest` (`text/markdown`)**  
-   Curated `/llms.txt` semantic manifest guiding autonomous AI agents on how to leverage the Nymrel toolchain.
+Supported initialize-era revisions are:
 
----
+- `2024-10-07`
+- `2024-11-05`
+- `2025-03-26`
+- `2025-06-18`
+- `2025-11-25`
 
-## 📝 Pre-Built MCP Prompts
+Legacy responses remain free of modern-only fields. A modern revision offered through `initialize` receives the preferred legacy counteroffer rather than a false modern handshake.
 
-1. **`audit-website-ucp`**  
-   Prompts the agent to perform a comprehensive 7-layer AI Commerce Readiness audit on a target URL and produce an actionable fix list.
-2. **`secure-agent-command`**  
-   Evaluates a proposed terminal command with Surety Guard and Sandstorm secret masking before running it.
-3. **`init-two-seat-mission`**  
-   Guides the agent to configure a two-seat Command Studio mission (`mission_owner` + `studio_controller`) with lease coordination and bus dispatch.
+### Fail-closed behavior
 
----
+- Unsupported modern revisions return MCP error `-32022` with the supported revision.
+- Missing or malformed modern metadata returns `-32602`.
+- JSON-RPC notifications remain silent.
+- `ping` and `notifications/initialized` remain initialize-era behavior.
+- Modern list-change subscriptions are not advertised because this server does not implement `subscriptions/listen`.
 
-## 🎨 Dual-Audience Philosophy & Aesthetics
+## Exposed tools
 
-Every tool within `@nymrel/mcp-hub` is engineered under the **Dual-Audience Contract**:
-- **For Human Visitors:** Elegant, accessible UI styled in warm, lighter tones (**Warm Paper** `#FAF8F2`, cedar green `#2A332E`, terracotta `#A8541F`).
-- **For Autonomous Machines:** Cryptographically verifiable machine trust, RFC-6962 Merkle proofs, RFC-x402 payment headers, and hierarchical Schema.org JSON-LD entity graphs (`parentOrganization: Nymrel -> JalenBuilds LLC`).
+The hub exposes Nymrel-oriented tools through one MCP surface. Repository names below identify the source project represented by each tool; they are not registry-publication claims.
 
----
+| # | MCP tool | Source project | Purpose |
+|---:|---|---|---|
+| 1 | `nymrel_ucp_audit` | `nymrel/agentic-ucp-scanner` | AI commerce readiness and structured-data checks. |
+| 2 | `nymrel_surety_guard` | `nymrel/agent-action-surety` | Destructive-command and path-safety inspection. |
+| 3 | `nymrel_swarm_claim` | `nymrel/nymrel-swarm-protocol` | Lease coordination and fencing generations. |
+| 4 | `nymrel_machine_trust` | `nymrel/nymrel-machine-trust` | Machine-readable organization and trust metadata. |
+| 5 | `nymrel_proof_ledger` | `nymrel/nymrel-proof-ledger` | Merkle-based execution attestation and proof generation. |
+| 6 | `nymrel_crawler_mesh` | `nymrel/nymrel-crawler-mesh` | Web-content extraction and Markdown conversion. |
+| 7 | `nymrel_beacon_ping` | `nymrel/agent-beacon` | Agent liveness and heartbeat reporting. |
+| 8 | `nymrel_headless_quote` | `nymrel/headless-quote-layer` | Deterministic quote calculation. |
+| 9 | `nymrel_local_forge` | `nymrel/local-agent-forge` | Local-model capability inspection and routing support. |
+| 10 | `nymrel_open_ucp` | `nymrel/open-ucp` | Commerce-protocol and payment-challenge utilities. |
+| 11 | `nymrel_sandstorm` | `nymrel/agent-sandstorm` | Workspace rollback, audit, and outbound-request guardrails. |
+| 12 | `nymrel_a2ui_render` | `nymrel/a2ui-warm-paper` | Declarative decision-card rendering. |
+| 13 | `nymrel_swarm_bus` | `nymrel/nymrel-swarm-protocol` | Inter-agent message envelopes and dispatch support. |
+| 14 | `nymrel_proof_verify` | `nymrel/nymrel-proof-ledger` | Merkle receipt and signature verification. |
 
-## 🧪 Validation & Test Suite
+## Resources
 
-The repository pins npm 12.0.2 and validates Node.js 22/24 plus Python 3.11-3.14 on Ubuntu and Windows. Use the same fail-closed gates locally:
+- `nymrel://status` — server identity, engine status, tool count, and supported protocol revisions.
+- `nymrel://ecosystem` — catalog of the Nymrel project references represented by the hub.
+- `nymrel://llms-manifest` — machine-readable usage and trust guidance.
+
+## Prompt templates
+
+- `audit-website-ucp` — guided AI commerce readiness audit.
+- `secure-agent-command` — command-safety review using Nymrel guardrail tools.
+- `init-two-seat-mission` — two-seat Command Studio setup.
+
+## Security boundary
+
+The hub exposes application-level inspection, proof, lease, and credential-pattern tools. These tools do not replace operating-system isolation, network enforcement, independent authorization, credential rotation, or sandboxing. Consumers must apply least privilege and validate tool results at the actual enforcement point.
+
+See [SECURITY.md](./SECURITY.md) for responsible disclosure and supply-chain controls.
+
+## Validation
+
+The repository pins npm `12.0.2` and targets Node.js 22/24 plus Python 3.11-3.14. Both package manifests declare no runtime dependencies.
+
+### Node.js
 
 ```bash
-# Node: locked install, protocol tests, CI contracts, and dependency audits
 corepack npm@12.0.2 ci
 corepack npm@12.0.2 run verify
 corepack npm@12.0.2 audit --audit-level=high
 corepack npm@12.0.2 audit --omit=dev --audit-level=high
 corepack npm@12.0.2 install-scripts ls
+```
 
-# Python: reviewed tooling, package install, lint, security scan, and tests
+The verification contract covers toolchain pins, TypeScript compilation, protocol tests, CI-policy tests, and the npm package allowlist.
+
+### Python
+
+```bash
 python -m pip install --requirement requirements-dev.txt
 python -m pip install --editable .
 python -m pip check
@@ -194,21 +172,20 @@ python -m bandit -q -r python/nymrel_mcp_hub
 python -m pytest -q
 python -m pip uninstall --yes nymrel-mcp-hub
 python -m pip_audit --strict
-
-# Build Python artifacts separately from the TypeScript distribution
 python -m build --outdir dist-py
 python -m twine check dist-py/*
 ```
 
-The npm package allowlist ships only compiled runtime modules, the executable wrapper, and public documentation; compiled tests are excluded. Python wheels likewise exclude repository tests.
+Local validation proves a source candidate; it does not prove a hosted check or registry publication.
 
-Matching `v<package-version>` tags invoke a separate tag-only release workflow. npm and PyPI jobs consume already-validated artifacts and request short-lived OIDC credentials only inside dedicated `npm` and `pypi` environments. Registry trusted-publisher relationships and those protected environments remain operator-controlled external gates; a local build or GitHub artifact is not proof of registry publication.
+## Contributing
 
----
+See [CONTRIBUTING.md](./CONTRIBUTING.md). Protocol changes must preserve TypeScript/Python parity and prove both modern and initialize-era behavior. Release or publication work requires a separate operator decision.
 
-## 📄 License & Organization
+## License and organization
 
 - **Brand:** Nymrel
-- **Parent Entity:** JalenBuilds LLC
-- **Contact:** `contact@jalenbuilds.com`
-- **License:** MIT License (2026)
+- **Website:** https://nymrel.com
+- **Contact:** contact@nymrel.com
+- **Legal entity:** JalenBuilds LLC
+- **License:** MIT — see [LICENSE](./LICENSE)
