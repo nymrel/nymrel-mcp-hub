@@ -13,7 +13,7 @@ const args = process.argv.slice(2);
 if (args.includes('--help') || args.includes('-h')) {
   console.log(`
 @nymrel/mcp-hub v1.0.0 - Unified Model Context Protocol (MCP) Server
-Aggregates all 14 Nymrel open-source AI agent tools into a zero-dependency hub.
+Exposes 14 Nymrel tools through a zero-runtime-dependency TypeScript engine.
 
 Usage:
   nymrel-mcp [options]
@@ -26,12 +26,13 @@ Options:
   --version, -v      Print version
   --help, -h         Show this help message
 
-Integration Quickstart:
-  Claude Desktop:
-    { "mcpServers": { "nymrel": { "command": "npx", "args": ["@nymrel/mcp-hub"] } } }
+Source-checkout quickstart:
+  corepack npm@12.0.2 ci
+  corepack npm@12.0.2 run build
+  node ./bin/mcp-server.js --stdio
 
-  Cursor / Codex / Antigravity:
-    command: npx @nymrel/mcp-hub
+Registry publication is not asserted by this source checkout. See README.md for the
+current distribution status and MCP-client configuration using an absolute local path.
 `);
   process.exit(0);
 }
