@@ -18,7 +18,7 @@ const pins = {
   downloadArtifact: "3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c",
   codeql: "cdf488f595d80d6e07e03d4674febd5ab45fa938",
   pypiPublish: "dc37677b2e1c63e2034f94d8a5b11f265b73ba33",
-  zizmor: "3dc1ecc9bcb9e94e9b2c709687979e1298497054",
+  zizmor: "70fb788f84895a7701f5643d103d587e460b5c99",
 };
 
 function assertedActionPins(workflow) {
