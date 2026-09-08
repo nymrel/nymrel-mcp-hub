@@ -24,12 +24,15 @@ A source build is a **production-ready candidate** only when the code gates belo
 
 ## Hosted source gates
 
-- [ ] branch pushed to GitHub
-- [ ] draft PR opened against current `main`
-- [ ] isolated GitHub Actions checks green on Node 22 and 24
-- [ ] Docker build green in hosted CI
+- [x] branch pushed to GitHub (`feat/nymrel-remote-control-plane-20260907`)
+- [x] draft PR opened against `main` (#11)
+- [x] isolated GitHub Actions checks green on Node 22.23.2 and 24.20.0
+- [x] production Docker image build green in hosted CI
+- [x] CodeQL green on the candidate head
 - [ ] independent studio review recorded
-- [ ] no conflicting writer claim / integration conflict
+- [ ] local studio writer-claim / integration-conflict check recorded (JalenPC is offline; GitHub diff itself is isolated)
+
+The repository-wide MCP Hub Node matrix has a pre-existing `actions/setup-node` bootstrap defect on the same `main` base; draft PR #5 owns that repair. The isolated Nymrel Remote workflow disables the defective implicit npm cache path and is green. This lane does not absorb PR #5.
 
 ## Environment gates
 
