@@ -1,0 +1,29 @@
+{
+  "name": "@nymrel/remote-control",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Nymrel Remote: zero-dependency remote MCP control plane and outbound-only device agent",
+  "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "bin": {
+    "nymrel-remote-server": "./bin/nymrel-remote-server.js",
+    "nymrel-remote-agent": "./bin/nymrel-remote-agent.js",
+    "nymrel-remote-token": "./bin/nymrel-remote-token.js"
+  },
+  "scripts": {
+    "test": "node --test",
+    "check:syntax": "node scripts/check-syntax.mjs",
+    "check": "npm run check:syntax && npm test"
+  },
+  "license": "MIT",
+  "files": [
+    "bin",
+    "src",
+    "public",
+    "README.md",
+    "SECURITY.md",
+    "LICENSE"
+  ]
+}

@@ -1,0 +1,20 @@
+services:
+  remote:
+    build: .
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    ports:
+      - "127.0.0.1:8787:8787"
+    volumes:
+      - nymrel_remote_data:/data
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+volumes:
+  nymrel_remote_data:
