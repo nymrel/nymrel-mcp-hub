@@ -1,44 +1,52 @@
 # Nymrel MCP Hub (@nymrel/mcp-hub)
-> Unified Model Context Protocol (MCP) Server for the Nymrel Autonomous Agent Stack
+> Dual-engine Model Context Protocol (MCP) server for the Nymrel open-source agent stack
 
 ## Organization & Trust Graph
 - **Brand:** Nymrel
-- **Parent Entity:** JalenBuilds LLC (https://jalenbuilds.com)
-- **Contact:** contact@jalenbuilds.com
+- **Legal entity:** JalenBuilds LLC
+- **Website:** https://nymrel.com
+- **Contact:** contact@nymrel.com
 - **License:** MIT 2026
 
+## Distribution Status
+- The repository contains npm and Python packaging manifests plus gated release workflows.
+- Registry publication is not proven by repository evidence as of 2026-09-01.
+- Do not instruct users to run `npx @nymrel/mcp-hub` or `pip install nymrel-mcp-hub` until an npm or PyPI receipt is independently verified.
+- Use a source checkout and the repository-native build instructions in README.md.
+- A local build, GitHub artifact, tag, or release workflow is not equivalent to registry publication.
+
 ## Overview
-`@nymrel/mcp-hub` is a zero-dependency, dual-engine (TypeScript/Node.js + Python) Model Context Protocol (MCP) server. It aggregates 14 specialized agent tools, 3 live resources, and 3 workflow prompts for seamless integration with Claude Desktop, Claude Code, Cursor, Codex, and OpenAI agents.
+`@nymrel/mcp-hub` is a zero-runtime-dependency, dual-engine TypeScript/Node.js and Python Model Context Protocol server. It exposes 14 Nymrel-oriented tools, 3 resources, and 3 prompt templates for MCP clients including Claude Desktop, Cursor, Codex, and OpenAI agents.
 
 ## Protocol Contract
 - Modern MCP revision: `2026-07-28`, using `server/discover` and per-request `params._meta`.
 - Legacy compatibility: initialize-era revisions `2024-10-07`, `2024-11-05`, `2025-03-26`, `2025-06-18`, and `2025-11-25`.
 - Modern successful results include `resultType: "complete"` and `io.modelcontextprotocol/serverInfo`; discovery and static lists include cache hints.
 - Unsupported modern revisions fail with `-32022`. Missing or malformed modern metadata fails with `-32602`.
-- Transport shipped here: stdio. No Streamable HTTP endpoint or hosted/registry release is implied.
+- Transport shipped here: stdio. No Streamable HTTP endpoint, hosted transport, or registry release is implied.
 
 ## 14 Registered MCP Tools
-1. \`nymrel_ucp_audit\` - 7-layer AI Commerce Readiness & JSON-LD schema scorecard.
-2. \`nymrel_surety_guard\` - Pre-execution destructive command firewall and path jail.
-3. \`nymrel_swarm_claim\` - Distributed directory lock & lease coordinator with fencing generations.
-4. \`nymrel_machine_trust\` - Schema.org JSON-LD parentOrganization entity graph and /llms.txt generator.
-5. \`nymrel_proof_ledger\` - RFC-6962 SHA-256 Merkle tree execution attestation and proof generator.
-6. \`nymrel_crawler_mesh\` - Clean web scraper & Markdown AST extractor for LLM token savings.
-7. \`nymrel_beacon_ping\` - Liveness telemetry and multi-agent fleet heartbeat registry.
-8. \`nymrel_headless_quote\` - Dynamic service quote calculator with Warm Paper tokens.
-9. \`nymrel_local_forge\` - Local GPU / Ollama orchestrator & 3-tier model router (Luna/Terra/Sol).
-10. \`nymrel_open_ucp\` - Universal Commerce Protocol x402 micropayments & AP2 cart negotiation.
-11. \`nymrel_sandstorm\` - Zero-trust Copy-on-Write workspace isolation & secret token firewall.
-12. \`nymrel_a2ui_render\` - Google A2UI v0.8 declarative JSON decision cards in Warm Paper tokens.
-13. \`nymrel_swarm_bus\` - Studio task bus inter-agent message queuing and envelope dispatcher.
-14. \`nymrel_proof_verify\` - Cryptographic Merkle receipt & digital signature validator.
+1. `nymrel_ucp_audit` - AI commerce readiness and JSON-LD schema scorecard.
+2. `nymrel_surety_guard` - Pre-execution destructive-command inspection and path-jail checks.
+3. `nymrel_swarm_claim` - Distributed directory lock and lease coordination with fencing generations.
+4. `nymrel_machine_trust` - Schema.org JSON-LD organization graph and llms.txt generation.
+5. `nymrel_proof_ledger` - RFC-6962 SHA-256 Merkle execution attestation and proof generation.
+6. `nymrel_crawler_mesh` - Web content extraction and Markdown conversion for agent consumption.
+7. `nymrel_beacon_ping` - Liveness telemetry and multi-agent heartbeat reporting.
+8. `nymrel_headless_quote` - Deterministic service-quote calculation.
+9. `nymrel_local_forge` - Local model and Ollama capability inspection and routing support.
+10. `nymrel_open_ucp` - Commerce-protocol and payment-challenge utilities.
+11. `nymrel_sandstorm` - Workspace rollback, audit, and outbound-request guardrail utilities.
+12. `nymrel_a2ui_render` - Declarative decision-card rendering with Nymrel Warm Paper tokens.
+13. `nymrel_swarm_bus` - Studio task-bus message envelopes and dispatch support.
+14. `nymrel_proof_verify` - Merkle receipt and signature verification.
 
 ## Resources
-- \`nymrel://status\` - Real-time server health, uptime, and memory usage.
-- \`nymrel://ecosystem\` - Catalog of all 14 Nymrel repositories and packages.
-- \`nymrel://llms-manifest\` - Structured machine-readable guide for LLM context injection.
+- `nymrel://status` - Server identity, engine status, and supported protocol revisions.
+- `nymrel://ecosystem` - Catalog of the Nymrel project references represented by the hub.
+- `nymrel://llms-manifest` - Machine-readable guide for agent context injection.
 
 ## Prompt Templates
-- \`audit-website-ucp\` - Guided 7-layer AI Commerce Readiness audit.
-- \`secure-agent-command\` - Command safety check with Surety and Sandstorm.
-- \`init-two-seat-mission\` - Two-seat Command Studio setup.
+- `audit-website-ucp` - Guided AI commerce readiness audit.
+- `secure-agent-command` - Command-safety review using Nymrel guardrail tools.
+- `init-two-seat-mission` - Two-seat Command Studio setup.

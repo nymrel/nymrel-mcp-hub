@@ -1,7 +1,7 @@
 {
   "name": "@nymrel/mcp-hub",
   "version": "1.0.0",
-  "description": "Unified Model Context Protocol (MCP) server aggregating all 14 Nymrel open-source agent tools into a zero-dependency hub for Claude Desktop, Cursor, Codex, and OpenAI agents.",
+  "description": "Dual-engine Model Context Protocol (MCP) server exposing 14 Nymrel tools for Claude Desktop, Cursor, Codex, and other MCP clients.",
   "keywords": [
     "mcp",
     "model-context-protocol",
@@ -21,7 +21,7 @@
     "url": "https://github.com/nymrel/nymrel-mcp-hub/issues"
   },
   "license": "MIT",
-  "author": "Nymrel / JalenBuilds LLC <contact@jalenbuilds.com>",
+  "author": "Nymrel <contact@nymrel.com>",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
   "type": "module",
