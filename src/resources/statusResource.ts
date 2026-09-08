@@ -39,7 +39,7 @@ export function getStatusResourceContent(): string {
     organization: {
       brand: 'Nymrel',
       parentEntity: 'JalenBuilds LLC',
-      contact: 'contact@jalenbuilds.com'
+      contact: 'contact@nymrel.com'
     },
     timestamp: new Date().toISOString()
   };
