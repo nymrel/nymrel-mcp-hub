@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Nymrel Remote</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <p class="eyebrow">NYMREL / REMOTE</p>
+        <h1>Machine control, with proof.</h1>
+        <p class="lede">Pair owned computers, inspect reachability, approve privileged work, and verify the audit chain. Task arguments and result bodies are intentionally absent from this console.</p>
+      </div>
+      <div id="connection" class="badge">Not authenticated</div>
+    </header>
+
+    <section class="panel auth-panel">
+      <div>
+        <h2>Operator session</h2>
+        <p>Paste a short-lived internal operator token. It stays only in this page's memory and is cleared on reload.</p>
+      </div>
+      <div class="row">
+        <input id="token" type="password" autocomplete="off" spellcheck="false" placeholder="Bearer token">
+        <button id="connect">Connect</button>
+        <button id="disconnect" class="secondary">Clear</button>
+      </div>
+    </section>
+
+    <section class="grid">
+      <article class="panel">
+        <div class="panel-head"><div><p class="eyebrow">PAIRING</p><h2>Approve a device</h2></div></div>
+        <form id="pair-form" class="row">
+          <input id="pair-code" autocomplete="off" spellcheck="false" placeholder="ABCD-EFGH" maxlength="16">
+          <button type="submit">Approve</button>
+        </form>
+        <p id="pair-status" class="status"></p>
+      </article>
+
+      <article class="panel">
+        <div class="panel-head">
+          <div><p class="eyebrow">PROOF</p><h2>Audit integrity</h2></div>
+          <button id="verify" class="secondary">Verify</button>
+        </div>
+        <p id="audit-status" class="status">Not checked.</p>
+      </article>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div><p class="eyebrow">FLEET</p><h2>Paired devices</h2></div>
+        <button id="refresh-devices" class="secondary">Refresh</button>
+      </div>
+      <div id="devices" class="table-wrap"><p class="empty">Authenticate to load devices.</p></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div><p class="eyebrow">CALL LEDGER</p><h2>Recent remote calls</h2></div>
+        <button id="refresh-calls" class="secondary">Refresh</button>
+      </div>
+      <div id="calls" class="table-wrap"><p class="empty">Authenticate to load calls.</p></div>
+    </section>
+  </main>
+  <script src="/app.js" defer></script>
+</body>
+</html>
