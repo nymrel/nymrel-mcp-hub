@@ -105,13 +105,20 @@ export function loadServerConfig() {
   };
 }
 
-export function loadAgentConfig(argv = process.argv.slice(2)) {
-  const serverUrl = process.env.NYMREL_REMOTE_SERVER_URL || 'http://127.0.0.1:8787';
-  const parsed = new URL(serverUrl);
+export function normalizeAgentServerUrl(value) {
+  const parsed = new URL(value);
   const isLocal = ['127.0.0.1', 'localhost', '::1'].includes(parsed.hostname);
+  if (parsed.username || parsed.password || parsed.search || parsed.hash || parsed.pathname !== '/') {
+    throw new Error('NYMREL_REMOTE_SERVER_URL must be an origin without credentials, query, fragment, or path');
+  }
   if (parsed.protocol !== 'https:' && !isLocal && !boolEnv('NYMREL_REMOTE_ALLOW_INSECURE_AGENT', false)) {
     throw new Error('Remote agent requires HTTPS unless connecting to localhost');
   }
+  return parsed.origin;
+}
+
+export function loadAgentConfig(argv = process.argv.slice(2)) {
+  const serverUrl = normalizeAgentServerUrl(process.env.NYMREL_REMOTE_SERVER_URL || 'http://127.0.0.1:8787');
   let mcpArgs = [];
   if (process.env.NYMREL_REMOTE_MCP_ARGS) {
     mcpArgs = JSON.parse(process.env.NYMREL_REMOTE_MCP_ARGS);

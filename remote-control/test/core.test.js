@@ -3,12 +3,13 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { EnvelopeCipher, sha256 } from '../src/crypto.js';
+import { EnvelopeCipher, randomCode, sha256 } from '../src/crypto.js';
 import { TokenService } from '../src/token.js';
 import { AuditLedger } from '../src/audit.js';
 import { JsonFileStore } from '../src/store.js';
 import { collectMcpHeaderBindings, normalizeToolCatalog, projectDeviceTool, schemasEqualProjected } from '../src/schema.js';
 import { PolicyEngine } from '../src/policy.js';
+import { normalizeAgentServerUrl } from '../src/config.js';
 
 const key = Buffer.alloc(32, 7);
 
@@ -108,4 +109,16 @@ test('file store serializes concurrent transactions and keeps valid JSON', async
   assert.equal(Object.keys(state.devices).length, 25);
   assert.equal(state.revision, 25);
   await fs.rm(dir, { recursive: true, force: true });
+});
+
+test('pairing codes use the approved alphabet without modulo-derived bytes', () => {
+  const alphabet = /^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]+$/;
+  assert.match(randomCode(256), alphabet);
+});
+
+test('agent server URLs are canonical origins with no embedded routing authority', () => {
+  assert.equal(normalizeAgentServerUrl('https://remote.example.com/'), 'https://remote.example.com');
+  assert.throws(() => normalizeAgentServerUrl('https://user:pass@remote.example.com/'), /origin/);
+  assert.throws(() => normalizeAgentServerUrl('https://remote.example.com/api'), /origin/);
+  assert.throws(() => normalizeAgentServerUrl('http://remote.example.com/'), /HTTPS/);
 });

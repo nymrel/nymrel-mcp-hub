@@ -33,17 +33,35 @@ async function fetchJson(baseUrl, route, { method = 'GET', token, body, timeoutM
   }
 }
 
-async function readCredentials(file) {
+function credentialString(value, name, maxLength) {
+  if (typeof value !== 'string' || value.length === 0 || value.length > maxLength || /[\u0000-\u001f]/.test(value)) {
+    throw new Error(`${name} must be a bounded printable string`);
+  }
+  return value;
+}
+
+function credentialsFrom(value) {
+  return {
+    deviceId: credentialString(value?.deviceId, 'deviceId', 256),
+    token: credentialString(value?.token, 'token', 8192)
+  };
+}
+
+async function readCredentials(file, expectedServerUrl) {
   try {
     const raw = JSON.parse(await fs.readFile(file, 'utf8'));
-    if (typeof raw.deviceId === 'string' && typeof raw.token === 'string' && typeof raw.serverUrl === 'string') return raw;
+    if (raw?.serverUrl !== expectedServerUrl) {
+      throw new Error('Stored device credentials belong to a different server URL');
+    }
+    return credentialsFrom(raw);
   } catch (error) {
     if (error?.code !== 'ENOENT') throw error;
   }
   return null;
 }
 
-async function writeCredentials(file, value) {
+async function writeCredentials(file, credentials, serverUrl) {
+  const value = { ...credentialsFrom(credentials), serverUrl };
   await fs.mkdir(path.dirname(file), { recursive: true, mode: 0o700 });
   const temp = `${file}.${process.pid}.tmp`;
   await fs.writeFile(temp, `${JSON.stringify(value, null, 2)}\n`, { mode: 0o600 });
@@ -93,10 +111,7 @@ export class DeviceAgent {
     if (this.running) return;
     this.running = true;
     await this.client.start();
-    this.credentials = await readCredentials(this.config.tokenFile);
-    if (this.credentials && this.credentials.serverUrl !== this.config.serverUrl) {
-      throw new Error(`Stored device credentials belong to ${this.credentials.serverUrl}; refusing to send them to ${this.config.serverUrl}`);
-    }
+    this.credentials = await readCredentials(this.config.tokenFile, this.config.serverUrl);
     if (this.credentials && internalTokenExpMs(this.credentials.token) <= Date.now()) {
       await removeCredentials(this.config.tokenFile);
       this.credentials = null;
@@ -136,8 +151,8 @@ export class DeviceAgent {
       }
       if (polled.status === 'pending') continue;
       if (polled.status !== 'approved') throw new Error(`Pairing ${polled.status}`);
-      this.credentials = { deviceId: polled.device_id, token: polled.device_token, serverUrl: this.config.serverUrl };
-      await writeCredentials(this.config.tokenFile, this.credentials);
+      this.credentials = credentialsFrom({ deviceId: polled.device_id, token: polled.device_token });
+      await writeCredentials(this.config.tokenFile, this.credentials, this.config.serverUrl);
       this.logger.log(`Device paired: ${polled.device_id}`);
       return;
     }
@@ -150,12 +165,8 @@ export class DeviceAgent {
     const refreshed = await fetchJson(this.config.serverUrl, '/v1/device/token/refresh', {
       method: 'POST', token: this.credentials.token, body: {}
     });
-    this.credentials = {
-      deviceId: refreshed.device_id,
-      token: refreshed.device_token,
-      serverUrl: this.config.serverUrl
-    };
-    await writeCredentials(this.config.tokenFile, this.credentials);
+    this.credentials = credentialsFrom({ deviceId: refreshed.device_id, token: refreshed.device_token });
+    await writeCredentials(this.config.tokenFile, this.credentials, this.config.serverUrl);
   }
 
   async #refreshCatalog() {
