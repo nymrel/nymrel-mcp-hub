@@ -10,6 +10,7 @@
   "bin": {
     "nymrel-remote-server": "./bin/nymrel-remote-server.js",
     "nymrel-remote-agent": "./bin/nymrel-remote-agent.js",
+    "nymrel-remote-supervisor": "./bin/nymrel-remote-supervisor.js",
     "nymrel-remote-token": "./bin/nymrel-remote-token.js"
   },
   "scripts": {

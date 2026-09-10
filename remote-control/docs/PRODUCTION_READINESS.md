@@ -17,22 +17,24 @@ A source build is a **production-ready candidate** only when the code gates belo
 - [x] external OAuth JWT/JWKS + opaque introspection support
 - [x] Origin validation
 - [x] body/schema/catalog size limits and rate limits
-- [x] supervised local stdio MCP process
+- [x] Nymrel-native bounded filesystem/search/process backend
+- [x] optional supervised stdio MCP compatibility backend
 - [x] health/readiness endpoints
 - [x] container and operations documentation
 - [x] automated unit/integration suite
 
-## Hosted source gates
+## Current native-backend source gate
 
-- [x] branch pushed to GitHub (`feat/nymrel-remote-control-plane-20260907`)
-- [x] draft PR opened against `main` (#11)
-- [x] isolated GitHub Actions checks green on Node 22.23.2 and 24.20.0
-- [x] production Docker image build green in hosted CI
-- [x] CodeQL green on the candidate head
+- [x] isolated branch pushed to GitHub (`chatgpt/nymrel-remote-native-agent-20260909`)
+- [x] PR opened against `main` (#14)
+- [ ] exact PR head passes isolated Nymrel Remote CI on Node 22.23.2 and 24.20.0
+- [ ] exact PR head passes the dedicated Windows native-backend contract lane
+- [ ] exact PR head passes the production Docker image build
+- [ ] repository-wide workflow/security checks green on the exact head
 - [ ] independent studio review recorded
-- [ ] local studio writer-claim / integration-conflict check recorded (JalenPC is offline; GitHub diff itself is isolated)
+- [ ] JalenPC native-agent bootstrap and real-device smoke recorded
 
-The repository-wide MCP Hub Node matrix has a pre-existing `actions/setup-node` bootstrap defect on the same `main` base; draft PR #5 owns that repair. The isolated Nymrel Remote workflow disables the defective implicit npm cache path and is green. This lane does not absorb PR #5.
+The current JalenPC relay is reachable and responds to transport-level pings, but Remote Desktop Commander substantive operations fail because its local Desktop Commander MCP package is missing/broken. That failure is the migration motivation, not evidence that the Nymrel-native agent is already installed on JalenPC.
 
 ## Environment gates
 

@@ -1,6 +1,6 @@
 # Nymrel Remote
 
-Nymrel Remote is a remote MCP control plane and outbound-only device agent for computers you own. It projects a paired machine's local MCP tools into a hosted MCP endpoint without exposing an inbound port on the machine.
+Nymrel Remote is a Nymrel-owned remote MCP control plane and outbound-only device agent for computers you own. The default device backend implements filesystem, search, and process tools directly in Node.js; it does not require Desktop Commander, `npx`, or another local MCP package.
 
 This package is intentionally isolated from the existing `@nymrel/mcp-hub` release artifact. It is an incubation/product lane, not a claim that the current Nymrel MCP Hub package has changed.
 
@@ -17,14 +17,20 @@ Durable encrypted call store  <---- operator approvals / audit chain
   |  outbound SSE doorbell + polling reconciliation
   v
 Nymrel Remote device agent
-  |  local stdio MCP
-  v
-DesktopCommanderMCP or another local MCP server
+  |  native bounded filesystem / search / process backend
   v
 Owned computer
 ```
 
+An optional stdio MCP compatibility backend remains available for deliberately integrating another local MCP server. It is not the default execution path.
+
 The realtime event channel is advisory. The durable call record is authoritative. A device atomically claims a queued call before execution, so duplicate event delivery cannot execute the same call twice.
+
+## Native device tools
+
+The native backend exposes a bounded initial tool set for health/config inspection, UTF-8 file reads and writes, directory listing, file metadata, filename/content search, exact text edits, move/delete, managed shell sessions, interactive stdin, process-session inspection, operating-system process listing, and process termination.
+
+Filesystem access is restricted to configured roots. Write targets are checked against the nearest existing ancestor before creation, search does not follow symlinks, text and process output are bounded, and destructive tools retain the control-plane destructive policy gate.
 
 ## Security defaults
 
@@ -37,7 +43,6 @@ The realtime event channel is advisory. The durable call record is authoritative
 - Unknown tools are denied. Known destructive tools are denied unless policy and scope are deliberately changed.
 - Current MCP clients can use multi-round-trip elicitation for in-band approval. Older clients use the explicit approval tool/API.
 - Projected input schemas are copied exactly and schema-hashed. The device checks the hash again immediately before local execution.
-- Modern HTTP requests validate MCP protocol/method/name routing headers and any `x-mcp-header` parameter mirrors.
 - Production MCP access is expected to use an external OAuth authorization server with audience-bound access tokens. Static MCP/admin tokens are off by default in production.
 - The HTTP bootstrap-token mint route is off by default in production.
 
@@ -45,11 +50,12 @@ See [SECURITY.md](SECURITY.md) and [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md).
 
 ## Requirements
 
-- Node.js 22 or 24
+- Node.js 22 or 24 on the hosted server and controlled machine
 - TLS termination in production
 - A persistent local volume for the single server process
 - An OAuth authorization server in production, unless the operator explicitly enables static-token compatibility mode
-- A local stdio MCP server on each controlled machine. The default command is `desktop-commander`.
+
+No global Desktop Commander installation is required by the native backend.
 
 The current durable store and in-process event fanout are designed for **one server process / one replica**. Do not horizontally scale this build behind multiple active replicas. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
@@ -108,18 +114,29 @@ A complete template is in [.env.example](.env.example).
 
 ## Device configuration
 
-On a controlled machine:
+On a controlled machine, the native backend is the default:
 
 ```text
 NYMREL_REMOTE_SERVER_URL=https://remote.example.com
-NYMREL_REMOTE_MCP_COMMAND=desktop-commander
-NYMREL_REMOTE_MCP_ARGS=[]
+NYMREL_REMOTE_DEVICE_NAME=JalenPC
+NYMREL_REMOTE_ALLOWED_DIRECTORIES=["C:\\Users\\johns"]
+NYMREL_REMOTE_LOCAL_CWD=C:\Users\johns
+NYMREL_REMOTE_LOCAL_SHELL=powershell.exe
+NYMREL_REMOTE_BLOCKED_COMMANDS=[]
 ```
 
 Then run:
 
 ```bash
 node ./bin/nymrel-remote-agent.js
+```
+
+For intentional stdio compatibility only:
+
+```text
+NYMREL_REMOTE_LOCAL_BACKEND=stdio
+NYMREL_REMOTE_MCP_COMMAND=some-local-mcp
+NYMREL_REMOTE_MCP_ARGS=[]
 ```
 
 The agent prints a short pairing code. Approve it from an authenticated Nymrel Remote operator session or via the `nymrel_remote_approve_pairing` MCP tool. Device credentials are stored with restrictive filesystem permissions where supported and are never sent to a different server URL than the URL they were issued for.
@@ -151,7 +168,7 @@ Important scopes:
 npm run check
 ```
 
-The suite covers cryptographic envelopes, signed tokens, audit tamper detection, exact schema relay, MCP header routing, RSA/ECDSA/opaque OAuth tokens, pairing idempotence, credential refresh, offline refusal, exactly-once claims, MRTR approvals, HTTP Origin/auth behavior, end-to-end HTTP call completion, and stdio MCP supervision.
+The suite covers cryptographic envelopes, signed tokens, audit tamper detection, exact schema relay, MCP header routing, RSA/ECDSA/opaque OAuth tokens, pairing idempotence, credential refresh, offline refusal, exactly-once claims, approvals, HTTP Origin/auth behavior, end-to-end HTTP call completion, native filesystem/process behavior, and the optional stdio MCP compatibility client.
 
 ## Deployment status semantics
 
