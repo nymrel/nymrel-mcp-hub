@@ -13,8 +13,8 @@ function configFor(dir) {
   return {
     production: false, host: '127.0.0.1', port: 0, publicBaseUrl: null,
     storePath: path.join(dir, 'state.json'), signingKey: key, dataKey: key, auditKey: key,
-    bootstrapToken: 'bootstrap-test-token-not-for-production', callTtlMs: 60_000, syncWaitMs: 0,
-    heartbeatTtlMs: 60_000, pairingTtlMs: 60_000, maxBodyBytes: 1024 * 1024,
+    bootstrapToken: 'bootstrap-test-token-not-for-production', callTtlMs: 60_000, callRetentionMs: 86_400_000, syncWaitMs: 0,
+    heartbeatTtlMs: 60_000, pairingTtlMs: 60_000, pairingRetentionMs: 3_600_000, maxBodyBytes: 1024 * 1024,
     maxToolSchemaBytes: 65536, maxToolsPerDevice: 64, allowedOrigins: [], authorizationServers: [],
     allowStaticMcpTokens: true, allowStaticAdminTokens: true, allowBootstrapHttp: true,
     oauthIssuer: null, oauthJwksUrl: null, oauthAudience: null, oauthTenantClaim: 'tenant', oauthIntrospectionUrl: null,
@@ -100,7 +100,7 @@ test('open-world process actions require network scope before device dispatch', 
   );
 });
 
-test('ChatGPT HTTP endpoint keeps a frozen action catalog while device registration changes underneath it', async () => {
+test('ChatGPT HTTP endpoint keeps public review pages and a frozen action catalog while device registration changes underneath it', async () => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'nymrel-chatgpt-'));
   const config = configFor(dir);
   const { server, runtime } = await createChatgptRemoteHttpServer(config, { logger: { info() {}, error() {} } });
@@ -109,6 +109,15 @@ test('ChatGPT HTTP endpoint keeps a frozen action catalog while device registrat
   const base = `http://127.0.0.1:${config.port}`;
 
   try {
+    for (const [route, marker] of [['/privacy', 'Nymrel Remote Privacy'], ['/terms', 'Nymrel Remote Terms'], ['/support', 'Nymrel Remote Support']]) {
+      const response = await fetch(`${base}${route}`);
+      const text = await response.text();
+      assert.equal(response.status, 200, route);
+      assert.match(response.headers.get('content-type') || '', /text\/html/);
+      assert.match(text, new RegExp(marker));
+      assert.match(response.headers.get('content-security-policy') || '', /frame-ancestors 'none'/);
+    }
+
     let out = await jsonFetch(base, '/.well-known/oauth-protected-resource/chatgpt/mcp');
     assert.equal(out.response.status, 200);
     assert.equal(out.body.resource, `${base}/chatgpt/mcp`);
