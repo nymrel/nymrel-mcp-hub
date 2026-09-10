@@ -6,9 +6,7 @@ import { bearerFromHeaders } from './token.js';
 import { createRemoteHttpServer } from './server.js';
 
 const CHATGPT_MCP_SCOPES = [
-  'devices:read', 'devices:pair', 'devices:revoke',
-  'calls:read', 'calls:approve', 'audit:read',
-  'tools:read', 'tools:write', 'tools:execute', 'tools:network'
+  'devices:read', 'tools:read', 'tools:write', 'tools:execute', 'tools:network'
 ];
 
 function publicOrigin(config) {
