@@ -58,7 +58,8 @@ New-Item -ItemType Directory -Path $tempRoot -Force | Out-Null
 
 try {
   $headers = @{ 'User-Agent' = 'Nymrel-Remote-Windows-Bootstrap' }
-  $commitInfo = Invoke-RestMethod -Headers $headers -Uri "https://api.github.com/repos/nymrel/nymrel-mcp-hub/commits/$Ref"
+  $encodedRef = [Uri]::EscapeDataString($Ref)
+  $commitInfo = Invoke-RestMethod -Headers $headers -Uri "https://api.github.com/repos/nymrel/nymrel-mcp-hub/commits/$encodedRef"
   $commit = [string]$commitInfo.sha
   if ($commit -notmatch '^[0-9a-f]{40}$') {
     throw 'GitHub did not return a valid source commit.'
@@ -77,6 +78,7 @@ try {
   }
 
   & schtasks.exe /End /TN $TaskName 2>$null | Out-Null
+  Start-Sleep -Milliseconds 500
   Copy-Item -LiteralPath $remoteSource -Destination $stagingDir -Recurse -Force
   if (Test-Path -LiteralPath $backupDir) {
     Remove-Item -LiteralPath $backupDir -Recurse -Force
@@ -87,44 +89,50 @@ try {
   Move-Item -LiteralPath $stagingDir -Destination $appDir
 
   $allowedJson = @($resolvedAllowed) | ConvertTo-Json -Compress
-  Set-UserEnvironmentVariable 'NYMREL_REMOTE_SERVER_URL' $server.GetLeftPart([UriPartial]::Authority)
+  $origin = $server.GetLeftPart([UriPartial]::Authority)
+  Set-UserEnvironmentVariable 'NYMREL_REMOTE_SERVER_URL' $origin
   Set-UserEnvironmentVariable 'NYMREL_REMOTE_DEVICE_NAME' $DeviceName
   Set-UserEnvironmentVariable 'NYMREL_REMOTE_DEVICE_FILE' $deviceFile
   Set-UserEnvironmentVariable 'NYMREL_REMOTE_ALLOWED_DIRECTORIES' $allowedJson
   Set-UserEnvironmentVariable 'NYMREL_REMOTE_LOCAL_CWD' $resolvedAllowed[0]
   Set-UserEnvironmentVariable 'NYMREL_REMOTE_LOCAL_SHELL' 'powershell.exe'
-  [Environment]::SetEnvironmentVariable('NYMREL_REMOTE_LOCAL_BACKEND', $null, 'User')
-  Remove-Item Env:NYMREL_REMOTE_LOCAL_BACKEND -ErrorAction SilentlyContinue
+  Set-UserEnvironmentVariable 'NYMREL_REMOTE_LOCAL_BACKEND' 'native'
 
+  $agentEnvironment = @{
+    NYMREL_REMOTE_SERVER_URL = $origin
+    NYMREL_REMOTE_DEVICE_NAME = $DeviceName
+    NYMREL_REMOTE_DEVICE_FILE = $deviceFile
+    NYMREL_REMOTE_ALLOWED_DIRECTORIES = $allowedJson
+    NYMREL_REMOTE_LOCAL_CWD = $resolvedAllowed[0]
+    NYMREL_REMOTE_LOCAL_SHELL = 'powershell.exe'
+    NYMREL_REMOTE_LOCAL_BACKEND = 'native'
+  }
   $installer = Join-Path $appDir 'bin\install-nymrel-remote-windows.ps1'
-  & $installer -TaskName $TaskName
+  Remove-Item -LiteralPath $logFile -Force -ErrorAction SilentlyContinue
+  & $installer -TaskName $TaskName -Environment $agentEnvironment
 
-  $deadline = (Get-Date).AddSeconds(45)
-  $pairingCode = $null
+  $deadline = (Get-Date).AddSeconds(60)
   do {
     Start-Sleep -Milliseconds 500
-    if (Test-Path -LiteralPath $logFile) {
-      $recent = (Get-Content -LiteralPath $logFile -Tail 160 -ErrorAction SilentlyContinue) -join "`n"
-      $match = [regex]::Match($recent, 'Pair this device with code:\s*([A-Za-z0-9]{4}-[A-Za-z0-9]{4})')
-      if ($match.Success) {
-        $pairingCode = $match.Groups[1].Value.ToUpperInvariant()
-        break
-      }
-      if ($recent -match 'Device paired:' -or (Test-Path -LiteralPath $deviceFile)) {
-        Write-Host 'Nymrel Remote is installed and has a device credential.'
-        Write-Output 'NYMREL_REMOTE_STATUS=PAIRED_OR_CREDENTIAL_PRESENT'
-        exit 0
-      }
+    if (-not (Test-Path -LiteralPath $logFile)) {
+      continue
+    }
+    $recent = (Get-Content -LiteralPath $logFile -Tail 200 -ErrorAction SilentlyContinue) -join "`n"
+    $match = [regex]::Match($recent, 'Pair this device with code:\s*([A-Za-z0-9]{4}-[A-Za-z0-9]{4})')
+    if ($match.Success) {
+      $pairingCode = $match.Groups[1].Value.ToUpperInvariant()
+      Write-Host "Pair this JalenPC agent with code: $pairingCode"
+      Write-Output "NYMREL_REMOTE_PAIRING_CODE=$pairingCode"
+      exit 0
+    }
+    if ($recent -match 'Nymrel Remote agent online for') {
+      Write-Host 'Nymrel Remote is installed, registered, and online.'
+      Write-Output 'NYMREL_REMOTE_STATUS=ONLINE'
+      exit 0
     }
   } while ((Get-Date) -lt $deadline)
 
-  if ($pairingCode) {
-    Write-Host "Pair this JalenPC agent with code: $pairingCode"
-    Write-Output "NYMREL_REMOTE_PAIRING_CODE=$pairingCode"
-    exit 0
-  }
-
-  Write-Warning "Nymrel Remote was installed, but no pairing code appeared within 45 seconds. Inspect: $logFile"
+  Write-Warning "Nymrel Remote was installed, but it did not report online or print a pairing code within 60 seconds. Inspect: $logFile"
   Write-Output "NYMREL_REMOTE_LOG=$logFile"
   exit 2
 }
