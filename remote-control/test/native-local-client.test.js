@@ -40,9 +40,10 @@ test('native backend performs bounded file operations without a local MCP depend
     const searched = await client.callTool('search_content', { path: root, pattern: 'gamma' });
     assert.equal(searched.structuredContent.results.length, 1);
 
-    const outside = await client.callTool('read_file', { path: path.dirname(root) });
-    assert.equal(outside.isError, true);
-    assert.match(outside.content[0].text, /outside allowed directories|regular file/i);
+    await assert.rejects(
+      client.callTool('read_file', { path: path.dirname(root) }),
+      /outside allowed directories/i
+    );
   });
 });
 
