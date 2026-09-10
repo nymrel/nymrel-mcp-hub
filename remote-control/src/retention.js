@@ -1,4 +1,6 @@
 const TERMINAL_CALLS = new Set(['completed', 'failed', 'cancelled', 'expired']);
+const DEFAULT_CALL_RETENTION_MS = 24 * 60 * 60 * 1000;
+const DEFAULT_PAIRING_RETENTION_MS = 60 * 60 * 1000;
 
 function validTime(value) {
   const parsed = Date.parse(value || '');
@@ -6,13 +8,15 @@ function validTime(value) {
 }
 
 export async function pruneDurablePayloads(runtime, config, now = Date.now()) {
+  const callRetentionMs = Number.isFinite(config.callRetentionMs) ? config.callRetentionMs : DEFAULT_CALL_RETENTION_MS;
+  const pairingRetentionMs = Number.isFinite(config.pairingRetentionMs) ? config.pairingRetentionMs : DEFAULT_PAIRING_RETENTION_MS;
   let prunedCalls = 0;
   let prunedPairings = 0;
   await runtime.store.transaction((state) => {
     for (const [callId, call] of Object.entries(state.calls || {})) {
       if (!TERMINAL_CALLS.has(call.status)) continue;
       const terminalAt = validTime(call.completedAt) ?? validTime(call.expiresAt) ?? validTime(call.createdAt);
-      if (terminalAt === null || now - terminalAt < config.callRetentionMs) continue;
+      if (terminalAt === null || now - terminalAt < callRetentionMs) continue;
       delete state.calls[callId];
       prunedCalls += 1;
     }
@@ -23,7 +27,7 @@ export async function pruneDurablePayloads(runtime, config, now = Date.now()) {
         : pairing.status === 'expired'
           ? validTime(pairing.expiresAt)
           : null;
-      if (terminalAt === null || now - terminalAt < config.pairingRetentionMs) continue;
+      if (terminalAt === null || now - terminalAt < pairingRetentionMs) continue;
       delete state.pairings[pairingKey];
       prunedPairings += 1;
     }
