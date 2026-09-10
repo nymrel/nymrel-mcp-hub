@@ -21,15 +21,25 @@ Only a queued call can be atomically claimed. A second concurrent claim fails. C
 
 ### Device agent
 
-The agent makes outbound HTTPS/SSE requests to the control plane and separately supervises a local stdio MCP server. It reconciles the durable queue on heartbeat and after reconnect, so an SSE event can be dropped without losing work. Before execution, it verifies the local tool still exists and its schema hash still matches the call.
+The agent makes outbound HTTPS/SSE requests to the control plane and owns the local execution backend. It reconciles the durable queue on heartbeat and after reconnect, so an SSE event can be dropped without losing work. Before execution, it verifies the local tool still exists and its schema hash still matches the call.
 
-### Local MCP runtime
+### Native local runtime
 
-Nymrel Remote does not vendor a shell/filesystem engine. It bridges to an installed local MCP server. DesktopCommanderMCP is a useful default because it is independently available under the MIT license, but the bridge is generic.
+The default backend is Nymrel-owned and implemented with Node.js standard-library primitives. It provides bounded filesystem, search, and managed-process tools without launching Desktop Commander, `npx`, or any other local MCP package.
+
+Allowed filesystem roots are resolved when the backend starts. Existing paths are checked using their real path; prospective write locations are constrained through their nearest existing ancestor. Search skips symbolic links. File content and retained process output are bounded to prevent an accidental unbounded relay payload.
+
+Managed process sessions retain stdout/stderr in memory for interactive reads and stdin writes. Commands execute with the operating-system identity of the device agent and therefore remain subject to the control-plane execute/destructive policy plus any configured local blocked-command rules. This is a policy boundary, not an OS sandbox.
+
+### Optional stdio compatibility runtime
+
+`NYMREL_REMOTE_LOCAL_BACKEND=stdio` deliberately switches the device agent to the generic stdio MCP client. This is retained for interoperability with external local MCP servers, but it is no longer the default or a requirement for Nymrel Remote.
 
 ## Schema integrity
 
 During registration, each input schema is validated and hashed. Projection copies the complete input schema rather than reconstructing selected fields. The hash is carried through the durable call and checked again on the device immediately before execution. This avoids the class of relay bug where a local tool is valid but an intermediate connector exposes it with an empty or degraded schema.
+
+The native backend publishes the same catalog through this registration path; it does not bypass schema hashing, capability policy, approvals, or durable call state.
 
 ## Delivery semantics
 
