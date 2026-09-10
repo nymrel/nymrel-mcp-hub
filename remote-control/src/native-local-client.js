@@ -347,12 +347,17 @@ export class NativeLocalClient extends EventEmitter {
 
   async #readFile({ path: file, offset = 0, length = 1000 }) {
     const target = await this.#resolveExisting(file);
-    const stat = await fs.stat(target);
-    if (!stat.isFile()) throw new Error('read_file requires a regular file');
-    if (stat.size > this.maxTextBytes) throw new Error(`File exceeds ${this.maxTextBytes} byte text-read limit`);
-    const content = await fs.readFile(target, 'utf8');
-    const window = lineWindow(content, offset, length);
-    return textResult({ path: target, ...window });
+    const handle = await fs.open(target, 'r');
+    try {
+      const stat = await handle.stat();
+      if (!stat.isFile()) throw new Error('read_file requires a regular file');
+      if (stat.size > this.maxTextBytes) throw new Error(`File exceeds ${this.maxTextBytes} byte text-read limit`);
+      const content = await handle.readFile({ encoding: 'utf8' });
+      const window = lineWindow(content, offset, length);
+      return textResult({ path: target, ...window });
+    } finally {
+      await handle.close();
+    }
   }
 
   async #readMultipleFiles({ paths }) {
@@ -437,7 +442,21 @@ export class NativeLocalClient extends EventEmitter {
 
   async #fileInfo({ path: targetPath }) {
     const target = await this.#resolveExisting(targetPath);
-    const stat = await fs.stat(target);
+    let stat;
+    let lineCount = null;
+    let handle;
+    try {
+      handle = await fs.open(target, 'r');
+      stat = await handle.stat();
+      if (stat.isFile() && stat.size <= this.maxTextBytes) {
+        lineCount = (await handle.readFile({ encoding: 'utf8' })).split(/\r?\n/).length;
+      }
+    } catch {
+      if (!stat) stat = await fs.stat(target);
+      lineCount = null;
+    } finally {
+      await handle?.close().catch(() => {});
+    }
     return textResult({
       path: target,
       type: stat.isDirectory() ? 'directory' : stat.isFile() ? 'file' : 'other',
@@ -445,9 +464,7 @@ export class NativeLocalClient extends EventEmitter {
       createdAt: stat.birthtime.toISOString(),
       modifiedAt: stat.mtime.toISOString(),
       mode: stat.mode,
-      lineCount: stat.isFile() && stat.size <= this.maxTextBytes
-        ? (await fs.readFile(target, 'utf8')).split(/\r?\n/).length
-        : null
+      lineCount
     });
   }
 
@@ -471,10 +488,18 @@ export class NativeLocalClient extends EventEmitter {
     const results = [];
     await this.#walkSearch(root, maxDepth, async (full, entry) => {
       if (!entry.isFile() || (fileMatcher && !fileMatcher.test(entry.name))) return true;
-      const stat = await fs.stat(full).catch(() => null);
-      if (!stat || stat.size > this.maxTextBytes) return true;
+      let handle;
       let text;
-      try { text = await fs.readFile(full, 'utf8'); } catch { return true; }
+      try {
+        handle = await fs.open(full, 'r');
+        const stat = await handle.stat();
+        if (!stat.isFile() || stat.size > this.maxTextBytes) return true;
+        text = await handle.readFile({ encoding: 'utf8' });
+      } catch {
+        return true;
+      } finally {
+        await handle?.close().catch(() => {});
+      }
       const lines = text.split(/\r?\n/);
       for (let i = 0; i < lines.length && results.length < maxResults; i += 1) {
         const haystack = ignoreCase ? lines[i].toLowerCase() : lines[i];

@@ -30,7 +30,8 @@ test('AES-GCM envelopes bind ciphertext to call-specific AAD', () => {
   const envelope = cipher.seal({ secret: 'never-plaintext-at-rest' }, 'call-1:args');
   assert.deepEqual(cipher.open(envelope, 'call-1:args'), { secret: 'never-plaintext-at-rest' });
   assert.throws(() => cipher.open(envelope, 'call-2:args'));
-  const modified = { ...envelope, ciphertext: `${envelope.ciphertext.slice(0, -1)}A` };
+  const replacement = envelope.ciphertext.endsWith('A') ? 'B' : 'A';
+  const modified = { ...envelope, ciphertext: `${envelope.ciphertext.slice(0, -1)}${replacement}` };
   assert.throws(() => cipher.open(modified, 'call-1:args'));
 });
 
