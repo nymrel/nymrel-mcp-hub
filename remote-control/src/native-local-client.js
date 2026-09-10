@@ -444,19 +444,17 @@ export class NativeLocalClient extends EventEmitter {
     const target = await this.#resolveExisting(targetPath);
     const stat = await fs.stat(target);
     let lineCount = null;
-    if (stat.isFile() && stat.size <= this.maxTextBytes) {
-      let handle;
-      try {
-        handle = await fs.open(target, 'r');
-        const openedStat = await handle.stat();
-        if (openedStat.isFile() && openedStat.size <= this.maxTextBytes) {
-          lineCount = (await handle.readFile({ encoding: 'utf8' })).split(/\r?\n/).length;
-        }
-      } catch {
-        lineCount = null;
-      } finally {
-        await handle?.close().catch(() => {});
+    let handle;
+    try {
+      handle = await fs.open(target, 'r');
+      const openedStat = await handle.stat();
+      if (openedStat.isFile() && openedStat.size <= this.maxTextBytes) {
+        lineCount = (await handle.readFile({ encoding: 'utf8' })).split(/\r?\n/).length;
       }
+    } catch {
+      lineCount = null;
+    } finally {
+      await handle?.close().catch(() => {});
     }
     return textResult({
       path: target,
