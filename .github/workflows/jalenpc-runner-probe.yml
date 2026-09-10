@@ -13,25 +13,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  probe:
-    name: Verify JalenPC execution bridge
-    runs-on: [self-hosted, Windows, X64]
-    timeout-minutes: 5
+  close-probe:
+    name: Close unavailable JalenPC runner probe
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
     steps:
-      - name: Verify authorized host and toolchain
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          if ($env:COMPUTERNAME -ine 'JALENPC') {
-            throw "Refusing to probe unexpected self-hosted runner: $env:COMPUTERNAME"
-          }
-          $result = [ordered]@{
-            computer = $env:COMPUTERNAME
-            user = [Environment]::UserName
-            node = (Get-Command node.exe -ErrorAction SilentlyContinue).Source
-            git = (Get-Command git.exe -ErrorAction SilentlyContinue).Source
-            cursor_agent = (Get-Command cursor-agent.exe -ErrorAction SilentlyContinue).Source
-            portfolio_control = Test-Path 'C:\Users\johns\Desktop\portfolio-control'
-            nymrel_mcp_hub = Test-Path 'C:\Users\johns\Desktop\nymrel-mcp-hub'
-          }
-          $result | ConvertTo-Json -Compress
+      - run: echo "No matching self-hosted Windows runner accepted the bounded JalenPC probe."
