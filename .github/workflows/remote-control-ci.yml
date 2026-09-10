@@ -87,6 +87,10 @@ jobs:
       - name: Run syntax contracts on Windows
         run: corepack npm@12.0.2 run check:syntax
 
+      - name: Parse Windows autostart installer
+        shell: pwsh
+        run: "[void][scriptblock]::Create((Get-Content -Raw './bin/install-nymrel-remote-windows.ps1'))"
+
       - name: Run native backend contracts on Windows
         run: node --test test/native-local-client.test.js
 
