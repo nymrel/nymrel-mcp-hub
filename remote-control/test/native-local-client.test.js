@@ -49,7 +49,10 @@ test('native backend performs bounded file operations without a local MCP depend
 
 test('native backend retains process output in a managed session', async () => {
   await withClient(async (client) => {
-    const command = `${JSON.stringify(process.execPath)} -e "console.log('native-ok')"`;
+    const executable = JSON.stringify(process.execPath);
+    const command = process.platform === 'win32'
+      ? `& ${executable} -e "console.log('native-ok')"`
+      : `${executable} -e "console.log('native-ok')"`;
     const started = await client.callTool('start_process', { command });
     assert.equal(started.isError, false);
     const pid = started.structuredContent.pid;
