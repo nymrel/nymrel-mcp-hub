@@ -1,6 +1,7 @@
 param(
   [string]$TaskName = 'Nymrel Remote',
-  [switch]$Uninstall
+  [switch]$Uninstall,
+  [switch]$NoStart
 )
 
 $ErrorActionPreference = 'Stop'
@@ -39,9 +40,12 @@ Set-Content -LiteralPath $launcher -Value $launcherBody -Encoding Ascii
 & schtasks.exe /Create /SC ONLOGON /TN $TaskName /TR $launcher /RL LIMITED /F | Out-Null
 if ($LASTEXITCODE -ne 0) { throw "schtasks.exe failed to create '$TaskName' (exit $LASTEXITCODE)." }
 
-& schtasks.exe /Run /TN $TaskName | Out-Null
-if ($LASTEXITCODE -ne 0) { throw "schtasks.exe created '$TaskName' but could not start it (exit $LASTEXITCODE)." }
-
-Write-Host "Installed and started '$TaskName'."
+if (-not $NoStart) {
+  & schtasks.exe /Run /TN $TaskName | Out-Null
+  if ($LASTEXITCODE -ne 0) { throw "schtasks.exe created '$TaskName' but could not start it (exit $LASTEXITCODE)." }
+  Write-Host "Installed and started '$TaskName'."
+} else {
+  Write-Host "Installed '$TaskName'; immediate startup was deferred."
+}
 Write-Host "Supervisor log: $logFile"
 Write-Host 'If this is the first pairing, inspect the log for the short pairing code.'
