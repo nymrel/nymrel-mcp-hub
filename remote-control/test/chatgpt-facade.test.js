@@ -32,12 +32,16 @@ async function jsonFetch(base, route, init = {}) {
   return { response, body: text ? JSON.parse(text) : null };
 }
 
-test('ChatGPT tool catalog is static and every action has explicit review hints', async () => {
+test('ChatGPT tool catalog is focused, static, and every action has explicit review hints', async () => {
   const names = CHATGPT_REMOTE_TOOLS.map((tool) => tool.name);
+  assert.equal(names.length, 14);
   assert.equal(names.length, new Set(names).size);
   assert.ok(names.includes('read_file'));
   assert.ok(names.includes('start_process'));
   assert.ok(names.includes('list_devices'));
+  for (const excluded of ['delete_file', 'move_file', 'revoke_device', 'approve_call', 'approve_pairing']) {
+    assert.equal(names.includes(excluded), false, `${excluded} must stay off the public plugin surface`);
+  }
 
   for (const tool of CHATGPT_REMOTE_TOOLS) {
     assert.equal(typeof tool.annotations?.readOnlyHint, 'boolean', `${tool.name} readOnlyHint`);
@@ -48,6 +52,8 @@ test('ChatGPT tool catalog is static and every action has explicit review hints'
   assert.ok(read.inputSchema.properties.device);
   assert.ok(read.inputSchema.required.includes('path'));
   assert.equal(read.annotations.readOnlyHint, true);
+  const processOutput = CHATGPT_REMOTE_TOOLS.find((tool) => tool.name === 'read_process_output');
+  assert.equal(processOutput.annotations.readOnlyHint, false, 'default reads advance the retained session cursor');
   const shell = CHATGPT_REMOTE_TOOLS.find((tool) => tool.name === 'start_process');
   assert.equal(shell.annotations.openWorldHint, true);
   assert.equal(shell.annotations.destructiveHint, true);
@@ -84,6 +90,16 @@ test('stable device tool resolves to the current projected tool without forwardi
   });
 });
 
+test('open-world process actions require network scope before device dispatch', async () => {
+  const edge = new ChatgptMcpEdge({ broker: {}, syncWaitMs: 0 });
+  await assert.rejects(
+    edge.callTool({ typ: 'user', sub: 'u1', tenant: 't1', scopes: ['tools:execute', 'devices:read'] }, 'start_process', {
+      device: 'JalenPC', command: 'echo hi'
+    }),
+    /tools:network scope required/
+  );
+});
+
 test('ChatGPT HTTP endpoint keeps a frozen action catalog while device registration changes underneath it', async () => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'nymrel-chatgpt-'));
   const config = configFor(dir);
@@ -96,15 +112,19 @@ test('ChatGPT HTTP endpoint keeps a frozen action catalog while device registrat
     let out = await jsonFetch(base, '/.well-known/oauth-protected-resource/chatgpt/mcp');
     assert.equal(out.response.status, 200);
     assert.equal(out.body.resource, `${base}/chatgpt/mcp`);
-    assert.ok(out.body.scopes_supported.includes('tools:execute'));
+    assert.deepEqual(out.body.scopes_supported, ['devices:read', 'tools:read', 'tools:write', 'tools:execute', 'tools:network']);
 
-    const operatorToken = runtime.tokenService.mint({
-      subject: 'operator', tenantId: 't1', type: 'user',
-      scopes: ['devices:pair', 'devices:read', 'devices:revoke', 'calls:read', 'calls:approve', 'audit:read', 'tools:read', 'tools:write', 'tools:execute', 'tools:network']
+    const chatgptToken = runtime.tokenService.mint({
+      subject: 'chatgpt-user', tenantId: 't1', type: 'user',
+      scopes: ['devices:read', 'tools:read', 'tools:write', 'tools:execute', 'tools:network']
     });
+    const setupPrincipal = {
+      typ: 'user', sub: 'test-setup', tenant: 't1',
+      scopes: ['devices:pair', 'devices:read']
+    };
     const listBody = { jsonrpc: '2.0', id: 1, method: 'tools/list', params: { _meta: modernMeta() } };
     const headers = {
-      authorization: `Bearer ${operatorToken}`, 'content-type': 'application/json',
+      authorization: `Bearer ${chatgptToken}`, 'content-type': 'application/json',
       accept: 'application/json, text/event-stream', 'mcp-protocol-version': MODERN_PROTOCOL_VERSION, 'mcp-method': 'tools/list'
     };
     out = await jsonFetch(base, '/chatgpt/mcp', { method: 'POST', headers, body: JSON.stringify(listBody) });
@@ -112,8 +132,7 @@ test('ChatGPT HTTP endpoint keeps a frozen action catalog while device registrat
     const before = out.body.result.tools.map((tool) => tool.name);
 
     const pairing = await runtime.broker.startPairing({ deviceName: 'JalenPC', platform: 'win32' });
-    const principal = runtime.tokenService.verify(operatorToken, { expectedType: 'user' });
-    await runtime.broker.approvePairing(principal, pairing.user_code);
+    await runtime.broker.approvePairing(setupPrincipal, pairing.user_code);
     const paired = await runtime.broker.pollPairing(pairing.device_code);
     const devicePrincipal = runtime.tokenService.verify(paired.device_token, { expectedType: 'device' });
     await runtime.broker.registerDevice(devicePrincipal, {
