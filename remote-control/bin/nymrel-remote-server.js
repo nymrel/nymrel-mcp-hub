@@ -1,9 +1,12 @@
 #!/usr/bin/env node
 import { loadServerConfig } from '../src/config.js';
 import { listenChatgptRemoteServer } from '../src/chatgpt-server.js';
+import { startRetentionCleanup } from '../src/retention.js';
 
 const config = loadServerConfig();
-const { server } = await listenChatgptRemoteServer(config);
+const { server, runtime } = await listenChatgptRemoteServer(config);
+const stopRetentionCleanup = startRetentionCleanup(runtime, config);
+server.once('close', stopRetentionCleanup);
 const advertised = config.publicBaseUrl || `http://${config.host}:${config.port}`;
 console.log(`Nymrel Remote listening on ${advertised}`);
 console.log(`MCP endpoint: ${advertised}/mcp`);
