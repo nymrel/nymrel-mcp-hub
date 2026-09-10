@@ -19,7 +19,6 @@ function boolEnv(name, fallback = false) {
   throw new Error(`${name} must be true or false`);
 }
 
-
 function listEnv(name) {
   return String(process.env[name] || '').split(',').map((x) => x.trim()).filter(Boolean);
 }
@@ -82,10 +81,12 @@ export function loadServerConfig() {
     auditKey,
     bootstrapToken: bootstrapToken || 'development-bootstrap-token-change-me',
     callTtlMs: intEnv('NYMREL_REMOTE_CALL_TTL_MS', 5 * 60 * 1000, { min: 5000 }),
+    callRetentionMs: intEnv('NYMREL_REMOTE_CALL_RETENTION_MS', 24 * 60 * 60 * 1000, { min: 60 * 1000 }),
     syncWaitMs: intEnv('NYMREL_REMOTE_SYNC_WAIT_MS', 25000, { min: 0, max: 120000 }),
     heartbeatTtlMs: intEnv('NYMREL_REMOTE_HEARTBEAT_TTL_MS', 45000, { min: 10000 }),
     instanceLeaseTtlMs: intEnv('NYMREL_REMOTE_INSTANCE_LEASE_TTL_MS', 30000, { min: 5000 }),
     pairingTtlMs: intEnv('NYMREL_REMOTE_PAIRING_TTL_MS', 10 * 60 * 1000, { min: 60000 }),
+    pairingRetentionMs: intEnv('NYMREL_REMOTE_PAIRING_RETENTION_MS', 60 * 60 * 1000, { min: 60 * 1000 }),
     maxBodyBytes: intEnv('NYMREL_REMOTE_MAX_BODY_BYTES', 4 * 1024 * 1024, { min: 1024 }),
     maxToolSchemaBytes: intEnv('NYMREL_REMOTE_MAX_TOOL_SCHEMA_BYTES', 128 * 1024, { min: 1024 }),
     maxToolsPerDevice: intEnv('NYMREL_REMOTE_MAX_TOOLS_PER_DEVICE', 128, { min: 1, max: 1024 }),
