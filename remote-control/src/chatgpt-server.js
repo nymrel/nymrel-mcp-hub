@@ -91,6 +91,21 @@ function extractRequiredScope(message) {
   return match?.[1] || null;
 }
 
+class FixedWindowRateLimiter {
+  constructor() { this.entries = new Map(); }
+  take(key, limit, windowMs = 60_000) {
+    const now = Date.now();
+    let entry = this.entries.get(key);
+    if (!entry || entry.resetAt <= now) entry = { count: 0, resetAt: now + windowMs };
+    entry.count += 1;
+    this.entries.set(key, entry);
+    if (this.entries.size > 5000) {
+      for (const [item, value] of this.entries) if (value.resetAt <= now) this.entries.delete(item);
+    }
+    return { allowed: entry.count <= limit, retryAfterSec: Math.max(1, Math.ceil((entry.resetAt - now) / 1000)) };
+  }
+}
+
 export async function createChatgptRemoteHttpServer(config, options = {}) {
   const { server, runtime } = await createRemoteHttpServer(config, options);
   const original = server.listeners('request')[0];
@@ -106,6 +121,7 @@ export async function createChatgptRemoteHttpServer(config, options = {}) {
     introspectionClientId: config.oauthIntrospectionClientId,
     introspectionClientSecret: config.oauthIntrospectionClientSecret
   });
+  const limiter = new FixedWindowRateLimiter();
   runtime.chatgptMcp = edge;
   runtime.chatgptOauth = oauth;
 
@@ -137,6 +153,12 @@ export async function createChatgptRemoteHttpServer(config, options = {}) {
       if (!originAllowed(req, config)) {
         status = 403;
         return sendJson(res, 403, { error: { code: 'ORIGIN_DENIED', message: 'Origin is not allowed' } });
+      }
+      const ip = req.socket.remoteAddress || 'unknown';
+      const rate = limiter.take(`${ip}:chatgpt-mcp`, 600);
+      if (!rate.allowed) {
+        status = 429;
+        return sendJson(res, 429, { error: { code: 'RATE_LIMITED', message: 'Too many requests' } }, { 'retry-after': String(rate.retryAfterSec) });
       }
       if (req.method !== 'POST') {
         status = 405;
