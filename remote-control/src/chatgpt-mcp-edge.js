@@ -41,7 +41,7 @@ const NATIVE_BY_NAME = new Map(NATIVE_TOOLS.map((tool) => [tool.name, tool]));
 function nativeAnnotations(name) {
   const readOnly = new Set([
     'read_file', 'list_directory', 'get_file_info', 'search_files', 'search_content',
-    'read_process_output', 'list_sessions', 'list_processes'
+    'list_sessions', 'list_processes'
   ]).has(name);
   const destructive = new Set([
     'write_file', 'edit_block', 'start_process', 'interact_with_process', 'kill_process'
