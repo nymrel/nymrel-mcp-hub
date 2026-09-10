@@ -1,4 +1,5 @@
 const READ_PREFIXES = ['read_', 'list_', 'get_', 'find_', 'search_', 'inspect_', 'view_'];
+const READ_NAMES = new Set(['ping']);
 const NETWORK_PREFIXES = ['fetch_', 'http_', 'web_', 'download_', 'request_', 'url_'];
 const WRITE_PREFIXES = ['write_', 'edit_', 'move_', 'rename_', 'create_', 'delete_', 'remove_', 'patch_', 'update_'];
 const EXEC_PREFIXES = ['start_', 'run_', 'execute_', 'interact_', 'kill_', 'terminate_', 'shutdown_', 'restart_'];
@@ -18,6 +19,7 @@ export function classifyTool(tool) {
   const explicit = tool?._meta?.['nymrel/capability'] ?? tool?.annotations?.['nymrel/capability'];
   if (Object.values(CAPABILITIES).includes(explicit)) return explicit;
   const name = String(tool?.name ?? '').toLowerCase();
+  if (READ_NAMES.has(name)) return CAPABILITIES.READ;
   if (NETWORK_PREFIXES.some((prefix) => name.startsWith(prefix))) return CAPABILITIES.NETWORK;
   if (READ_PREFIXES.some((prefix) => name.startsWith(prefix))) return CAPABILITIES.READ;
   if (WRITE_PREFIXES.some((prefix) => name.startsWith(prefix))) return CAPABILITIES.WRITE;
