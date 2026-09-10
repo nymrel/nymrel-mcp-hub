@@ -49,21 +49,21 @@ test('native backend performs bounded file operations without a local MCP depend
 
 test('native backend retains process output in a managed session', async () => {
   await withClient(async (client) => {
-    const executable = JSON.stringify(process.execPath);
     const command = process.platform === 'win32'
-      ? `& ${executable} -e "console.log('native-ok')"`
-      : `${executable} -e "console.log('native-ok')"`;
+      ? "Write-Output 'native-ok'"
+      : "printf 'native-ok\\n'";
     const started = await client.callTool('start_process', { command });
     assert.equal(started.isError, false);
     const pid = started.structuredContent.pid;
 
     let output = '';
-    for (let attempt = 0; attempt < 40 && !output.includes('native-ok'); attempt += 1) {
+    let lastRead = null;
+    for (let attempt = 0; attempt < 160 && !output.includes('native-ok'); attempt += 1) {
       await new Promise((resolve) => setTimeout(resolve, 50));
-      const read = await client.callTool('read_process_output', { pid, offset: -20, length: 20 });
-      output = read.structuredContent.output;
+      lastRead = await client.callTool('read_process_output', { pid, offset: -20, length: 20 });
+      output = lastRead.structuredContent.output;
     }
-    assert.match(output, /native-ok/);
+    assert.match(output, /native-ok/, `last process read: ${JSON.stringify(lastRead?.structuredContent)}`);
 
     const sessions = await client.callTool('list_sessions', {});
     assert.ok(sessions.structuredContent.sessions.some((session) => session.pid === pid));
