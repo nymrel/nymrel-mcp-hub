@@ -84,8 +84,11 @@ jobs:
       - name: Install locked package metadata
         run: corepack npm@12.0.2 ci --ignore-scripts
 
-      - name: Run native and remote-control contracts on Windows
-        run: corepack npm@12.0.2 run check
+      - name: Run syntax contracts on Windows
+        run: corepack npm@12.0.2 run check:syntax
+
+      - name: Run native backend contracts on Windows
+        run: node --test test/native-local-client.test.js
 
   container-contract:
     name: Container build
