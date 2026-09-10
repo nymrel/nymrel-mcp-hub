@@ -218,18 +218,35 @@ export class NativeLocalClient extends EventEmitter {
       roots.push(path.normalize(real));
     }
     this.allowedRoots = roots;
-    await this.#resolveExisting(this.cwd);
+    this.cwd = await this.#resolveExisting(this.cwd);
     this.ready = true;
     this.emit('ready');
   }
 
   async stop() {
     this.ready = false;
+    const pending = [];
     for (const session of this.sessions.values()) {
-      if (session.child.exitCode === null && !session.child.killed) {
-        try { session.child.kill('SIGTERM'); } catch { /* best effort */ }
-      }
+      const child = session.child;
+      if (child.exitCode !== null || child.killed) continue;
+      pending.push(new Promise((resolve) => {
+        let settled = false;
+        const finish = () => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          resolve();
+        };
+        const timer = setTimeout(() => {
+          try { child.kill('SIGKILL'); } catch { /* best effort */ }
+          finish();
+        }, 2000);
+        timer.unref?.();
+        child.once('close', finish);
+        try { child.kill('SIGTERM'); } catch { finish(); }
+      }));
     }
+    await Promise.allSettled(pending);
   }
 
   async ensureReady() {
@@ -299,7 +316,9 @@ export class NativeLocalClient extends EventEmitter {
   async #nearestExistingAncestor(candidate) {
     let current = path.resolve(candidate);
     while (true) {
-      try { return await fs.realpath(current); } catch (error) {
+      try {
+        return { requestedPath: current, realPath: await fs.realpath(current) };
+      } catch (error) {
         if (error?.code !== 'ENOENT') throw error;
         const parent = path.dirname(current);
         if (parent === current) throw error;
@@ -319,9 +338,11 @@ export class NativeLocalClient extends EventEmitter {
     if (typeof input !== 'string' || input.length === 0) throw new Error('path must be a non-empty string');
     const absolute = path.resolve(this.cwd, input);
     const ancestor = await this.#nearestExistingAncestor(absolute);
-    this.#assertAllowed(ancestor);
-    this.#assertAllowed(absolute);
-    return absolute;
+    this.#assertAllowed(ancestor.realPath);
+    const suffix = path.relative(ancestor.requestedPath, absolute);
+    const canonicalTarget = path.resolve(ancestor.realPath, suffix);
+    this.#assertAllowed(canonicalTarget);
+    return canonicalTarget;
   }
 
   async #readFile({ path: file, offset = 0, length = 1000 }) {
