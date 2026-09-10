@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 import { loadServerConfig } from '../src/config.js';
-import { listenRemoteServer } from '../src/server.js';
+import { listenChatgptRemoteServer } from '../src/chatgpt-server.js';
 
 const config = loadServerConfig();
-const { server } = await listenRemoteServer(config);
+const { server } = await listenChatgptRemoteServer(config);
 const advertised = config.publicBaseUrl || `http://${config.host}:${config.port}`;
 console.log(`Nymrel Remote listening on ${advertised}`);
 console.log(`MCP endpoint: ${advertised}/mcp`);
+console.log(`ChatGPT MCP endpoint: ${advertised}/chatgpt/mcp`);
 if (config.production && config.allowStaticMcpTokens) {
   console.warn('WARNING: static MCP bearer tokens are enabled; configure OAuth authorization servers for MCP authorization interoperability.');
 }
