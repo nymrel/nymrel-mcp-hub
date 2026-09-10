@@ -1,0 +1,248 @@
+{
+  "$schema": "https://developers.openai.com/apps-sdk/schemas/chatgpt-app-submission.v1.json",
+  "schema_version": 1,
+  "app_info": {
+    "display_name": "Nymrel Remote",
+    "subtitle": "Control your own computers",
+    "description": "Nymrel Remote lets users inspect files, search code, edit project files, run and interact with commands, inspect process output, and manage processes on paired computers they control.",
+    "category": "DEVELOPER_TOOLS"
+  },
+  "tools": {
+    "list_devices": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only returns paired-device reachability and metadata without changing device or control-plane state.",
+        "open_world_justification": "Reads only the user's private Nymrel Remote device registry and does not change public or third-party systems.",
+        "destructive_justification": "Does not delete, overwrite, terminate, revoke, or otherwise irreversibly change anything."
+      }
+    },
+    "read_file": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Reads bounded UTF-8 file content from an allowed root on the selected paired computer without modifying it.",
+        "open_world_justification": "Operates only on the selected private paired computer and does not change public or third-party state.",
+        "destructive_justification": "Does not overwrite, delete, move, or otherwise alter the selected file."
+      }
+    },
+    "list_directory": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Lists bounded directory entries under an allowed root without changing filesystem contents.",
+        "open_world_justification": "Inspects only a private paired computer and does not write to public or third-party systems.",
+        "destructive_justification": "Does not create, move, overwrite, or delete files or directories."
+      }
+    },
+    "get_file_info": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Returns filesystem metadata and bounded line-count information without modifying the selected path.",
+        "open_world_justification": "Reads only local metadata from a private paired computer and does not affect external systems.",
+        "destructive_justification": "Does not change or remove filesystem content."
+      }
+    },
+    "search_files": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Searches file and directory names under an allowed local root without changing them.",
+        "open_world_justification": "Searches only the user's private paired computer and does not contact or modify third-party systems.",
+        "destructive_justification": "Does not create, overwrite, move, or delete any matched path."
+      }
+    },
+    "search_content": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Searches bounded UTF-8 file contents below an allowed local root without writing to those files.",
+        "open_world_justification": "Searches only private local content on the selected paired computer and does not change external systems.",
+        "destructive_justification": "Does not alter or remove the files it searches."
+      }
+    },
+    "write_file": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Creates, appends to, or rewrites a UTF-8 file inside an allowed root on the selected computer.",
+        "open_world_justification": "Writes only to the selected private paired computer and does not itself target a public or third-party service.",
+        "destructive_justification": "Rewrite mode can replace existing file contents and therefore can cause irreversible local data loss."
+      }
+    },
+    "edit_block": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Replaces exact text in an existing UTF-8 file and therefore changes local filesystem state.",
+        "open_world_justification": "Edits only a file on the selected private paired computer and does not itself modify third-party systems.",
+        "destructive_justification": "The replacement overwrites existing file content and may not be recoverable outside the user's own version-control or backup system."
+      }
+    },
+    "start_process": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Starts a shell command on the selected computer and can change local process, filesystem, or application state.",
+        "open_world_justification": "An arbitrary user-requested command can communicate with public internet services or mutate external systems reachable from the paired computer.",
+        "destructive_justification": "A shell command can overwrite, delete, deploy, publish, or otherwise make irreversible changes within the permissions of the device account."
+      }
+    },
+    "read_process_output": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Returns retained process output but a default read advances the private Nymrel session cursor, so the operation is not strictly state-free.",
+        "open_world_justification": "Reads only retained output from a process session on the selected private paired computer and does not contact external systems.",
+        "destructive_justification": "Does not terminate the process or alter its filesystem, application, or external state."
+      }
+    },
+    "interact_with_process": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Writes input to a running process session and can cause that process to change state.",
+        "open_world_justification": "The receiving process may use the supplied input to communicate with or modify public and third-party systems.",
+        "destructive_justification": "Process input can trigger irreversible local or external actions depending on the program being controlled."
+      }
+    },
+    "list_sessions": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Lists Nymrel-managed process-session metadata without starting, stopping, or changing any session.",
+        "open_world_justification": "Reads only private process-session state maintained on the selected paired computer.",
+        "destructive_justification": "Does not terminate processes or modify their state."
+      }
+    },
+    "list_processes": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Lists operating-system process metadata without exposing command-line arguments or changing a process.",
+        "open_world_justification": "Inspects only processes on the selected private paired computer and does not interact with external systems.",
+        "destructive_justification": "Does not stop, restart, or otherwise modify any listed process."
+      }
+    },
+    "kill_process": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Terminates the selected process and therefore changes operating-system state on the paired computer.",
+        "open_world_justification": "Acts only on a process running on the selected private paired computer and does not directly target a public service.",
+        "destructive_justification": "Process termination can discard unsaved work or interrupt services and is therefore potentially irreversible."
+      }
+    }
+  },
+  "test_cases": [
+    {
+      "description": "Read a project document from the user's paired development computer.",
+      "user_prompt": "On my paired development computer, read the current project's README and summarize what this repository does.",
+      "file_attachment_urls": null,
+      "tools_triggered": "read_file",
+      "expected_output": "Returns the requested file content or a concise summary grounded in that content without modifying the computer.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Search the current project for a code-related term.",
+      "user_prompt": "Search my paired computer's current project for TODO markers and show me the relevant matches.",
+      "file_attachment_urls": null,
+      "tools_triggered": "search_content",
+      "expected_output": "Returns bounded matching file locations and lines from the paired computer without modifying them.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Make an exact user-requested edit to a project file.",
+      "user_prompt": "On my paired computer, replace the exact outdated project name in the current project's README with the new name I just provided.",
+      "file_attachment_urls": null,
+      "tools_triggered": "edit_block",
+      "expected_output": "Requests or respects the applicable write confirmation, performs only the exact replacement, and reports whether the expected replacement count succeeded.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Run a development command on a paired computer.",
+      "user_prompt": "On my paired development computer, run the current project's test suite and show me the result.",
+      "file_attachment_urls": null,
+      "tools_triggered": "start_process",
+      "expected_output": "Treats the command as a privileged open-world action, follows the applicable confirmation policy, starts the process, and reports the resulting managed session.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Terminate a user-selected process on a paired computer.",
+      "user_prompt": "Stop the process I selected on my paired development computer.",
+      "file_attachment_urls": null,
+      "tools_triggered": "kill_process",
+      "expected_output": "Treats termination as destructive, follows the applicable confirmation policy, and reports whether the selected process was terminated.",
+      "expected_output_url": null
+    }
+  ],
+  "negative_test_cases": [
+    {
+      "description": "Do not use remote computer control for a weather question.",
+      "user_prompt": "What will the weather be tomorrow?",
+      "file_attachment_urls": null,
+      "tools_triggered": null,
+      "expected_output": "The app should not be invoked because weather information is outside Nymrel Remote's supported remote-computer workflows.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Do not use remote computer control to send email.",
+      "user_prompt": "Send an email to my colleague about tomorrow's meeting.",
+      "file_attachment_urls": null,
+      "tools_triggered": null,
+      "expected_output": "The app should not be invoked because email composition and delivery are not Nymrel Remote actions.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Do not use remote computer control for an ordinary public-web lookup.",
+      "user_prompt": "Find the latest public news about a technology company.",
+      "file_attachment_urls": null,
+      "tools_triggered": null,
+      "expected_output": "The app should not be invoked because a normal public-web lookup does not require control of the user's paired computer.",
+      "expected_output_url": null
+    }
+  ]
+}
