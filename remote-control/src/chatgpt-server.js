@@ -1,3 +1,5 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import { OAuthAccessTokenVerifier } from './oauth.js';
 import { ChatgptMcpEdge } from './chatgpt-mcp-edge.js';
 import { HeaderMismatchError, isModernMcpRequest, validateModernMcpHeaders } from './mcp-http-validation.js';
@@ -8,6 +10,12 @@ import { createRemoteHttpServer } from './server.js';
 const CHATGPT_MCP_SCOPES = [
   'devices:read', 'tools:read', 'tools:write', 'tools:execute', 'tools:network'
 ];
+
+const PUBLIC_PAGES = new Map([
+  ['/privacy', 'remote-privacy.html'],
+  ['/terms', 'remote-terms.html'],
+  ['/support', 'remote-support.html']
+]);
 
 function publicOrigin(config) {
   return config.publicBaseUrl || `http://${config.host}:${config.port}`;
@@ -39,6 +47,19 @@ function sendJson(res, status, value, headers = {}) {
     ...headers
   });
   res.end(payload);
+}
+
+function sendHtml(res, html) {
+  if (res.headersSent || res.writableEnded) return;
+  res.writeHead(200, {
+    'content-type': 'text/html; charset=utf-8',
+    'content-length': Buffer.byteLength(html),
+    'cache-control': 'public, max-age=300',
+    'x-content-type-options': 'nosniff',
+    'referrer-policy': 'no-referrer',
+    'content-security-policy': "default-src 'self'; style-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
+  });
+  res.end(html);
 }
 
 function errorBody(error) {
@@ -127,6 +148,17 @@ export async function createChatgptRemoteHttpServer(config, options = {}) {
   server.on('request', async (req, res) => {
     const url = new URL(req.url, 'http://local');
     const pathname = url.pathname;
+    const publicPage = PUBLIC_PAGES.get(pathname);
+
+    if (publicPage && req.method === 'GET') {
+      try {
+        const html = await fs.readFile(path.join(runtime.publicDir, publicPage), 'utf8');
+        return sendHtml(res, html);
+      } catch (error) {
+        runtime.logger.error?.(`Public policy page failed: ${error?.name || 'Error'}`);
+        return sendJson(res, 500, { error: { code: 'INTERNAL_ERROR', message: 'Public page unavailable' } });
+      }
+    }
 
     if (pathname === '/.well-known/oauth-protected-resource/chatgpt/mcp' && req.method === 'GET') {
       return sendJson(res, 200, {
