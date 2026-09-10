@@ -95,7 +95,7 @@ jobs:
         run: node --test test/native-local-client.test.js
 
   container-contract:
-    name: Container build
+    name: Container production smoke
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -106,3 +106,30 @@ jobs:
 
       - name: Build production image
         run: docker build --pull --tag nymrel-remote:ci remote-control
+
+      - name: Start production image with an anonymous volume
+        run: |
+          docker run --rm --detach --name nymrel-remote-ci \
+            -e NYMREL_REMOTE_PUBLIC_URL=https://remote.example.test \
+            -e NYMREL_REMOTE_SIGNING_KEY=1111111111111111111111111111111111111111111111111111111111111111 \
+            -e NYMREL_REMOTE_DATA_KEY=2222222222222222222222222222222222222222222222222222222222222222 \
+            -e NYMREL_REMOTE_AUDIT_KEY=3333333333333333333333333333333333333333333333333333333333333333 \
+            -e NYMREL_REMOTE_BOOTSTRAP_TOKEN=ci-bootstrap-token-not-a-production-secret \
+            -e NYMREL_REMOTE_ALLOW_STATIC_MCP_TOKENS=true \
+            -e NYMREL_REMOTE_ALLOW_STATIC_ADMIN_TOKENS=true \
+            nymrel-remote:ci
+
+      - name: Verify health and dropped runtime privilege
+        run: |
+          trap 'docker rm -f nymrel-remote-ci >/dev/null 2>&1 || true' EXIT
+          status=starting
+          for _ in $(seq 1 30); do
+            status="$(docker inspect --format '{{.State.Health.Status}}' nymrel-remote-ci)"
+            if [ "$status" = healthy ]; then break; fi
+            if [ "$status" = unhealthy ]; then docker logs nymrel-remote-ci; exit 1; fi
+            sleep 1
+          done
+          if [ "$status" != healthy ]; then docker logs nymrel-remote-ci; exit 1; fi
+          pid_uid="$(docker exec nymrel-remote-ci sh -c "awk '/^Uid:/ {print \$2; exit}' /proc/1/status")"
+          test "$pid_uid" = 1000
+          docker exec nymrel-remote-ci node -e "fetch('http://127.0.0.1:8787/readyz').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
