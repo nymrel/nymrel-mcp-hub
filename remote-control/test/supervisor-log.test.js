@@ -80,12 +80,13 @@ test('supervisor log rotates once to .1 when it would exceed the size bound', as
     const filler = 'x'.repeat(1024);
     for (let i = 0; i < 80; i += 1) log.supervisor(`${i} ${filler}`);
 
-    const current = await fs.stat(file);
-    const previous = await fs.stat(`${file}.1`);
-    assert.ok(current.size <= 64 * 1024, 'current file stays within the bound');
-    assert.ok(previous.size > 0, 'rotated file preserves earlier history');
-    assert.match(await fs.readFile(file, 'utf8'), /\[supervisor\] 79 x/);
-    assert.match(await fs.readFile(`${file}.1`, 'utf8'), /\[supervisor\] 0 x/);
+    // Read each file exactly once; sizes come from the bytes read, not a separate stat.
+    const current = await fs.readFile(file);
+    const previous = await fs.readFile(`${file}.1`);
+    assert.ok(current.length <= 64 * 1024, 'current file stays within the bound');
+    assert.ok(previous.length > 0, 'rotated file preserves earlier history');
+    assert.match(current.toString('utf8'), /\[supervisor\] 79 x/);
+    assert.match(previous.toString('utf8'), /\[supervisor\] 0 x/);
   } finally {
     await fs.rm(dir, { recursive: true, force: true });
   }
