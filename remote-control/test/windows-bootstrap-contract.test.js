@@ -67,6 +67,17 @@ test('Windows installer verifies the scheduled supervisor remains running', () =
   );
 });
 
+test('Windows launcher does not treat native supervisor stderr as a terminating PowerShell error', () => {
+  const strictIndex = installer.indexOf("'$ErrorActionPreference = ''Stop'''");
+  const locationIndex = installer.indexOf("'Set-Location -LiteralPath {0}'");
+  const continueIndex = installer.indexOf("'$ErrorActionPreference = ''Continue'''");
+  const supervisorIndex = installer.indexOf("'& {0} {1} >> {2} 2>&1'");
+  assert.ok(strictIndex >= 0, 'launcher generation should fail fast during setup');
+  assert.ok(locationIndex > strictIndex, 'working directory setup should run while errors are terminating');
+  assert.ok(continueIndex > locationIndex, 'native stderr handling must change only after setup');
+  assert.ok(supervisorIndex > continueIndex, 'supervisor must run after native stderr is made non-terminating');
+});
+
 test('Windows bootstrap preserves credentials outside replaceable application source', () => {
   assert.match(bootstrap, /Join-Path \$runtimeDir 'device\.json'/);
   assert.match(bootstrap, /app\.staging/);

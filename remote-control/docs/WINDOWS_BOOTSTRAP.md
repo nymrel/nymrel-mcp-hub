@@ -55,7 +55,7 @@ NYMREL_REMOTE_STATUS=ONLINE
 %LOCALAPPDATA%\Nymrel\Remote\supervisor.log
 ```
 
-The supervisor restarts the native device agent with bounded exponential backoff. The controlled computer accepts no inbound connection; the agent connects outbound to the Nymrel Remote control plane.
+The supervisor restarts the native device agent with bounded exponential backoff. Native stderr remains diagnostic output in the launcher, so transient event-channel reconnect warnings are logged without Windows PowerShell terminating the long-running supervisor. The controlled computer accepts no inbound connection; the agent connects outbound to the Nymrel Remote control plane.
 
 ## Update or repair
 

@@ -93,6 +93,8 @@ $powerShellBody = @(
   '$ErrorActionPreference = ''Stop'''
   $environmentLines
   ('Set-Location -LiteralPath {0}' -f (ConvertTo-PowerShellLiteral $workDir))
+  '# Native stderr is diagnostic output. Do not let Windows PowerShell convert it into a terminating NativeCommandError.'
+  '$ErrorActionPreference = ''Continue'''
   ('& {0} {1} >> {2} 2>&1' -f (
     ConvertTo-PowerShellLiteral $node
   ), (
