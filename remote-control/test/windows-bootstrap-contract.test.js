@@ -71,7 +71,7 @@ test('Windows launcher does not treat native supervisor stderr as a terminating 
   const strictIndex = installer.indexOf("'$ErrorActionPreference = ''Stop'''");
   const locationIndex = installer.indexOf("'Set-Location -LiteralPath {0}'");
   const continueIndex = installer.indexOf("'$ErrorActionPreference = ''Continue'''");
-  const supervisorIndex = installer.indexOf("'& {0} {1}'");
+  const supervisorIndex = installer.indexOf("'$process = [System.Diagnostics.Process]::Start($startInfo)'");
   assert.ok(strictIndex >= 0, 'launcher generation should fail fast during setup');
   assert.ok(locationIndex > strictIndex, 'working directory setup should run while errors are terminating');
   assert.ok(continueIndex > locationIndex, 'native stderr handling must change only after setup');
@@ -80,13 +80,31 @@ test('Windows launcher does not treat native supervisor stderr as a terminating 
 
 test('Windows launcher hands the log file to the supervisor instead of redirecting through PowerShell', () => {
   const logEnvIndex = installer.indexOf("'$env:NYMREL_REMOTE_SUPERVISOR_LOG = {0}'");
-  const supervisorIndex = installer.indexOf("'& {0} {1}'");
+  const supervisorIndex = installer.indexOf("'$process = [System.Diagnostics.Process]::Start($startInfo)'");
   assert.ok(logEnvIndex >= 0, 'launcher must pin the supervisor log path');
+  assert.ok(supervisorIndex >= 0, 'launcher must start the supervisor through System.Diagnostics.Process');
   assert.ok(logEnvIndex < supervisorIndex, 'log path must be set before the supervisor starts');
   assert.doesNotMatch(installer, />> \{2\} 2>&1/, 'PowerShell redirection writes UTF-16LE without timestamps');
   assert.match(installer, /\$logFile = Join-Path \$runtimeDir 'supervisor\.log'/);
+  assert.match(installer, /\$launcherStderr = Join-Path \$runtimeDir 'launcher-stderr\.log'/);
+  assert.match(installer, /\$startInfo\.RedirectStandardError = \$true/);
+  assert.match(installer, /\$startInfo\.UseShellExecute = \$false/);
+  assert.match(installer, /New-Object System\.Text\.UTF8Encoding\(\$false\)/, 'startup stderr must be written as UTF-8 without BOM');
+  assert.doesNotMatch(installer, /Start-Process/, 'Start-Process breaks under duplicate ComSpec/COMSPEC environment keys');
+  assert.match(installer, /'exit \$process\.ExitCode'/);
   assert.match(guide, /supervisor\.log\.1/);
+  assert.match(guide, /launcher-stderr\.log/);
   assert.match(guide, /UTF-8/);
+});
+
+test('Windows bootstrap waits for the running supervisor to stop before replacing the app directory', () => {
+  assert.match(bootstrap, /\$stopDeadline = \[DateTime\]::UtcNow\.AddSeconds\(20\)/);
+  assert.match(bootstrap, /while \(\$taskState -eq 'Running' -and \[DateTime\]::UtcNow -lt \$stopDeadline\)/);
+  assert.match(bootstrap, /refusing to replace a running install/);
+  assert.ok(
+    bootstrap.indexOf('$stopDeadline') < bootstrap.indexOf('Copy-Item -LiteralPath $remoteSource -Destination $stagingDir'),
+    'the stop wait must precede staging the replacement'
+  );
 });
 
 test('Windows bootstrap preserves credentials outside replaceable application source', () => {

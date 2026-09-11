@@ -80,6 +80,16 @@ try {
   $existingTask = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
   if ($existingTask) {
     Stop-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
+    # Wait until Task Scheduler reports the supervisor stopped before replacing the app directory;
+    # a fixed sleep raced open file handles on slow hosts and made upgrades fail intermittently.
+    $stopDeadline = [DateTime]::UtcNow.AddSeconds(20)
+    do {
+      Start-Sleep -Milliseconds 250
+      $taskState = [string](Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue).State
+    } while ($taskState -eq 'Running' -and [DateTime]::UtcNow -lt $stopDeadline)
+    if ($taskState -eq 'Running') {
+      throw "Scheduled task '$TaskName' did not stop within 20 seconds; refusing to replace a running install."
+    }
     Start-Sleep -Milliseconds 500
   }
   Copy-Item -LiteralPath $remoteSource -Destination $stagingDir -Recurse -Force

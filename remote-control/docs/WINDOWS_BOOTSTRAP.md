@@ -54,6 +54,7 @@ NYMREL_REMOTE_STATUS=ONLINE
 %LOCALAPPDATA%\Nymrel\Remote\run.cmd     Task Scheduler entrypoint
 %LOCALAPPDATA%\Nymrel\Remote\supervisor.log
 %LOCALAPPDATA%\Nymrel\Remote\supervisor.log.1   previous rotation
+%LOCALAPPDATA%\Nymrel\Remote\launcher-stderr.log raw Node stderr from the last launch; empty unless the supervisor failed before its log opened
 ```
 
 The supervisor restarts the native device agent with bounded exponential backoff. Native stderr remains diagnostic output in the launcher, so transient event-channel reconnect warnings are logged without Windows PowerShell terminating the long-running supervisor. The controlled computer accepts no inbound connection; the agent connects outbound to the Nymrel Remote control plane.

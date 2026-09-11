@@ -10,6 +10,7 @@ $runtimeDir = Join-Path $env:LOCALAPPDATA 'Nymrel\Remote'
 $launcher = Join-Path $runtimeDir 'run.cmd'
 $powerShellLauncher = Join-Path $runtimeDir 'run.ps1'
 $logFile = Join-Path $runtimeDir 'supervisor.log'
+$launcherStderr = Join-Path $runtimeDir 'launcher-stderr.log'
 
 function ConvertTo-PowerShellLiteral {
   param([AllowEmptyString()][string]$Value)
@@ -99,12 +100,24 @@ $powerShellBody = @(
   ('Set-Location -LiteralPath {0}' -f (ConvertTo-PowerShellLiteral $workDir))
   '# Native stderr is diagnostic output. Do not let Windows PowerShell convert it into a terminating NativeCommandError.'
   '$ErrorActionPreference = ''Continue'''
-  ('& {0} {1}' -f (
-    ConvertTo-PowerShellLiteral $node
-  ), (
-    ConvertTo-PowerShellLiteral $supervisor
-  ))
-  'exit $LASTEXITCODE'
+  # The supervisor is started through System.Diagnostics.Process with stderr captured as a raw UTF-8
+  # stream, so a supervisor that crashes before its own log opens (syntax error, missing module, bad
+  # Node) still leaves actionable text behind. Start-Process is avoided because Windows PowerShell 5.1
+  # fails with "Item has already been added" when the environment carries both ComSpec and COMSPEC,
+  # which Remote Desktop Commander sessions on this fleet do. In normal operation the supervisor logs
+  # to supervisor.log and launcher-stderr.log stays empty.
+  '$startInfo = New-Object System.Diagnostics.ProcessStartInfo'
+  ('$startInfo.FileName = {0}' -f (ConvertTo-PowerShellLiteral $node))
+  ('$startInfo.Arguments = {0}' -f (ConvertTo-PowerShellLiteral ('"{0}"' -f $supervisor)))
+  ('$startInfo.WorkingDirectory = {0}' -f (ConvertTo-PowerShellLiteral $workDir))
+  '$startInfo.UseShellExecute = $false'
+  '$startInfo.RedirectStandardError = $true'
+  '$startInfo.CreateNoWindow = $true'
+  '$process = [System.Diagnostics.Process]::Start($startInfo)'
+  '$launcherStderrText = $process.StandardError.ReadToEnd()'
+  '$process.WaitForExit()'
+  ('[System.IO.File]::WriteAllText({0}, $launcherStderrText, (New-Object System.Text.UTF8Encoding($false)))' -f (ConvertTo-PowerShellLiteral $launcherStderr))
+  'exit $process.ExitCode'
 ) -join "`r`n"
 Set-Content -LiteralPath $powerShellLauncher -Value $powerShellBody -Encoding UTF8
 

@@ -28,7 +28,16 @@ export function createSupervisorLog({ filePath, maxBytes = DEFAULT_SUPERVISOR_LO
     try { size = fs.statSync(resolved).size; } catch { return; }
     if (size + incomingBytes <= limit) return;
     try { fs.rmSync(rotated, { force: true }); } catch { /* best effort */ }
-    try { fs.renameSync(resolved, rotated); } catch { /* keep appending to the current file */ }
+    try {
+      fs.renameSync(resolved, rotated);
+      return;
+    } catch { /* a reader without delete-share can block rename on Windows */ }
+    // Fallback keeps the size bound even when rename is blocked: preserve a copy, then truncate in place.
+    try { fs.copyFileSync(resolved, rotated); } catch { /* best effort */ }
+    try {
+      fs.truncateSync(resolved, 0);
+      fs.appendFileSync(resolved, `${now().toISOString()} [supervisor] Log rotated in place; previous content copied to ${path.basename(rotated)}\n`, { encoding: 'utf8' });
+    } catch { /* keep appending to the current file */ }
   }
 
   function write(stream, message) {
