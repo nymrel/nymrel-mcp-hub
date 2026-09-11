@@ -92,15 +92,17 @@ New-Item -ItemType Directory -Path $runtimeDir -Force | Out-Null
 $powerShellBody = @(
   '$ErrorActionPreference = ''Stop'''
   $environmentLines
+  # The supervisor owns the log file: UTF-8, timestamped, rotating. Redirecting native stdio through
+  # Windows PowerShell (`>> file 2>&1`) would write UTF-16LE, drop timestamps, and wrap every stderr
+  # line in NativeCommandError framing.
+  ('$env:NYMREL_REMOTE_SUPERVISOR_LOG = {0}' -f (ConvertTo-PowerShellLiteral $logFile))
   ('Set-Location -LiteralPath {0}' -f (ConvertTo-PowerShellLiteral $workDir))
   '# Native stderr is diagnostic output. Do not let Windows PowerShell convert it into a terminating NativeCommandError.'
   '$ErrorActionPreference = ''Continue'''
-  ('& {0} {1} >> {2} 2>&1' -f (
+  ('& {0} {1}' -f (
     ConvertTo-PowerShellLiteral $node
   ), (
     ConvertTo-PowerShellLiteral $supervisor
-  ), (
-    ConvertTo-PowerShellLiteral $logFile
   ))
   'exit $LASTEXITCODE'
 ) -join "`r`n"

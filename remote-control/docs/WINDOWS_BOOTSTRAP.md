@@ -53,9 +53,18 @@ NYMREL_REMOTE_STATUS=ONLINE
 %LOCALAPPDATA%\Nymrel\Remote\run.ps1     allowlisted nonsecret launcher
 %LOCALAPPDATA%\Nymrel\Remote\run.cmd     Task Scheduler entrypoint
 %LOCALAPPDATA%\Nymrel\Remote\supervisor.log
+%LOCALAPPDATA%\Nymrel\Remote\supervisor.log.1   previous rotation
 ```
 
 The supervisor restarts the native device agent with bounded exponential backoff. Native stderr remains diagnostic output in the launcher, so transient event-channel reconnect warnings are logged without Windows PowerShell terminating the long-running supervisor. The controlled computer accepts no inbound connection; the agent connects outbound to the Nymrel Remote control plane.
+
+The supervisor writes `supervisor.log` itself as UTF-8 with one ISO-8601 UTC timestamp and stream tag (`[supervisor]`, `[agent]`, `[agent:err]`) per line, and rotates it once to `supervisor.log.1` when it passes 5 MB. Read it with any text tool:
+
+```powershell
+Get-Content "$env:LOCALAPPDATA\Nymrel\Remote\supervisor.log" -Tail 50 -Wait
+```
+
+A run of `Event channel lost; durable queue reconciliation remains active` lines is the advisory SSE doorbell reconnecting after the hosting edge closed the stream. Calls still execute through the durable queue on the heartbeat/reconciliation cycle; use the timestamps to judge whether reconnects are rare or continuous before treating them as an outage.
 
 ## Update or repair
 

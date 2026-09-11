@@ -71,11 +71,22 @@ test('Windows launcher does not treat native supervisor stderr as a terminating 
   const strictIndex = installer.indexOf("'$ErrorActionPreference = ''Stop'''");
   const locationIndex = installer.indexOf("'Set-Location -LiteralPath {0}'");
   const continueIndex = installer.indexOf("'$ErrorActionPreference = ''Continue'''");
-  const supervisorIndex = installer.indexOf("'& {0} {1} >> {2} 2>&1'");
+  const supervisorIndex = installer.indexOf("'& {0} {1}'");
   assert.ok(strictIndex >= 0, 'launcher generation should fail fast during setup');
   assert.ok(locationIndex > strictIndex, 'working directory setup should run while errors are terminating');
   assert.ok(continueIndex > locationIndex, 'native stderr handling must change only after setup');
   assert.ok(supervisorIndex > continueIndex, 'supervisor must run after native stderr is made non-terminating');
+});
+
+test('Windows launcher hands the log file to the supervisor instead of redirecting through PowerShell', () => {
+  const logEnvIndex = installer.indexOf("'$env:NYMREL_REMOTE_SUPERVISOR_LOG = {0}'");
+  const supervisorIndex = installer.indexOf("'& {0} {1}'");
+  assert.ok(logEnvIndex >= 0, 'launcher must pin the supervisor log path');
+  assert.ok(logEnvIndex < supervisorIndex, 'log path must be set before the supervisor starts');
+  assert.doesNotMatch(installer, />> \{2\} 2>&1/, 'PowerShell redirection writes UTF-16LE without timestamps');
+  assert.match(installer, /\$logFile = Join-Path \$runtimeDir 'supervisor\.log'/);
+  assert.match(guide, /supervisor\.log\.1/);
+  assert.match(guide, /UTF-8/);
 });
 
 test('Windows bootstrap preserves credentials outside replaceable application source', () => {
