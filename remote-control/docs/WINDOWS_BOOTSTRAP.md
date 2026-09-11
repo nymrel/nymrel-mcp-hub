@@ -21,7 +21,7 @@ Invoke-WebRequest -UseBasicParsing `
 & powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File $bootstrap
 ```
 
-The bootstrap resolves `main` to an immutable Git commit, downloads that source archive, installs it below `%LOCALAPPDATA%\Nymrel\Remote\app`, and creates a limited `Nymrel Remote` task for future logons. It pins only nonsecret device configuration in the local launcher. No control-plane key, bootstrap credential, OAuth token, or device token is embedded in the script or scheduled-task command.
+The bootstrap resolves `main` to an immutable Git commit, downloads that source archive, installs it below `%LOCALAPPDATA%\Nymrel\Remote\app`, and creates a limited `Nymrel Remote` task for future logons. It pins only nonsecret device configuration in the local launcher. The installer fails closed if Task Scheduler accepts the start request but the supervisor does not remain running. No control-plane key, bootstrap credential, OAuth token, or device token is embedded in the script or scheduled-task command.
 
 The default allowed root is the current user's profile directory. To narrow it:
 
@@ -53,9 +53,19 @@ NYMREL_REMOTE_STATUS=ONLINE
 %LOCALAPPDATA%\Nymrel\Remote\run.ps1     allowlisted nonsecret launcher
 %LOCALAPPDATA%\Nymrel\Remote\run.cmd     Task Scheduler entrypoint
 %LOCALAPPDATA%\Nymrel\Remote\supervisor.log
+%LOCALAPPDATA%\Nymrel\Remote\supervisor.log.1   previous rotation
+%LOCALAPPDATA%\Nymrel\Remote\launcher-stderr.log raw Node stderr from the last launch; empty unless the supervisor failed before its log opened
 ```
 
-The supervisor restarts the native device agent with bounded exponential backoff. The controlled computer accepts no inbound connection; the agent connects outbound to the Nymrel Remote control plane.
+The supervisor restarts the native device agent with bounded exponential backoff. Native stderr remains diagnostic output in the launcher, so transient event-channel reconnect warnings are logged without Windows PowerShell terminating the long-running supervisor. The controlled computer accepts no inbound connection; the agent connects outbound to the Nymrel Remote control plane.
+
+The supervisor writes `supervisor.log` itself as UTF-8 with one ISO-8601 UTC timestamp and stream tag (`[supervisor]`, `[agent]`, `[agent:err]`) per line, and rotates it once to `supervisor.log.1` when it passes 5 MB. Read it with any text tool:
+
+```powershell
+Get-Content "$env:LOCALAPPDATA\Nymrel\Remote\supervisor.log" -Tail 50 -Wait
+```
+
+A run of `Event channel lost; durable queue reconciliation remains active` lines is the advisory SSE doorbell reconnecting after the hosting edge closed the stream. Calls still execute through the durable queue on the heartbeat/reconciliation cycle; use the timestamps to judge whether reconnects are rare or continuous before treating them as an outage.
 
 ## Update or repair
 

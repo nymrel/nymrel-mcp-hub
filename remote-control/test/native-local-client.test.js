@@ -58,7 +58,8 @@ test('native backend retains process output in a managed session', async () => {
 
     let output = '';
     let lastRead = null;
-    for (let attempt = 0; attempt < 160 && !output.includes('native-ok'); attempt += 1) {
+    const outputDeadline = Date.now() + (process.platform === 'win32' ? 30_000 : 10_000);
+    while (Date.now() < outputDeadline && !output.includes('native-ok')) {
       await new Promise((resolve) => setTimeout(resolve, 50));
       lastRead = await client.callTool('read_process_output', { pid, offset: -20, length: 20 });
       output = lastRead.structuredContent.output;

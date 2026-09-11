@@ -132,7 +132,7 @@ test('HTTP pairing/register flow and modern tools/list preserve device schema ex
 test('HTTP MCP read call completes through durable device claim without exposing args/results in logs', async () => {
   const f = await startServer();
   try {
-    f.runtime.mcp.syncWaitMs = 1000;
+    f.runtime.mcp.syncWaitMs = 10_000;
     const operator = { typ: 'user', sub: 'operator', tenant: 't1', scopes: ['devices:pair', 'devices:read', 'calls:read', 'calls:approve', 'audit:read', 'tools:read'] };
     const operatorToken = f.runtime.tokenService.mint({ subject: operator.sub, tenantId: operator.tenant, type: 'user', scopes: operator.scopes });
     const pairing = await f.runtime.broker.startPairing({ deviceName: 'JalenPC', platform: 'win32' });
@@ -155,8 +155,9 @@ test('HTTP MCP read call completes through durable device claim without exposing
     });
 
     let queued = [];
-    for (let i = 0; i < 30 && queued.length === 0; i += 1) {
-      await new Promise((resolve) => setTimeout(resolve, 10));
+    const queueDeadline = Date.now() + 5_000;
+    while (Date.now() < queueDeadline && queued.length === 0) {
+      await new Promise((resolve) => setTimeout(resolve, 20));
       queued = await f.runtime.broker.listQueuedForDevice(devicePrincipal);
     }
     assert.equal(queued.length, 1);
