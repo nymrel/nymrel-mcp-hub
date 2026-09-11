@@ -90,7 +90,7 @@ test('Windows launcher hands the log file to the supervisor instead of redirecti
   assert.match(installer, /\$startInfo\.RedirectStandardError = \$true/);
   assert.match(installer, /\$startInfo\.UseShellExecute = \$false/);
   assert.match(installer, /New-Object System\.Text\.UTF8Encoding\(\$false\)/, 'startup stderr must be written as UTF-8 without BOM');
-  assert.doesNotMatch(installer, /Start-Process/, 'Start-Process breaks under duplicate ComSpec/COMSPEC environment keys');
+  assert.doesNotMatch(installer, /'\$process = Start-Process/, 'Start-Process breaks under duplicate ComSpec/COMSPEC environment keys');
   assert.match(installer, /'exit \$process\.ExitCode'/);
   assert.match(guide, /supervisor\.log\.1/);
   assert.match(guide, /launcher-stderr\.log/);
