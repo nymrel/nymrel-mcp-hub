@@ -2,6 +2,16 @@ import { deepClone, jsonSize } from './canonical.js';
 import { sha256 } from './crypto.js';
 
 const TOOL_NAME_RE = /^[A-Za-z0-9_.:/-]{1,128}$/;
+const ALLOWED_ANNOTATIONS = ['title', 'readOnlyHint', 'destructiveHint', 'idempotentHint', 'openWorldHint'];
+
+function normalizedAnnotations(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const allowed = {};
+  for (const key of ALLOWED_ANNOTATIONS) {
+    if (Object.hasOwn(value, key)) allowed[key] = deepClone(value[key]);
+  }
+  return Object.keys(allowed).length ? allowed : undefined;
+}
 
 export function validateRegisteredTool(tool, { maxSchemaBytes = 128 * 1024 } = {}) {
   if (!tool || typeof tool !== 'object' || Array.isArray(tool)) throw new Error('tool must be an object');
@@ -10,21 +20,31 @@ export function validateRegisteredTool(tool, { maxSchemaBytes = 128 * 1024 } = {
   if (!tool.inputSchema || typeof tool.inputSchema !== 'object' || Array.isArray(tool.inputSchema)) {
     throw new Error(`tool ${tool.name} inputSchema must be an object`);
   }
-  if (jsonSize(tool.inputSchema) > maxSchemaBytes) throw new Error(`tool ${tool.name} schema exceeds limit`);
-  collectMcpHeaderBindings(tool.inputSchema); // reject malformed HTTP mirroring annotations before exposure
+  if (jsonSize(tool.inputSchema) > maxSchemaBytes) throw new Error(`tool ${tool.name} input schema exceeds limit`);
+  collectMcpHeaderBindings(tool.inputSchema);
+
+  let outputSchema;
+  if (tool.outputSchema !== undefined) {
+    if (!tool.outputSchema || typeof tool.outputSchema !== 'object' || Array.isArray(tool.outputSchema)) {
+      throw new Error(`tool ${tool.name} outputSchema must be an object`);
+    }
+    if (jsonSize(tool.outputSchema) > maxSchemaBytes) throw new Error(`tool ${tool.name} output schema exceeds limit`);
+    outputSchema = deepClone(tool.outputSchema);
+  }
+
+  const annotations = normalizedAnnotations(tool.annotations);
   const normalized = {
     name: tool.name,
     description: tool.description ?? '',
-    inputSchema: deepClone(tool.inputSchema)
+    inputSchema: deepClone(tool.inputSchema),
+    ...(outputSchema ? { outputSchema } : {}),
+    ...(annotations ? { annotations } : {})
   };
-  if (tool.annotations && typeof tool.annotations === 'object' && !Array.isArray(tool.annotations)) {
-    const allowed = {};
-    for (const key of ['title', 'readOnlyHint', 'destructiveHint', 'idempotentHint', 'openWorldHint']) {
-      if (Object.hasOwn(tool.annotations, key)) allowed[key] = tool.annotations[key];
-    }
-    normalized.annotations = allowed;
-  }
-  normalized.schemaHash = sha256(normalized.inputSchema);
+  normalized.schemaHash = sha256({
+    inputSchema: normalized.inputSchema,
+    outputSchema: normalized.outputSchema ?? null,
+    annotations: normalized.annotations ?? null
+  });
   return normalized;
 }
 
@@ -40,8 +60,9 @@ export function slug(value, max = 32) {
 export function projectToolName(device, tool) {
   const devicePart = slug(device.name, 20);
   const deviceSuffix = sha256(device.id).slice(0, 8);
-  const toolPart = slug(tool.name, 48);
-  return `remote_${devicePart}_${deviceSuffix}__${toolPart}`;
+  const toolPart = slug(tool.name, 36);
+  const toolSuffix = sha256(tool.name).slice(0, 10);
+  return `remote_${devicePart}_${deviceSuffix}__${toolPart}_${toolSuffix}`;
 }
 
 export function projectDeviceTool(device, tool) {
@@ -49,6 +70,7 @@ export function projectDeviceTool(device, tool) {
     name: projectToolName(device, tool),
     description: `[${device.name}] ${tool.description || tool.name}`,
     inputSchema: deepClone(tool.inputSchema),
+    ...(tool.outputSchema ? { outputSchema: deepClone(tool.outputSchema) } : {}),
     ...(tool.annotations ? { annotations: deepClone(tool.annotations) } : {}),
     _meta: {
       'nymrel/deviceId': device.id,
@@ -61,6 +83,8 @@ export function projectDeviceTool(device, tool) {
 
 export function schemasEqualProjected(tool, projected) {
   return JSON.stringify(tool.inputSchema) === JSON.stringify(projected.inputSchema)
+    && JSON.stringify(tool.outputSchema ?? null) === JSON.stringify(projected.outputSchema ?? null)
+    && JSON.stringify(tool.annotations ?? null) === JSON.stringify(projected.annotations ?? null)
     && tool.schemaHash === projected?._meta?.['nymrel/schemaHash'];
 }
 

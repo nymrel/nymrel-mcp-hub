@@ -19,7 +19,7 @@ async function fetchJson(baseUrl, route, { method = 'GET', token, body, timeoutM
     const text = await response.text();
     let parsed = null;
     if (text) {
-      try { parsed = JSON.parse(text); } catch { parsed = { error: text.slice(0, 500) }; }
+      try { parsed = JSON.parse(text); } catch { parsed = { error: { message: `HTTP ${response.status}` } }; }
     }
     if (!response.ok) {
       const error = new Error(parsed?.error?.message || parsed?.message || `HTTP ${response.status}`);
@@ -28,9 +28,7 @@ async function fetchJson(baseUrl, route, { method = 'GET', token, body, timeoutM
       throw error;
     }
     return parsed;
-  } finally {
-    if (timer) clearTimeout(timer);
-  }
+  } finally { if (timer) clearTimeout(timer); }
 }
 
 async function readCredentials(file) {
@@ -51,9 +49,7 @@ async function writeCredentials(file, value) {
   if (process.platform !== 'win32') await fs.chmod(file, 0o600);
 }
 
-async function removeCredentials(file) {
-  await fs.rm(file, { force: true });
-}
+async function removeCredentials(file) { await fs.rm(file, { force: true }); }
 
 function internalTokenExpMs(token) {
   try {
@@ -61,9 +57,7 @@ function internalTokenExpMs(token) {
     if (parts.length !== 3 || parts[0] !== 'nr1') return 0;
     const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
     return typeof payload.exp === 'number' ? payload.exp * 1000 : 0;
-  } catch {
-    return 0;
-  }
+  } catch { return 0; }
 }
 
 export class DeviceAgent {
@@ -73,12 +67,15 @@ export class DeviceAgent {
     this.client = new StdioMcpClient({
       command: config.mcpCommand,
       args: config.mcpArgs,
+      nodeEntry: config.mcpNodeEntry,
       cwd: config.mcpCwd,
+      env: config.mcpEnv,
       requestTimeoutMs: config.callTimeoutMs
     });
     this.credentials = null;
     this.catalog = new Map();
     this.catalogHash = null;
+    this.catalogGeneration = 0;
     this.running = false;
     this.reconcilePromise = null;
     this.eventAbort = null;
@@ -91,6 +88,12 @@ export class DeviceAgent {
 
   async start() {
     if (this.running) return;
+    if (!this.config.serverIsLocal && !this.config.mcpIsolatedIdentity) {
+      throw new Error('Remote operation requires NYMREL_REMOTE_MCP_ISOLATED_IDENTITY=true after placing the local MCP runtime in a separate OS/container identity that cannot read the agent credential file');
+    }
+    if (process.platform === 'win32' && !this.config.mcpNodeEntry && /^(desktop-commander|.*\.(cmd|bat))$/i.test(String(this.config.mcpCommand))) {
+      throw new Error('Windows shell shims are disabled; set NYMREL_REMOTE_MCP_NODE_ENTRY to the reviewed JavaScript entry point for the local MCP server');
+    }
     this.running = true;
     await this.client.start();
     this.credentials = await readCredentials(this.config.tokenFile);
@@ -150,11 +153,7 @@ export class DeviceAgent {
     const refreshed = await fetchJson(this.config.serverUrl, '/v1/device/token/refresh', {
       method: 'POST', token: this.credentials.token, body: {}
     });
-    this.credentials = {
-      deviceId: refreshed.device_id,
-      token: refreshed.device_token,
-      serverUrl: this.config.serverUrl
-    };
+    this.credentials = { deviceId: refreshed.device_id, token: refreshed.device_token, serverUrl: this.config.serverUrl };
     await writeCredentials(this.config.tokenFile, this.credentials);
   }
 
@@ -163,17 +162,19 @@ export class DeviceAgent {
     const source = await this.client.listTools();
     const normalized = normalizeToolCatalog(source);
     this.catalog = new Map(normalized.tools.map((tool) => [tool.name, tool]));
+    this.catalogGeneration = this.client.generation;
     return normalized;
   }
 
-  async #register(force = false) {
-    const normalized = await this.#refreshCatalog();
-    if (!force && this.catalogHash === normalized.hash) return;
+  async #register(force = false, normalized = null) {
+    const catalog = normalized || await this.#refreshCatalog();
+    if (!force && this.catalogHash === catalog.hash && this.catalogGeneration === this.client.generation) return;
     const registered = await fetchJson(this.config.serverUrl, '/v1/device/register', {
       method: 'POST', token: this.credentials.token,
-      body: { deviceName: this.config.deviceName, platform: this.config.platform, tools: normalized.tools, mcpReady: true }
+      body: { deviceName: this.config.deviceName, platform: this.config.platform, tools: catalog.tools, mcpReady: true }
     });
     this.catalogHash = registered.toolCatalogHash;
+    this.catalogGeneration = this.client.generation;
   }
 
   #scheduleHeartbeat() {
@@ -186,15 +187,15 @@ export class DeviceAgent {
           method: 'POST', token: this.credentials.token,
           body: { mcpReady: this.client.ready, toolCatalogHash: this.catalogHash }
         });
-        await this.reconcile();
       } catch (error) {
-        this.logger.warn(`Heartbeat/reconciliation failed: ${error.message}`);
+        this.logger.warn(`Heartbeat failed: ${error.message}`);
       } finally {
         if (this.running) {
           this.heartbeatTimer = setTimeout(tick, this.config.heartbeatMs);
           this.heartbeatTimer.unref?.();
         }
       }
+      void this.reconcile().catch((error) => this.logger.warn(`Queue reconciliation failed: ${error.message}`));
     };
     this.heartbeatTimer = setTimeout(tick, this.config.heartbeatMs);
     this.heartbeatTimer.unref?.();
@@ -224,8 +225,10 @@ export class DeviceAgent {
             if (!dataLine) continue;
             try {
               const event = JSON.parse(dataLine.slice(5).trim());
-              if (event.type === 'call') void this.reconcile();
-            } catch { /* malformed advisory doorbell: reconciliation still covers it */ }
+              if (event.type === 'call') {
+                void this.reconcile().catch((error) => this.logger.warn(`Advisory reconciliation failed: ${error.message}`));
+              }
+            } catch { /* malformed advisory doorbell: polling reconciliation still covers it */ }
           }
         }
       } catch (error) {
@@ -263,31 +266,68 @@ export class DeviceAgent {
       });
     } catch (error) {
       if (error.status === 409 || error.status === 404) return;
-      this.seen.delete(callId); // allow reconciliation retry after transient failure
+      this.seen.delete(callId);
       throw error;
     }
 
+    let result;
     try {
       await this.client.ensureReady();
-      if (!this.catalog.has(claim.toolName)) await this.#register(true);
+      const liveCatalog = await this.#refreshCatalog();
+      if (this.catalogHash !== liveCatalog.hash) await this.#register(true, liveCatalog);
       const localTool = this.catalog.get(claim.toolName);
-      if (!localTool) throw new Error(`Local tool is unavailable: ${claim.toolName}`);
+      if (!localTool) throw Object.assign(new Error(`Local tool is unavailable: ${claim.toolName}`), { code: 'LOCAL_CONTRACT_CHANGED' });
       if (localTool.schemaHash !== claim.schemaHash) {
-        throw new Error(`Tool schema changed before execution: ${claim.toolName}`);
+        throw Object.assign(new Error(`Tool contract changed before execution: ${claim.toolName}`), { code: 'LOCAL_CONTRACT_CHANGED' });
       }
-      const result = await this.client.callTool(claim.toolName, claim.args, this.config.callTimeoutMs);
-      await fetchJson(this.config.serverUrl, `/v1/device/calls/${encodeURIComponent(callId)}/complete`, {
-        method: 'POST', token: this.credentials.token, body: { result }, timeoutMs: this.config.callTimeoutMs
+      result = await this.client.callTool(claim.toolName, claim.args, this.config.callTimeoutMs);
+    } catch (error) {
+      if (error?.code === 'EXECUTION_OUTCOME_UNKNOWN') {
+        await this.#reportUnknown(callId, 'local_timeout');
+        return;
+      }
+      await this.#reportFailure(callId, error);
+      return;
+    }
+
+    const completed = await this.#reportCompletion(callId, result);
+    if (!completed) await this.#reportUnknown(callId, 'completion_delivery_failed');
+  }
+
+  async #reportCompletion(callId, result) {
+    for (const delay of [0, 250, 1000, 2500, 5000]) {
+      if (delay) await sleep(delay);
+      try {
+        await fetchJson(this.config.serverUrl, `/v1/device/calls/${encodeURIComponent(callId)}/complete`, {
+          method: 'POST', token: this.credentials.token, body: { result }, timeoutMs: 30_000
+        });
+        return true;
+      } catch (error) {
+        if ([401, 403, 404].includes(error.status)) break;
+      }
+    }
+    this.logger.warn(`Execution completed locally but completion receipt could not be confirmed for ${callId}; outcome marked unknown.`);
+    return false;
+  }
+
+  async #reportFailure(callId, error) {
+    try {
+      await fetchJson(this.config.serverUrl, `/v1/device/calls/${encodeURIComponent(callId)}/fail`, {
+        method: 'POST', token: this.credentials.token,
+        body: { error: { code: String(error?.code || 'LOCAL_EXECUTION_FAILED').slice(0, 128), message: String(error?.message || 'Remote execution failed').slice(0, 2000) } }
+      });
+    } catch (reportError) {
+      this.logger.warn(`Could not report execution failure for ${callId}: ${reportError.message}`);
+    }
+  }
+
+  async #reportUnknown(callId, reason) {
+    try {
+      await fetchJson(this.config.serverUrl, `/v1/device/calls/${encodeURIComponent(callId)}/unknown`, {
+        method: 'POST', token: this.credentials.token, body: { reason }
       });
     } catch (error) {
-      try {
-        await fetchJson(this.config.serverUrl, `/v1/device/calls/${encodeURIComponent(callId)}/fail`, {
-          method: 'POST', token: this.credentials.token,
-          body: { error: { name: error?.name || 'Error', message: String(error?.message || 'Remote execution failed').slice(0, 2000) } }
-        });
-      } catch (reportError) {
-        this.logger.warn(`Could not report failure for ${callId}: ${reportError.message}`);
-      }
+      this.logger.warn(`Could not report unknown execution outcome for ${callId}: ${error.message}`);
     }
   }
 

@@ -2,13 +2,31 @@ import { spawn } from 'node:child_process';
 import { EventEmitter } from 'node:events';
 
 const DEFAULT_TIMEOUT_MS = 30_000;
+const INHERITED_ENV_ALLOWLIST = [
+  'PATH', 'Path', 'PATHEXT', 'SYSTEMROOT', 'SystemRoot', 'WINDIR', 'ComSpec',
+  'TEMP', 'TMP', 'TMPDIR', 'LANG', 'LC_ALL', 'LC_CTYPE', 'TERM'
+];
+
+function safeChildEnv(explicit = {}) {
+  const env = {};
+  for (const key of INHERITED_ENV_ALLOWLIST) {
+    if (typeof process.env[key] === 'string') env[key] = process.env[key];
+  }
+  for (const [key, value] of Object.entries(explicit)) {
+    if (typeof value !== 'string') throw new Error(`Local MCP env ${key} must be a string`);
+    env[key] = value;
+  }
+  env.NYMREL_REMOTE_DEVICE = 'true';
+  return env;
+}
 
 export class StdioMcpClient extends EventEmitter {
-  constructor({ command, args = [], cwd, env = {}, requestTimeoutMs = DEFAULT_TIMEOUT_MS } = {}) {
+  constructor({ command, args = [], nodeEntry = null, cwd, env = {}, requestTimeoutMs = DEFAULT_TIMEOUT_MS } = {}) {
     super();
-    if (!command) throw new Error('MCP command is required');
+    if (!command && !nodeEntry) throw new Error('MCP command or nodeEntry is required');
     this.command = command;
     this.args = [...args];
+    this.nodeEntry = nodeEntry;
     this.cwd = cwd;
     this.env = { ...env };
     this.requestTimeoutMs = requestTimeoutMs;
@@ -19,6 +37,7 @@ export class StdioMcpClient extends EventEmitter {
     this.ready = false;
     this.stopping = false;
     this.startPromise = null;
+    this.generation = 0;
   }
 
   async start() {
@@ -30,24 +49,30 @@ export class StdioMcpClient extends EventEmitter {
 
   async #startImpl() {
     this.stopping = false;
-    const child = spawn(this.command, this.args, {
+    if (process.platform === 'win32' && !this.nodeEntry && /\.(cmd|bat)$/i.test(String(this.command))) {
+      throw new Error('Windows .cmd/.bat MCP launchers require NYMREL_REMOTE_MCP_NODE_ENTRY; shell wrappers are intentionally disabled');
+    }
+    const executable = this.nodeEntry ? process.execPath : this.command;
+    const childArgs = this.nodeEntry ? [this.nodeEntry, ...this.args] : this.args;
+    const child = spawn(executable, childArgs, {
       cwd: this.cwd,
-      env: { ...process.env, ...this.env, NYMREL_REMOTE_DEVICE: 'true' },
+      env: safeChildEnv(this.env),
       stdio: ['pipe', 'pipe', 'pipe'],
       windowsHide: true,
       shell: false
     });
     this.process = child;
     this.buffer = '';
+    const generation = ++this.generation;
 
     child.stdout.setEncoding('utf8');
-    child.stdout.on('data', (chunk) => this.#onStdout(chunk));
+    child.stdout.on('data', (chunk) => this.#onStdout(child, generation, chunk));
     child.stderr.on('data', (chunk) => {
-      // Do not forward local MCP stderr text; it may contain paths or user data.
-      this.emit('diagnostic', { type: 'stderr', bytes: Buffer.byteLength(chunk) });
+      if (this.process !== child) return;
+      this.emit('diagnostic', { type: 'stderr', bytes: Buffer.byteLength(chunk), generation });
     });
-    child.on('error', (error) => this.#onDisconnect(error));
-    child.on('close', (code, signal) => this.#onDisconnect(new Error(`Local MCP exited (${code ?? 'null'}/${signal ?? 'none'})`)));
+    child.on('error', (error) => this.#onDisconnect(child, generation, error));
+    child.on('close', (code, signal) => this.#onDisconnect(child, generation, new Error(`Local MCP exited (${code ?? 'null'}/${signal ?? 'none'})`)));
 
     try {
       await this.request('initialize', {
@@ -56,8 +81,9 @@ export class StdioMcpClient extends EventEmitter {
         clientInfo: { name: 'nymrel-remote-agent', version: '0.1.0' }
       }, this.requestTimeoutMs);
       this.notify('notifications/initialized', {});
+      if (this.process !== child) throw new Error('Local MCP generation changed during initialization');
       this.ready = true;
-      this.emit('ready');
+      this.emit('ready', { generation });
     } catch (error) {
       await this.stop().catch(() => {});
       throw error;
@@ -68,10 +94,19 @@ export class StdioMcpClient extends EventEmitter {
     if (!this.ready || !this.process || this.process.killed) await this.start();
   }
 
-  async listTools() {
+  async listTools({ maxPages = 64, maxTools = 4096 } = {}) {
     await this.ensureReady();
-    const result = await this.request('tools/list', {});
-    return Array.isArray(result?.tools) ? result.tools : [];
+    const tools = [];
+    let cursor = null;
+    for (let page = 0; page < maxPages; page += 1) {
+      const result = await this.request('tools/list', cursor ? { cursor } : {});
+      if (!Array.isArray(result?.tools)) throw new Error('Local MCP tools/list returned an invalid tool catalog');
+      tools.push(...result.tools);
+      if (tools.length > maxTools) throw new Error('Local MCP tool catalog exceeds aggregate limit');
+      cursor = typeof result?.nextCursor === 'string' && result.nextCursor ? result.nextCursor : null;
+      if (!cursor) return tools;
+    }
+    throw new Error('Local MCP tool catalog pagination exceeds page limit');
   }
 
   async callTool(name, args, timeoutMs = this.requestTimeoutMs) {
@@ -86,13 +121,17 @@ export class StdioMcpClient extends EventEmitter {
   request(method, params = {}, timeoutMs = this.requestTimeoutMs) {
     if (!this.process?.stdin || this.process.stdin.destroyed) return Promise.reject(new Error('Local MCP is not connected'));
     const id = this.nextId++;
+    const generation = this.generation;
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(id);
-        reject(new Error(`Local MCP request timed out: ${method}`));
+        const error = new Error(`Local MCP request timed out: ${method}; execution outcome may be unknown`);
+        error.code = 'EXECUTION_OUTCOME_UNKNOWN';
+        error.generation = generation;
+        reject(error);
       }, timeoutMs);
       timer.unref?.();
-      this.pending.set(id, { resolve, reject, timer, method });
+      this.pending.set(id, { resolve, reject, timer, method, generation });
       try {
         this.#write({ jsonrpc: '2.0', id, method, params });
       } catch (error) {
@@ -105,12 +144,11 @@ export class StdioMcpClient extends EventEmitter {
 
   #write(message) {
     if (!this.process?.stdin || this.process.stdin.destroyed) throw new Error('Local MCP stdin is unavailable');
-    // MCP stdio uses one JSON-RPC message per line. Arguments are written only to
-    // the local child process; this module never logs or emits them.
     this.process.stdin.write(`${JSON.stringify(message)}\n`);
   }
 
-  #onStdout(chunk) {
+  #onStdout(child, generation, chunk) {
+    if (this.process !== child || this.generation !== generation) return;
     this.buffer += chunk;
     while (true) {
       const newline = this.buffer.indexOf('\n');
@@ -119,58 +157,55 @@ export class StdioMcpClient extends EventEmitter {
       this.buffer = this.buffer.slice(newline + 1);
       if (!line) continue;
       let message;
-      try {
-        message = JSON.parse(line);
-      } catch {
-        this.#protocolFault(new Error('Local MCP emitted invalid JSON on stdout'));
-        return;
-      }
+      try { message = JSON.parse(line); }
+      catch { this.#protocolFault(child, generation, new Error('Local MCP emitted invalid JSON on stdout')); return; }
       if (message?.id === undefined) continue;
       const pending = this.pending.get(message.id);
-      if (!pending) continue;
+      if (!pending || pending.generation !== generation) continue;
       this.pending.delete(message.id);
       clearTimeout(pending.timer);
       if (message.error) {
-        const err = new Error(message.error.message || `Local MCP ${pending.method} failed`);
-        err.code = message.error.code;
-        err.data = message.error.data;
-        pending.reject(err);
-      } else {
-        pending.resolve(message.result);
-      }
+        const error = new Error(message.error.message || `Local MCP ${pending.method} failed`);
+        error.code = message.error.code;
+        error.data = message.error.data;
+        pending.reject(error);
+      } else pending.resolve(message.result);
     }
   }
 
-  #protocolFault(error) {
-    this.emit('diagnostic', { type: 'protocol_fault' });
-    this.#rejectPending(error);
+  #protocolFault(child, generation, error) {
+    if (this.process !== child || this.generation !== generation) return;
+    this.emit('diagnostic', { type: 'protocol_fault', generation });
+    this.#rejectPending(error, generation);
     this.ready = false;
-    try { this.process?.kill(); } catch { /* best effort */ }
+    try { child.kill(); } catch { /* best effort */ }
   }
 
-  #onDisconnect(error) {
-    if (this.process === null && !this.ready) return;
+  #onDisconnect(child, generation, error) {
+    if (this.process !== child || this.generation !== generation) return;
     const expected = this.stopping;
     this.process = null;
     this.ready = false;
-    this.#rejectPending(error);
-    if (!expected) this.emit('disconnect', { reason: error.message });
+    this.#rejectPending(error, generation);
+    if (!expected) this.emit('disconnect', { reason: error.message, generation });
   }
 
-  #rejectPending(error) {
-    for (const pending of this.pending.values()) {
+  #rejectPending(error, generation = null) {
+    for (const [id, pending] of this.pending.entries()) {
+      if (generation !== null && pending.generation !== generation) continue;
       clearTimeout(pending.timer);
       pending.reject(error);
+      this.pending.delete(id);
     }
-    this.pending.clear();
   }
 
   async stop() {
     this.stopping = true;
     const child = this.process;
+    const generation = this.generation;
     this.process = null;
     this.ready = false;
-    this.#rejectPending(new Error('Local MCP stopped'));
+    this.#rejectPending(new Error('Local MCP stopped'), generation);
     if (!child) return;
     try { child.stdin?.end(); } catch { /* no-op */ }
     if (child.exitCode === null && !child.killed) {

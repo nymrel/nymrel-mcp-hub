@@ -21,28 +21,30 @@ function scopesFromClaims(claims) {
   return [];
 }
 
-function tenantFromClaims(claims, claimName) {
+function tenantFromClaims(claims, claimName, defaultTenant = null) {
+  if (!claimName || typeof claimName !== 'string') throw new Error('OAuth tenant claim configuration is invalid');
   const value = claims?.[claimName];
-  if (typeof value === 'string' && value) return value.slice(0, 128);
-  if (typeof claims.tenant === 'string' && claims.tenant) return claims.tenant.slice(0, 128);
-  if (typeof claims.tid === 'string' && claims.tid) return claims.tid.slice(0, 128);
-  return 'default';
+  if (value === undefined || value === null || value === '') {
+    if (defaultTenant) return defaultTenant;
+    throw new Error(`OAuth tenant claim missing: ${claimName}`);
+  }
+  if (typeof value !== 'string' || value.length > 128 || /[\u0000-\u001f\u007f]/.test(value)) {
+    throw new Error(`OAuth tenant claim ${claimName} is invalid`);
+  }
+  return value;
 }
 
 function issuerDiscoveryUrls(issuer) {
   const url = new URL(issuer);
   const base = `${url.protocol}//${url.host}`;
-  const path = url.pathname.replace(/^\/+|\/+$/g, '');
-  if (!path) {
-    return [
-      `${base}/.well-known/oauth-authorization-server`,
-      `${base}/.well-known/openid-configuration`
-    ];
+  const issuerPath = url.pathname.replace(/^\/+|\/+$/g, '');
+  if (!issuerPath) {
+    return [`${base}/.well-known/oauth-authorization-server`, `${base}/.well-known/openid-configuration`];
   }
   return [
-    `${base}/.well-known/oauth-authorization-server/${path}`,
-    `${base}/.well-known/openid-configuration/${path}`,
-    `${base}/${path}/.well-known/openid-configuration`
+    `${base}/.well-known/oauth-authorization-server/${issuerPath}`,
+    `${base}/.well-known/openid-configuration/${issuerPath}`,
+    `${base}/${issuerPath}/.well-known/openid-configuration`
   ];
 }
 
@@ -86,8 +88,7 @@ export function verifyJwtSignature(token, header, jwk) {
   const key = createPublicKey({ key: jwk, format: 'jwk' });
   const alg = signatureAlgorithm(header.alg);
   if (String(header.alg).startsWith('ES')) signature = joseEcdsaToDer(signature, header.alg);
-  const ok = cryptoVerify(alg, data, key, signature);
-  if (!ok) throw new Error('Invalid OAuth JWT signature');
+  if (!cryptoVerify(alg, data, key, signature)) throw new Error('Invalid OAuth JWT signature');
 }
 
 export class OAuthAccessTokenVerifier {
@@ -96,24 +97,38 @@ export class OAuthAccessTokenVerifier {
     jwksUrl,
     audience,
     tenantClaim = 'tenant',
+    defaultTenant = null,
     introspectionUrl,
     introspectionClientId,
     introspectionClientSecret,
     clockSkewSec = 30,
+    requireHttps = false,
+    fetchTimeoutMs = 5000,
+    maxDocumentBytes = 1024 * 1024,
     fetchImpl = fetch
   } = {}) {
     this.issuer = issuer?.replace(/\/$/, '') || null;
     this.jwksUrl = jwksUrl || null;
     this.audience = audience || null;
     this.tenantClaim = tenantClaim;
+    this.defaultTenant = defaultTenant;
     this.introspectionUrl = introspectionUrl || null;
     this.introspectionClientId = introspectionClientId || null;
     this.introspectionClientSecret = introspectionClientSecret || null;
     this.clockSkewSec = clockSkewSec;
+    this.requireHttps = requireHttps;
+    this.fetchTimeoutMs = fetchTimeoutMs;
+    this.maxDocumentBytes = maxDocumentBytes;
     this.fetch = fetchImpl;
     this.metadataCache = null;
     this.jwksCache = null;
+    this.jwksRefreshPromise = null;
+    this.lastForcedJwksRefreshAt = 0;
+    this.unknownKidUntil = new Map();
     this.introspectionCache = new Map();
+    for (const [value, name] of [[this.issuer, 'issuer'], [this.jwksUrl, 'JWKS URL'], [this.introspectionUrl, 'introspection URL']]) {
+      if (value) this.#assertTrustedUrl(value, name);
+    }
   }
 
   get enabled() {
@@ -141,30 +156,29 @@ export class OAuthAccessTokenVerifier {
     if (typeof claims.sub !== 'string' || !claims.sub) throw new Error('OAuth token subject missing');
 
     const jwks = await this.#getJwks();
-    const candidates = jwks.keys.filter((key) => !header.kid || key.kid === header.kid);
-    if (candidates.length === 0) {
-      // One forced refresh handles normal key rotation without accepting arbitrary keys.
-      this.jwksCache = null;
-      const refreshed = await this.#getJwks();
-      const retry = refreshed.keys.filter((key) => !header.kid || key.kid === header.kid);
-      if (retry.length === 0) throw new Error('OAuth JWT signing key not found');
-      let last;
-      for (const key of retry) {
-        try { verifyJwtSignature(token, header, key); last = null; break; } catch (error) { last = error; }
+    let candidates = jwks.keys.filter((key) => !header.kid || key.kid === header.kid);
+    if (candidates.length === 0 && header.kid) {
+      const retryAt = this.unknownKidUntil.get(header.kid) || 0;
+      if (retryAt > now) throw new Error('OAuth JWT signing key not found');
+      const refreshed = await this.#forceJwksRefresh(now);
+      candidates = refreshed.keys.filter((key) => key.kid === header.kid);
+      if (candidates.length === 0) {
+        this.unknownKidUntil.set(header.kid, now + 5000);
+        if (this.unknownKidUntil.size > 1000) this.unknownKidUntil.delete(this.unknownKidUntil.keys().next().value);
+        throw new Error('OAuth JWT signing key not found');
       }
-      if (last) throw last;
-    } else {
-      let verified = false;
-      for (const key of candidates) {
-        try { verifyJwtSignature(token, header, key); verified = true; break; } catch { /* try next key */ }
-      }
-      if (!verified) throw new Error('Invalid OAuth JWT signature');
     }
+    if (candidates.length === 0) throw new Error('OAuth JWT signing key not found');
+    let verified = false;
+    for (const key of candidates) {
+      try { verifyJwtSignature(token, header, key); verified = true; break; } catch { /* try next key */ }
+    }
+    if (!verified) throw new Error('Invalid OAuth JWT signature');
 
     return {
       typ: 'user',
       sub: claims.sub,
-      tenant: tenantFromClaims(claims, this.tenantClaim),
+      tenant: tenantFromClaims(claims, this.tenantClaim, this.defaultTenant),
       scopes: scopesFromClaims(claims),
       iss: claims.iss,
       aud: claims.aud,
@@ -173,18 +187,24 @@ export class OAuthAccessTokenVerifier {
     };
   }
 
-  async #getJwks() {
+  async #forceJwksRefresh(now) {
+    if (this.jwksRefreshPromise) return this.jwksRefreshPromise;
+    if (now - this.lastForcedJwksRefreshAt < 5000 && this.jwksCache) return this.jwksCache.value;
+    this.lastForcedJwksRefreshAt = now;
+    this.jwksRefreshPromise = this.#getJwks(true).finally(() => { this.jwksRefreshPromise = null; });
+    return this.jwksRefreshPromise;
+  }
+
+  async #getJwks(force = false) {
     const now = Date.now();
-    if (this.jwksCache && this.jwksCache.expiresAt > now) return this.jwksCache.value;
+    if (!force && this.jwksCache && this.jwksCache.expiresAt > now) return this.jwksCache.value;
     let url = this.jwksUrl;
     if (!url) {
       const metadata = await this.#getMetadata();
       url = metadata.jwks_uri;
       if (typeof url !== 'string') throw new Error('Authorization server metadata has no jwks_uri');
     }
-    const response = await this.fetch(url, { headers: { accept: 'application/json' } });
-    if (!response.ok) throw new Error(`JWKS fetch failed: HTTP ${response.status}`);
-    const value = await response.json();
+    const value = await this.#fetchJson(url, { headers: { accept: 'application/json' } }, 'JWKS');
     if (!Array.isArray(value?.keys)) throw new Error('Invalid JWKS document');
     this.jwksCache = { value, expiresAt: now + 5 * 60 * 1000 };
     return value;
@@ -196,15 +216,11 @@ export class OAuthAccessTokenVerifier {
     let lastError;
     for (const url of issuerDiscoveryUrls(this.issuer)) {
       try {
-        const response = await this.fetch(url, { headers: { accept: 'application/json' } });
-        if (!response.ok) continue;
-        const value = await response.json();
+        const value = await this.#fetchJson(url, { headers: { accept: 'application/json' } }, 'authorization metadata');
         if (value?.issuer !== this.issuer) throw new Error('Authorization server metadata issuer mismatch');
         this.metadataCache = { value, expiresAt: now + 10 * 60 * 1000 };
         return value;
-      } catch (error) {
-        lastError = error;
-      }
+      } catch (error) { lastError = error; }
     }
     throw lastError || new Error('Authorization server metadata discovery failed');
   }
@@ -218,23 +234,48 @@ export class OAuthAccessTokenVerifier {
       const secret = this.introspectionClientSecret || '';
       headers.authorization = `Basic ${Buffer.from(`${this.introspectionClientId}:${secret}`).toString('base64')}`;
     }
-    const body = new URLSearchParams({ token });
-    const response = await this.fetch(this.introspectionUrl, { method: 'POST', headers, body });
-    if (!response.ok) throw new Error(`OAuth introspection failed: HTTP ${response.status}`);
-    const claims = await response.json();
+    const claims = await this.#fetchJson(this.introspectionUrl, {
+      method: 'POST', headers, body: new URLSearchParams({ token })
+    }, 'OAuth introspection');
     if (claims?.active !== true) throw new Error('OAuth token is inactive');
-    if (this.issuer && claims.iss && claims.iss !== this.issuer) throw new Error('OAuth issuer mismatch');
+    if (this.issuer && claims.iss !== this.issuer) throw new Error('OAuth issuer mismatch');
     if (!audienceMatches(claims.aud, this.audience)) throw new Error('OAuth token audience mismatch');
     if (typeof claims.sub !== 'string' || !claims.sub) throw new Error('OAuth token subject missing');
     const nowSec = Math.floor(now / 1000);
     if (typeof claims.exp === 'number' && nowSec > claims.exp + this.clockSkewSec) throw new Error('OAuth token expired');
     const principal = {
-      typ: 'user', sub: claims.sub, tenant: tenantFromClaims(claims, this.tenantClaim),
+      typ: 'user', sub: claims.sub, tenant: tenantFromClaims(claims, this.tenantClaim, this.defaultTenant),
       scopes: scopesFromClaims(claims), iss: claims.iss || this.issuer, aud: claims.aud, exp: claims.exp, external: true
     };
     const maxTtl = typeof claims.exp === 'number' ? Math.max(1000, Math.min(30_000, claims.exp * 1000 - now)) : 15_000;
     this.introspectionCache.set(key, { principal, expiresAt: now + maxTtl });
     if (this.introspectionCache.size > 1000) this.introspectionCache.delete(this.introspectionCache.keys().next().value);
     return principal;
+  }
+
+  #assertTrustedUrl(value, name) {
+    let parsed;
+    try { parsed = new URL(value); } catch { throw new Error(`${name} is not a valid URL`); }
+    if (this.requireHttps && parsed.protocol !== 'https:') throw new Error(`${name} must use https`);
+    if (!['https:', 'http:'].includes(parsed.protocol)) throw new Error(`${name} uses an unsupported URL scheme`);
+  }
+
+  async #fetchJson(url, init, label) {
+    this.#assertTrustedUrl(url, label);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), this.fetchTimeoutMs);
+    timer.unref?.();
+    let response;
+    try {
+      response = await this.fetch(url, { ...init, redirect: 'error', signal: controller.signal });
+    } finally { clearTimeout(timer); }
+    if (response.url) this.#assertTrustedUrl(response.url, `${label} response URL`);
+    if (!response.ok) throw new Error(`${label} fetch failed: HTTP ${response.status}`);
+    const declared = Number.parseInt(response.headers?.get?.('content-length') || '', 10);
+    if (Number.isFinite(declared) && declared > this.maxDocumentBytes) throw new Error(`${label} document exceeds size limit`);
+    const bytes = Buffer.from(await response.arrayBuffer());
+    if (bytes.length > this.maxDocumentBytes) throw new Error(`${label} document exceeds size limit`);
+    try { return JSON.parse(bytes.toString('utf8')); }
+    catch { throw new Error(`${label} returned malformed JSON`); }
   }
 }
