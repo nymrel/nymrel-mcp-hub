@@ -33,12 +33,38 @@ test('Windows launchers pin only allowlisted nonsecret device configuration', ()
   assert.match(installer, /\[hashtable\]\$Environment/);
   assert.match(installer, /Launcher environment variable is not allowlisted/);
   assert.match(installer, /run\.ps1/);
-  assert.match(installer, /\/RL LIMITED/);
+  assert.match(installer, /New-ScheduledTaskPrincipal/);
+  assert.match(installer, /-LogonType Interactive/);
+  assert.match(installer, /-RunLevel Limited/);
+  assert.match(installer, /RestartCount 99/);
+  assert.doesNotMatch(installer, /schtasks\.exe \/Create/);
   assert.match(bootstrap, /NYMREL_REMOTE_LOCAL_BACKEND' 'native'/);
   for (const name of forbiddenServiceSecrets) {
     assert.doesNotMatch(bootstrap, new RegExp(name));
     assert.doesNotMatch(installer, new RegExp(name));
   }
+});
+
+test('Windows bootstrap tolerates a first install with no existing scheduled task', () => {
+  assert.match(bootstrap, /Get-ScheduledTask -TaskName \$TaskName -ErrorAction SilentlyContinue/);
+  assert.match(bootstrap, /if \(\$existingTask\)/);
+  assert.match(bootstrap, /Stop-ScheduledTask -TaskName \$TaskName -ErrorAction SilentlyContinue/);
+  assert.doesNotMatch(bootstrap, /schtasks\.exe \/End \/TN \$TaskName/);
+});
+
+test('Windows bootstrap preserves a single allowed directory as a JSON array', () => {
+  assert.match(bootstrap, /ConvertTo-Json -InputObject @\(\$resolvedAllowed\) -Compress/);
+  assert.doesNotMatch(bootstrap, /@\(\$resolvedAllowed\) \| ConvertTo-Json/);
+});
+
+test('Windows installer verifies the scheduled supervisor remains running', () => {
+  assert.match(installer, /function Wait-ScheduledTaskRunning/);
+  assert.match(installer, /Get-ScheduledTaskInfo -TaskPath/);
+  assert.match(installer, /Wait-ScheduledTaskRunning -TaskName \$TaskName/);
+  assert.ok(
+    installer.indexOf("Start-ScheduledTask -TaskPath") < installer.indexOf('Wait-ScheduledTaskRunning -TaskName'),
+    'task startup must precede the running-state verification'
+  );
 });
 
 test('Windows bootstrap preserves credentials outside replaceable application source', () => {

@@ -16,9 +16,36 @@ function ConvertTo-PowerShellLiteral {
   return "'" + $Value.Replace("'", "''") + "'"
 }
 
+function Wait-ScheduledTaskRunning {
+  param(
+    [Parameter(Mandatory = $true)][string]$TaskName,
+    [int]$TimeoutSeconds = 20
+  )
+
+  $deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
+  $runningSamples = 0
+  do {
+    $task = Get-ScheduledTask -TaskPath '\' -TaskName $TaskName -ErrorAction Stop
+    if ([string]$task.State -eq 'Running') {
+      $runningSamples += 1
+      if ($runningSamples -ge 2) { return }
+    } else {
+      $runningSamples = 0
+    }
+    Start-Sleep -Milliseconds 250
+  } while ([DateTime]::UtcNow -lt $deadline)
+
+  $info = Get-ScheduledTaskInfo -TaskPath '\' -TaskName $TaskName -ErrorAction SilentlyContinue
+  $lastResult = if ($info) { $info.LastTaskResult } else { 'unknown' }
+  throw "Scheduled task '$TaskName' did not remain running (state=$($task.State), lastResult=$lastResult)."
+}
+
 if ($Uninstall) {
-  & schtasks.exe /End /TN $TaskName 2>$null | Out-Null
-  & schtasks.exe /Delete /TN $TaskName /F 2>$null | Out-Null
+  $existingTask = Get-ScheduledTask -TaskPath '\' -TaskName $TaskName -ErrorAction SilentlyContinue
+  if ($existingTask) {
+    Stop-ScheduledTask -TaskPath '\' -TaskName $TaskName -ErrorAction SilentlyContinue
+    Unregister-ScheduledTask -TaskPath '\' -TaskName $TaskName -Confirm:$false
+  }
   Remove-Item -LiteralPath $launcher -Force -ErrorAction SilentlyContinue
   Remove-Item -LiteralPath $powerShellLauncher -Force -ErrorAction SilentlyContinue
   Write-Host "Removed '$TaskName'. Device credentials and logs were preserved in $runtimeDir."
@@ -83,12 +110,38 @@ $launcherBody = @"
 "@
 Set-Content -LiteralPath $launcher -Value $launcherBody -Encoding Ascii
 
-& schtasks.exe /Create /SC ONLOGON /TN $TaskName /TR $launcher /RL LIMITED /F | Out-Null
-if ($LASTEXITCODE -ne 0) { throw "schtasks.exe failed to create '$TaskName' (exit $LASTEXITCODE)." }
+$currentUser = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+$action = New-ScheduledTaskAction `
+  -Execute $powerShell `
+  -Argument ('-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "{0}"' -f $powerShellLauncher) `
+  -WorkingDirectory $runtimeDir
+$trigger = New-ScheduledTaskTrigger -AtLogOn -User $currentUser
+$settings = New-ScheduledTaskSettingsSet `
+  -MultipleInstances IgnoreNew `
+  -StartWhenAvailable `
+  -AllowStartIfOnBatteries `
+  -DontStopIfGoingOnBatteries `
+  -RestartCount 99 `
+  -RestartInterval (New-TimeSpan -Minutes 1) `
+  -ExecutionTimeLimit ([TimeSpan]::Zero)
+$principal = New-ScheduledTaskPrincipal `
+  -UserId $currentUser `
+  -LogonType Interactive `
+  -RunLevel Limited
+
+Register-ScheduledTask `
+  -TaskPath '\' `
+  -TaskName $TaskName `
+  -Action $action `
+  -Trigger $trigger `
+  -Settings $settings `
+  -Principal $principal `
+  -Description 'Keeps the native Nymrel Remote device agent online for this user.' `
+  -Force | Out-Null
 
 if (-not $NoStart) {
-  & schtasks.exe /Run /TN $TaskName | Out-Null
-  if ($LASTEXITCODE -ne 0) { throw "schtasks.exe created '$TaskName' but could not start it (exit $LASTEXITCODE)." }
+  Start-ScheduledTask -TaskPath '\' -TaskName $TaskName
+  Wait-ScheduledTaskRunning -TaskName $TaskName
   Write-Host "Installed and started '$TaskName'."
 } else {
   Write-Host "Installed '$TaskName'; immediate startup was deferred."

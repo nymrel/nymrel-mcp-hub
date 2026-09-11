@@ -21,7 +21,7 @@ Invoke-WebRequest -UseBasicParsing `
 & powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File $bootstrap
 ```
 
-The bootstrap resolves `main` to an immutable Git commit, downloads that source archive, installs it below `%LOCALAPPDATA%\Nymrel\Remote\app`, and creates a limited `Nymrel Remote` task for future logons. It pins only nonsecret device configuration in the local launcher. No control-plane key, bootstrap credential, OAuth token, or device token is embedded in the script or scheduled-task command.
+The bootstrap resolves `main` to an immutable Git commit, downloads that source archive, installs it below `%LOCALAPPDATA%\Nymrel\Remote\app`, and creates a limited `Nymrel Remote` task for future logons. It pins only nonsecret device configuration in the local launcher. The installer fails closed if Task Scheduler accepts the start request but the supervisor does not remain running. No control-plane key, bootstrap credential, OAuth token, or device token is embedded in the script or scheduled-task command.
 
 The default allowed root is the current user's profile directory. To narrow it:
 
