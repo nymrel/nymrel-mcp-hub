@@ -56,17 +56,45 @@ test('native backend retains process output in a managed session', async () => {
     assert.equal(started.isError, false);
     const pid = started.structuredContent.pid;
 
-    let output = '';
-    let lastRead = null;
+    let lastRead = await client.callTool('read_process_output', { pid });
+    let output = lastRead.structuredContent.output;
     const outputDeadline = Date.now() + (process.platform === 'win32' ? 30_000 : 10_000);
-    while (Date.now() < outputDeadline && !output.includes('native-ok')) {
+    while (Date.now() < outputDeadline && lastRead.structuredContent.state !== 'finished') {
       await new Promise((resolve) => setTimeout(resolve, 50));
-      lastRead = await client.callTool('read_process_output', { pid, offset: -20, length: 20 });
-      output = lastRead.structuredContent.output;
+      lastRead = await client.callTool('read_process_output', { pid, length: 20 });
+      output += lastRead.structuredContent.output;
     }
     assert.match(output, /native-ok/, `last process read: ${JSON.stringify(lastRead?.structuredContent)}`);
 
+    assert.equal(lastRead.structuredContent.state, 'finished');
+    assert.equal(lastRead.structuredContent.exitCode, 0);
+
     const sessions = await client.callTool('list_sessions', {});
     assert.ok(sessions.structuredContent.sessions.some((session) => session.pid === pid));
+  });
+});
+
+test('empty polls and trailing line separators do not consume future process output', async () => {
+  await withClient(async (client) => {
+    const pid = 12345;
+    const session = {
+      child: { exitCode: 0 }, output: '', readCursor: 0,
+      state: 'running', exitCode: null, signal: null
+    };
+    client.sessions.set(pid, session);
+    const read = async () => (await client.callTool('read_process_output', { pid })).structuredContent;
+    assert.equal((await read()).totalLines, 0);
+    assert.equal((await read()).output, '');
+    session.output = 'first\n';
+    assert.equal((await read()).output, 'first');
+    assert.equal((await read()).output, '');
+    session.output += 'second\n\n';
+    assert.equal((await read()).output, 'second\n');
+    assert.equal((await read()).output, '');
+    session.output += 'third\n';
+    session.state = 'finished';
+    session.exitCode = 0;
+    assert.equal((await read()).output, 'third');
+    assert.equal((await read()).output, '');
   });
 });
