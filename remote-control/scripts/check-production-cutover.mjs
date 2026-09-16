@@ -170,6 +170,14 @@ export async function checkProductionCutover(baseUrl, { fetchImpl = fetch, requi
   };
 }
 
+function publicReport(result) {
+  return {
+    status: result.status,
+    checks: result.checks.map(({ name, passed }) => ({ name, passed })),
+    failures: result.failures
+  };
+}
+
 function isMain() {
   return process.argv[1] && fileURLToPath(import.meta.url) === fileURLToPath(new URL(`file:///${process.argv[1].replace(/\\/g, '/')}`));
 }
@@ -184,10 +192,10 @@ if (isMain()) {
   } else {
     try {
       const result = await checkProductionCutover(urlArg, { requireOAuth: !allowStaticAuth });
-      console.log(JSON.stringify(result, null, 2));
+      console.log(JSON.stringify(publicReport(result), null, 2));
       if (result.status !== 'ready') process.exitCode = 1;
-    } catch (error) {
-      console.error(JSON.stringify({ status: 'error', error: error.message }, null, 2));
+    } catch {
+      console.error(JSON.stringify({ status: 'error', error: 'cutover probe failed' }, null, 2));
       process.exitCode = 2;
     }
   }
