@@ -58,7 +58,11 @@ async function probeAuthorizationServer(fetchImpl, issuer) {
   return { status: 0, json: null, url: null, error: 'authorization server metadata unavailable' };
 }
 
-export async function checkProductionCutover(baseUrl, { fetchImpl = fetch, requireOAuth = true } = {}) {
+export async function checkProductionCutover(baseUrl, {
+  fetchImpl = fetch,
+  requireOAuth = true,
+  hasPredefinedClient = false
+} = {}) {
   const base = normalizedBaseUrl(baseUrl);
   const checks = [];
 
@@ -103,12 +107,20 @@ export async function checkProductionCutover(baseUrl, { fetchImpl = fetch, requi
     const codeChallengeMethods = Array.isArray(authMetadata.json?.code_challenge_methods_supported)
       ? authMetadata.json.code_challenge_methods_supported
       : [];
+    const tokenEndpointAuthMethods = Array.isArray(authMetadata.json?.token_endpoint_auth_methods_supported)
+      ? authMetadata.json.token_endpoint_auth_methods_supported
+      : [];
+    const supportsCimd = authMetadata.json?.client_id_metadata_document_supported === true;
+    const supportsDcr = typeof authMetadata.json?.registration_endpoint === 'string';
+    const clientOnboardingReady = supportsCimd || supportsDcr || hasPredefinedClient;
     const authMetadataPassed = authMetadata.status === 200
       && authMetadata.json?.issuer === authorizationServer
       && typeof authMetadata.json?.authorization_endpoint === 'string'
       && typeof authMetadata.json?.token_endpoint === 'string'
       && typeof authMetadata.json?.jwks_uri === 'string'
+      && tokenEndpointAuthMethods.length > 0
       && codeChallengeMethods.includes('S256')
+      && clientOnboardingReady
       && missingAuthScopes.length === 0;
     checks.push(check('authorization-server metadata', authMetadataPassed, {
       status: authMetadata.status,
@@ -119,10 +131,13 @@ export async function checkProductionCutover(baseUrl, { fetchImpl = fetch, requi
       hasTokenEndpoint: typeof authMetadata.json?.token_endpoint === 'string',
       hasJwksUri: typeof authMetadata.json?.jwks_uri === 'string',
       supportsPkceS256: codeChallengeMethods.includes('S256'),
+      tokenEndpointAuthMethods,
       missingScopes: missingAuthScopes,
       clientOnboarding: {
-        cimd: authMetadata.json?.client_id_metadata_document_supported === true,
-        dcr: typeof authMetadata.json?.registration_endpoint === 'string'
+        ready: clientOnboardingReady,
+        cimd: supportsCimd,
+        dcr: supportsDcr,
+        predefined: hasPredefinedClient
       }
     }));
   }
@@ -185,13 +200,17 @@ function isMain() {
 if (isMain()) {
   const args = process.argv.slice(2);
   const allowStaticAuth = args.includes('--allow-static-auth');
+  const hasPredefinedClient = args.includes('--predefined-client');
   const urlArg = args.find((arg) => !arg.startsWith('--')) || process.env.NYMREL_REMOTE_PUBLIC_URL;
   if (!urlArg) {
-    console.error('Usage: node scripts/check-production-cutover.mjs <https://remote.example.com> [--allow-static-auth]');
+    console.error('Usage: node scripts/check-production-cutover.mjs <https://remote.example.com> [--allow-static-auth] [--predefined-client]');
     process.exitCode = 2;
   } else {
     try {
-      const result = await checkProductionCutover(urlArg, { requireOAuth: !allowStaticAuth });
+      const result = await checkProductionCutover(urlArg, {
+        requireOAuth: !allowStaticAuth,
+        hasPredefinedClient
+      });
       console.log(JSON.stringify(publicReport(result), null, 2));
       if (result.status !== 'ready') process.exitCode = 1;
     } catch {

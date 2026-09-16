@@ -24,7 +24,10 @@ function healthyFetch({
   challengeMetadata = METADATA,
   authScopes = [...REQUIRED_CHATGPT_SCOPES, 'offline_access'],
   codeChallengeMethods = ['S256'],
-  authIssuer = 'https://auth.example.com'
+  authIssuer = 'https://auth.example.com',
+  tokenEndpointAuthMethods = ['none'],
+  clientIdMetadataSupported = true,
+  registrationEndpoint = null
 } = {}) {
   return async (url, init = {}) => {
     const parsed = new URL(url);
@@ -45,7 +48,10 @@ function healthyFetch({
         token_endpoint: 'https://auth.example.com/oauth/token',
         jwks_uri: 'https://auth.example.com/.well-known/jwks.json',
         scopes_supported: authScopes,
-        code_challenge_methods_supported: codeChallengeMethods
+        code_challenge_methods_supported: codeChallengeMethods,
+        token_endpoint_auth_methods_supported: tokenEndpointAuthMethods,
+        client_id_metadata_document_supported: clientIdMetadataSupported,
+        registration_endpoint: registrationEndpoint
       });
     }
     if (parsed.hostname === 'remote.example.com' && ['/privacy', '/terms', '/support'].includes(parsed.pathname)) return html();
@@ -95,6 +101,24 @@ test('production cutover requires PKCE S256 from the authorization server', asyn
   assert.ok(result.failures.includes('authorization-server metadata'));
   const metadata = result.checks.find((item) => item.name === 'authorization-server metadata');
   assert.equal(metadata.detail.supportsPkceS256, false);
+});
+
+test('production cutover blocks OAuth without a discoverable or predefined client onboarding path', async () => {
+  const result = await checkProductionCutover(BASE, {
+    fetchImpl: healthyFetch({ clientIdMetadataSupported: false })
+  });
+  assert.equal(result.status, 'blocked');
+  assert.ok(result.failures.includes('authorization-server metadata'));
+  const metadata = result.checks.find((item) => item.name === 'authorization-server metadata');
+  assert.equal(metadata.detail.clientOnboarding.ready, false);
+});
+
+test('a predefined OAuth client can satisfy onboarding when CIMD and DCR are unavailable', async () => {
+  const result = await checkProductionCutover(BASE, {
+    fetchImpl: healthyFetch({ clientIdMetadataSupported: false }),
+    hasPredefinedClient: true
+  });
+  assert.equal(result.status, 'ready');
 });
 
 test('compatibility probe can explicitly allow static auth without weakening strict default', async () => {
