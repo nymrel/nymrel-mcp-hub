@@ -33,6 +33,31 @@ function check(name, passed, detail) {
   return { name, passed: Boolean(passed), detail };
 }
 
+function authorizationMetadataUrls(issuer) {
+  const parsed = new URL(issuer);
+  const origin = parsed.origin;
+  const path = parsed.pathname.replace(/^\/+|\/+$/g, '');
+  if (!path) {
+    return [
+      `${origin}/.well-known/oauth-authorization-server`,
+      `${origin}/.well-known/openid-configuration`
+    ];
+  }
+  return [
+    `${origin}/.well-known/oauth-authorization-server/${path}`,
+    `${origin}/.well-known/openid-configuration/${path}`,
+    `${origin}/${path}/.well-known/openid-configuration`
+  ];
+}
+
+async function probeAuthorizationServer(fetchImpl, issuer) {
+  for (const url of authorizationMetadataUrls(issuer)) {
+    const response = await probe(fetchImpl, url);
+    if (response.status === 200 && response.json) return { ...response, url };
+  }
+  return { status: 0, json: null, url: null, error: 'authorization server metadata unavailable' };
+}
+
 export async function checkProductionCutover(baseUrl, { fetchImpl = fetch, requireOAuth = true } = {}) {
   const base = normalizedBaseUrl(baseUrl);
   const checks = [];
@@ -69,6 +94,38 @@ export async function checkProductionCutover(baseUrl, { fetchImpl = fetch, requi
     requireOAuth,
     missingScopes
   }));
+
+  if (authorizationServers.length > 0) {
+    const authorizationServer = authorizationServers[0].replace(/\/$/, '');
+    const authMetadata = await probeAuthorizationServer(fetchImpl, authorizationServer);
+    const authScopes = Array.isArray(authMetadata.json?.scopes_supported) ? authMetadata.json.scopes_supported : [];
+    const missingAuthScopes = [...REQUIRED_CHATGPT_SCOPES, 'offline_access'].filter((scope) => !authScopes.includes(scope));
+    const codeChallengeMethods = Array.isArray(authMetadata.json?.code_challenge_methods_supported)
+      ? authMetadata.json.code_challenge_methods_supported
+      : [];
+    const authMetadataPassed = authMetadata.status === 200
+      && authMetadata.json?.issuer === authorizationServer
+      && typeof authMetadata.json?.authorization_endpoint === 'string'
+      && typeof authMetadata.json?.token_endpoint === 'string'
+      && typeof authMetadata.json?.jwks_uri === 'string'
+      && codeChallengeMethods.includes('S256')
+      && missingAuthScopes.length === 0;
+    checks.push(check('authorization-server metadata', authMetadataPassed, {
+      status: authMetadata.status,
+      metadataUrl: authMetadata.url,
+      issuer: authMetadata.json?.issuer ?? null,
+      expectedIssuer: authorizationServer,
+      hasAuthorizationEndpoint: typeof authMetadata.json?.authorization_endpoint === 'string',
+      hasTokenEndpoint: typeof authMetadata.json?.token_endpoint === 'string',
+      hasJwksUri: typeof authMetadata.json?.jwks_uri === 'string',
+      supportsPkceS256: codeChallengeMethods.includes('S256'),
+      missingScopes: missingAuthScopes,
+      clientOnboarding: {
+        cimd: authMetadata.json?.client_id_metadata_document_supported === true,
+        dcr: typeof authMetadata.json?.registration_endpoint === 'string'
+      }
+    }));
+  }
 
   for (const path of ['/privacy', '/terms', '/support']) {
     const page = await probe(fetchImpl, `${base}${path}`);
