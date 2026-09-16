@@ -62,6 +62,18 @@ function sendHtml(res, html) {
   res.end(html);
 }
 
+function sendText(res, status, text) {
+  if (res.headersSent || res.writableEnded) return;
+  res.writeHead(status, {
+    'content-type': 'text/plain; charset=utf-8',
+    'content-length': Buffer.byteLength(text),
+    'cache-control': 'no-store',
+    'x-content-type-options': 'nosniff',
+    'referrer-policy': 'no-referrer'
+  });
+  res.end(text);
+}
+
 function errorBody(error) {
   if (error instanceof NymrelRemoteError) {
     return { error: { code: error.code, message: error.message, ...(error.data ? { details: error.data } : {}) } };
@@ -158,6 +170,10 @@ export async function createChatgptRemoteHttpServer(config, options = {}) {
         runtime.logger.error?.(`Public policy page failed: ${error?.name || 'Error'}`);
         return sendJson(res, 500, { error: { code: 'INTERNAL_ERROR', message: 'Public page unavailable' } });
       }
+    }
+
+    if (pathname === '/.well-known/openai-apps-challenge' && req.method === 'GET' && config.openaiAppsChallenge) {
+      return sendText(res, 200, config.openaiAppsChallenge);
     }
 
     if (pathname === '/.well-known/oauth-protected-resource/chatgpt/mcp' && req.method === 'GET') {
