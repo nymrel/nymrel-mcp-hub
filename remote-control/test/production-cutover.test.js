@@ -19,12 +19,18 @@ function html(status = 200) {
   });
 }
 
-function healthyFetch({ authorizationServers = ['https://auth.example.com'], challengeMetadata = METADATA } = {}) {
+function healthyFetch({
+  authorizationServers = ['https://auth.example.com'],
+  challengeMetadata = METADATA,
+  authScopes = [...REQUIRED_CHATGPT_SCOPES, 'offline_access'],
+  codeChallengeMethods = ['S256'],
+  authIssuer = 'https://auth.example.com'
+} = {}) {
   return async (url, init = {}) => {
     const parsed = new URL(url);
-    if (parsed.pathname === '/healthz') return json({ status: 'ok' });
-    if (parsed.pathname === '/readyz') return json({ status: 'ready', audit: { valid: true } });
-    if (parsed.pathname === '/.well-known/oauth-protected-resource/chatgpt/mcp') {
+    if (parsed.hostname === 'remote.example.com' && parsed.pathname === '/healthz') return json({ status: 'ok' });
+    if (parsed.hostname === 'remote.example.com' && parsed.pathname === '/readyz') return json({ status: 'ready', audit: { valid: true } });
+    if (parsed.hostname === 'remote.example.com' && parsed.pathname === '/.well-known/oauth-protected-resource/chatgpt/mcp') {
       return json({
         resource: `${BASE}/chatgpt/mcp`,
         authorization_servers: authorizationServers,
@@ -32,8 +38,18 @@ function healthyFetch({ authorizationServers = ['https://auth.example.com'], cha
         bearer_methods_supported: ['header']
       });
     }
-    if (['/privacy', '/terms', '/support'].includes(parsed.pathname)) return html();
-    if (parsed.pathname === '/chatgpt/mcp' && init.method === 'POST') {
+    if (parsed.hostname === 'auth.example.com' && parsed.pathname === '/.well-known/oauth-authorization-server') {
+      return json({
+        issuer: authIssuer,
+        authorization_endpoint: 'https://auth.example.com/oauth/authorize',
+        token_endpoint: 'https://auth.example.com/oauth/token',
+        jwks_uri: 'https://auth.example.com/.well-known/jwks.json',
+        scopes_supported: authScopes,
+        code_challenge_methods_supported: codeChallengeMethods
+      });
+    }
+    if (parsed.hostname === 'remote.example.com' && ['/privacy', '/terms', '/support'].includes(parsed.pathname)) return html();
+    if (parsed.hostname === 'remote.example.com' && parsed.pathname === '/chatgpt/mcp' && init.method === 'POST') {
       return json(
         { error: { code: 'UNAUTHORIZED', message: 'OAuth bearer token required' } },
         401,
@@ -59,6 +75,26 @@ test('production cutover blocks a static-token-only ChatGPT endpoint by default'
   const metadata = result.checks.find((item) => item.name === 'chatgpt protected-resource metadata');
   assert.equal(metadata.detail.authorizationServerCount, 0);
   assert.equal(metadata.detail.requireOAuth, true);
+});
+
+test('production cutover blocks an authorization server that does not advertise all resource scopes', async () => {
+  const result = await checkProductionCutover(BASE, {
+    fetchImpl: healthyFetch({ authScopes: ['offline_access', 'devices:read', 'tools:read'] })
+  });
+  assert.equal(result.status, 'blocked');
+  assert.ok(result.failures.includes('authorization-server metadata'));
+  const metadata = result.checks.find((item) => item.name === 'authorization-server metadata');
+  assert.deepEqual(metadata.detail.missingScopes, ['tools:write', 'tools:execute', 'tools:network']);
+});
+
+test('production cutover requires PKCE S256 from the authorization server', async () => {
+  const result = await checkProductionCutover(BASE, {
+    fetchImpl: healthyFetch({ codeChallengeMethods: ['plain'] })
+  });
+  assert.equal(result.status, 'blocked');
+  assert.ok(result.failures.includes('authorization-server metadata'));
+  const metadata = result.checks.find((item) => item.name === 'authorization-server metadata');
+  assert.equal(metadata.detail.supportsPkceS256, false);
 });
 
 test('compatibility probe can explicitly allow static auth without weakening strict default', async () => {
