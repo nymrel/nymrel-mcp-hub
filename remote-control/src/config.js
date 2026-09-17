@@ -54,7 +54,7 @@ export function loadServerConfig() {
     try { parsedPublic = new URL(publicBaseUrl); } catch { throw new Error('NYMREL_REMOTE_PUBLIC_URL must be a valid absolute URL'); }
     if (production && parsedPublic.protocol !== 'https:') throw new Error('Production NYMREL_REMOTE_PUBLIC_URL must use https');
   }
-  const authorizationServers = listEnv('NYMREL_REMOTE_AUTHORIZATION_SERVERS').map((value) => value.replace(/\/$/, ''));
+  const authorizationServers = listEnv('NYMREL_REMOTE_AUTHORIZATION_SERVERS');
   for (const server of authorizationServers) {
     let parsed;
     try { parsed = new URL(server); } catch { throw new Error('NYMREL_REMOTE_AUTHORIZATION_SERVERS contains an invalid URL'); }
@@ -96,7 +96,7 @@ export function loadServerConfig() {
     allowStaticMcpTokens,
     allowStaticAdminTokens,
     allowBootstrapHttp,
-    oauthIssuer: process.env.NYMREL_REMOTE_OAUTH_ISSUER?.replace(/\/$/, '') || authorizationServers[0] || null,
+    oauthIssuer: process.env.NYMREL_REMOTE_OAUTH_ISSUER || authorizationServers[0] || null,
     oauthJwksUrl: process.env.NYMREL_REMOTE_OAUTH_JWKS_URL || null,
     oauthAudience: process.env.NYMREL_REMOTE_OAUTH_AUDIENCE || (publicBaseUrl ? `${publicBaseUrl}/mcp` : null),
     oauthTenantClaim: process.env.NYMREL_REMOTE_OAUTH_TENANT_CLAIM || 'tenant',
