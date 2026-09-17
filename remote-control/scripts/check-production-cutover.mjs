@@ -100,7 +100,7 @@ export async function checkProductionCutover(baseUrl, {
   }));
 
   if (authorizationServers.length > 0) {
-    const authorizationServer = authorizationServers[0].replace(/\/$/, '');
+    const authorizationServer = authorizationServers[0];
     const authMetadata = await probeAuthorizationServer(fetchImpl, authorizationServer);
     const authScopes = Array.isArray(authMetadata.json?.scopes_supported) ? authMetadata.json.scopes_supported : [];
     const missingAuthScopes = ['offline_access'].filter((scope) => !authScopes.includes(scope));
