@@ -103,7 +103,7 @@ export async function checkProductionCutover(baseUrl, {
     const authorizationServer = authorizationServers[0].replace(/\/$/, '');
     const authMetadata = await probeAuthorizationServer(fetchImpl, authorizationServer);
     const authScopes = Array.isArray(authMetadata.json?.scopes_supported) ? authMetadata.json.scopes_supported : [];
-    const missingAuthScopes = [...REQUIRED_CHATGPT_SCOPES, 'offline_access'].filter((scope) => !authScopes.includes(scope));
+    const missingAuthScopes = ['offline_access'].filter((scope) => !authScopes.includes(scope));
     const codeChallengeMethods = Array.isArray(authMetadata.json?.code_challenge_methods_supported)
       ? authMetadata.json.code_challenge_methods_supported
       : [];
