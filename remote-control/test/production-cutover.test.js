@@ -91,6 +91,16 @@ test('authorization-server discovery need not repeat resource-specific Nymrel sc
   assert.deepEqual(result.failures, []);
 });
 
+test('production cutover preserves exact authorization-server issuers including trailing slash', async () => {
+  const result = await checkProductionCutover(BASE, {
+    fetchImpl: healthyFetch({
+      authorizationServers: ['https://auth.example.com/'],
+      authIssuer: 'https://auth.example.com/'
+    })
+  });
+  assert.equal(result.status, 'ready');
+  assert.deepEqual(result.failures, []);
+});
 test('production cutover requires offline_access from the authorization server', async () => {
   const result = await checkProductionCutover(BASE, {
     fetchImpl: healthyFetch({ authScopes: ['openid', 'profile'] })
