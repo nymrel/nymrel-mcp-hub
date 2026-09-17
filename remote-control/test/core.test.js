@@ -9,9 +9,27 @@ import { AuditLedger } from '../src/audit.js';
 import { JsonFileStore } from '../src/store.js';
 import { collectMcpHeaderBindings, normalizeToolCatalog, projectDeviceTool, schemasEqualProjected } from '../src/schema.js';
 import { PolicyEngine } from '../src/policy.js';
-import { normalizeAgentServerUrl } from '../src/config.js';
+import { loadServerConfig, normalizeAgentServerUrl } from '../src/config.js';
 
 const key = Buffer.alloc(32, 7);
+
+test('server config preserves exact OAuth issuer identifiers including trailing slash', () => {
+  const names = ['NODE_ENV', 'NYMREL_REMOTE_AUTHORIZATION_SERVERS', 'NYMREL_REMOTE_OAUTH_ISSUER'];
+  const before = new Map(names.map((name) => [name, process.env[name]]));
+  try {
+    process.env.NODE_ENV = 'development';
+    process.env.NYMREL_REMOTE_AUTHORIZATION_SERVERS = 'https://issuer.example/';
+    process.env.NYMREL_REMOTE_OAUTH_ISSUER = 'https://issuer.example/';
+    const config = loadServerConfig();
+    assert.deepEqual(config.authorizationServers, ['https://issuer.example/']);
+    assert.equal(config.oauthIssuer, 'https://issuer.example/');
+  } finally {
+    for (const [name, value] of before) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
+  }
+});
 
 test('internal tokens are signed, scoped, expiring, and tamper evident', () => {
   const service = new TokenService(key);
