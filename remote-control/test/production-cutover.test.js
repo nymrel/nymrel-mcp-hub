@@ -22,7 +22,7 @@ function html(status = 200) {
 function healthyFetch({
   authorizationServers = ['https://auth.example.com'],
   challengeMetadata = METADATA,
-  authScopes = [...REQUIRED_CHATGPT_SCOPES, 'offline_access'],
+  authScopes = ['openid', 'profile', 'offline_access'],
   codeChallengeMethods = ['S256'],
   authIssuer = 'https://auth.example.com',
   tokenEndpointAuthMethods = ['none'],
@@ -83,14 +83,22 @@ test('production cutover blocks a static-token-only ChatGPT endpoint by default'
   assert.equal(metadata.detail.requireOAuth, true);
 });
 
-test('production cutover blocks an authorization server that does not advertise all resource scopes', async () => {
+test('authorization-server discovery need not repeat resource-specific Nymrel scopes', async () => {
   const result = await checkProductionCutover(BASE, {
-    fetchImpl: healthyFetch({ authScopes: ['offline_access', 'devices:read', 'tools:read'] })
+    fetchImpl: healthyFetch({ authScopes: ['openid', 'profile', 'offline_access'] })
+  });
+  assert.equal(result.status, 'ready');
+  assert.deepEqual(result.failures, []);
+});
+
+test('production cutover requires offline_access from the authorization server', async () => {
+  const result = await checkProductionCutover(BASE, {
+    fetchImpl: healthyFetch({ authScopes: ['openid', 'profile'] })
   });
   assert.equal(result.status, 'blocked');
   assert.ok(result.failures.includes('authorization-server metadata'));
   const metadata = result.checks.find((item) => item.name === 'authorization-server metadata');
-  assert.deepEqual(metadata.detail.missingScopes, ['tools:write', 'tools:execute', 'tools:network']);
+  assert.deepEqual(metadata.detail.missingScopes, ['offline_access']);
 });
 
 test('production cutover requires PKCE S256 from the authorization server', async () => {
