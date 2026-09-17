@@ -41,6 +41,22 @@ test('OAuth verifier validates audience-bound RS256 access tokens', async () => 
   await assert.rejects(verifier.verify(wrongAud, now), /audience mismatch/);
 });
 
+test('OAuth verifier preserves and validates exact issuer identifiers including trailing slash', async () => {
+  const { privateKey, publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
+  const jwk = publicKey.export({ format: 'jwk' }); jwk.kid = 'k1'; jwk.alg = 'RS256';
+  const now = 1_800_000_000_000;
+  const issuer = 'https://issuer.example/';
+  const verifier = new OAuthAccessTokenVerifier({
+    issuer, jwksUrl: 'https://issuer.example/jwks', audience: 'https://remote.example/mcp',
+    fetchImpl: async () => jsonResponse({ keys: [jwk] })
+  });
+  const token = jwt(privateKey, 'RS256', {
+    iss: issuer, sub: 'slash-user', aud: 'https://remote.example/mcp', exp: Math.floor(now / 1000) + 600,
+    scope: 'tools:read'
+  });
+  const principal = await verifier.verify(token, now);
+  assert.equal(principal.iss, issuer);
+});
 test('OAuth verifier converts JOSE P-1363 ES256 signatures to DER for Node crypto verification', async () => {
   const { privateKey, publicKey } = generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
   const jwk = publicKey.export({ format: 'jwk' }); jwk.kid = 'k1'; jwk.alg = 'ES256';

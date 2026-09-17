@@ -102,7 +102,7 @@ export class OAuthAccessTokenVerifier {
     clockSkewSec = 30,
     fetchImpl = fetch
   } = {}) {
-    this.issuer = issuer?.replace(/\/$/, '') || null;
+    this.issuer = issuer || null;
     this.jwksUrl = jwksUrl || null;
     this.audience = audience || null;
     this.tenantClaim = tenantClaim;
