@@ -106,17 +106,22 @@ test('MCP Tool: nymrel_proof_ledger and nymrel_proof_verify round-trip', async (
   const proofRes = await executeProofLedger({
     action: 'test_execution',
     agentId: 'antigravity-gemini',
-    payload: { testRun: true, status: 'pass' }
+    payload: { testRun: true, status: 'pass' },
+    signingKey: 'round-trip-test-secret', algorithm: 'HMAC-SHA256'
   });
   const receipt = JSON.parse(proofRes.content[0].text!);
-  assert.ok(receipt.receiptId);
-  assert.ok(receipt.leafHash);
-  assert.ok(receipt.merkleRoot);
+  assert.ok(receipt.proofId);
+  assert.ok(receipt.merkle.leaves.length);
+  assert.ok(receipt.merkle.root);
 
   const verifyRes = await executeProofVerify({ receipt });
   const verifyData = JSON.parse(verifyRes.content[0].text!);
-  assert.strictEqual(verifyData.verified, true);
-  assert.strictEqual(verifyData.verificationVerdict, 'PROOF_VALID_AND_TAMPER_FREE');
+  assert.strictEqual(verifyData.valid, true);
+  assert.strictEqual(verifyData.verified, false);
+  assert.strictEqual(verifyData.trusted, false);
+  assert.strictEqual(verifyData.verificationVerdict, 'INTEGRITY_ONLY');
+  const authenticated = await executeProofVerify({ receipt, publicKeyOrSecret: 'round-trip-test-secret', expectedAlgorithm: 'HMAC-SHA256' });
+  assert.strictEqual(JSON.parse(authenticated.content[0].text!).trusted, true);
 });
 
 test('MCP Tool: nymrel_crawler_mesh extracts clean markdown', async () => {

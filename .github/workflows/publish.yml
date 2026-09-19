@@ -101,7 +101,7 @@ jobs:
         run: |
           python -m pip check
           python -m ruff check python tests
-          python -m bandit -q -r python/nymrel_mcp_hub
+          python scripts/check-bandit.py
           python -m compileall -q python tests
           python -m pytest -q
           python -m pip uninstall --yes nymrel-mcp-hub

@@ -1,0 +1,70 @@
+{
+  "repository": "https://github.com/nymrel/nymrel-proof-ledger",
+  "revision": "e149d4448072b1931da25acd27f7d26ef255bbd2",
+  "files": [
+    {
+      "source": "src/core/canonical.ts",
+      "destination": "src/vendor/proof-ledger/canonical.ts",
+      "sha256": "85651cf524a9f35edb66a03c5a81ef9d2e83002e82f63923de109bdd051c91a5"
+    },
+    {
+      "source": "python/nymrel_proof_ledger/canonical.py",
+      "destination": "python/nymrel_mcp_hub/_proof_ledger/canonical.py",
+      "sha256": "59b353b08b11946c607607f8a1502f7ce9801b925ebb7165fbcf8a9063d8662a"
+    },
+    {
+      "source": "src/core/envelope.ts",
+      "destination": "src/vendor/proof-ledger/envelope.ts",
+      "sha256": "145d16200b21178927ad882217e156956803eebfb783318ba235bfe43372f0a0"
+    },
+    {
+      "source": "python/nymrel_proof_ledger/envelope.py",
+      "destination": "python/nymrel_mcp_hub/_proof_ledger/envelope.py",
+      "sha256": "a09a83fc6b9e45578877946933df3bed722877c210943fd11360d7825118b628"
+    },
+    {
+      "source": "src/core/merkle.ts",
+      "destination": "src/vendor/proof-ledger/merkle.ts",
+      "sha256": "04354d9c27a827ef885a97bc9bc23e87793b3c723db6cf7e40436bc80a973384"
+    },
+    {
+      "source": "python/nymrel_proof_ledger/merkle.py",
+      "destination": "python/nymrel_mcp_hub/_proof_ledger/merkle.py",
+      "sha256": "bcd92944ca2404ee717fcac6b14bdefb9cd87ee69f808c1dfde82518292cdff4"
+    },
+    {
+      "source": "src/core/receipt.ts",
+      "destination": "src/vendor/proof-ledger/receipt.ts",
+      "sha256": "9a49b0bad360bdad3a584fd8871d3df9b93e44ddba6095eeff9a4399c77f264a",
+      "upstreamSha256": "13f5c344ba29d7ce913645ef4e82d01c38b1379f9928c718f26247589de955ca",
+      "localPatch": "Added optional Git-context opt-out (default unchanged); MCP adapters always disable it. Cryptographic implementation unchanged."
+    },
+    {
+      "source": "python/nymrel_proof_ledger/receipt.py",
+      "destination": "python/nymrel_mcp_hub/_proof_ledger/receipt.py",
+      "sha256": "29723c66c5063310a054b4762cd8b969e4fd2efe2a90745a0aa786c0575792c5",
+      "upstreamSha256": "229e35098f35e96ec1897ef4a77a108bc71424da41001a46183c30b244a2e5da",
+      "localPatch": "Added optional Git-context opt-out (default unchanged); MCP adapters always disable it. Cryptographic implementation unchanged."
+    },
+    {
+      "source": "src/core/signer.ts",
+      "destination": "src/vendor/proof-ledger/signer.ts",
+      "sha256": "694647006f859e8268804b8d5434744e4845200e15672eda9c88cce346e27c59"
+    },
+    {
+      "source": "python/nymrel_proof_ledger/signer.py",
+      "destination": "python/nymrel_mcp_hub/_proof_ledger/signer.py",
+      "sha256": "9d79aebb0f5ac408ca722cf6423592834bc6bc2be72f54bbf8e484ee4b9c4d80"
+    },
+    {
+      "source": "LICENSE",
+      "destination": "docs/proof-ledger/LICENSE",
+      "sha256": "e4f3845d701d29e64255a1f22eecc753f135216ec7ce500eac70267cc5af39c3"
+    },
+    {
+      "source": "test/fixtures/protocol-v2-vectors.json",
+      "destination": "test/fixtures/protocol-v2-vectors.json",
+      "sha256": "dabc2a0a048e22e52d6b1d3e0bd7ceb7271e0661839ebf1c567418352ad6b6e1"
+    }
+  ]
+}

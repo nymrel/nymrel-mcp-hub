@@ -23,6 +23,8 @@ export interface JSONRPCResponse {
 }
 
 export interface MCPToolParameterProperty {
+  minLength?: number;
+  pattern?: string;
   type: string;
   description?: string;
   enum?: string[];
@@ -37,6 +39,7 @@ export interface MCPToolParameterProperty {
 }
 
 export interface MCPToolInputSchema {
+  dependentRequired?: Record<string, string[]>;
   type: 'object';
   properties: Record<string, MCPToolParameterProperty>;
   required?: string[];
