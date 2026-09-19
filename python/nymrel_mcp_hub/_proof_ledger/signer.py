@@ -61,6 +61,9 @@ class ProofSigner:
         algorithm: str = "HMAC-SHA256",
         canonicalization_profile: CanonicalizationProfile = "rfc8785",
     ) -> str:
+        if not isinstance(private_key_or_secret, str) or not private_key_or_secret:
+            raise ValueError('Signing key must be a non-empty string')
+        canonicalize(private_key_or_secret)
         canonical = (
             payload
             if isinstance(payload, str)
@@ -87,6 +90,9 @@ class ProofSigner:
         canonicalization_profile: CanonicalizationProfile = "rfc8785",
     ) -> bool:
         try:
+            if not isinstance(public_key_or_secret, str) or not public_key_or_secret:
+                return False
+            canonicalize(public_key_or_secret)
             canonical = (
                 payload
                 if isinstance(payload, str)

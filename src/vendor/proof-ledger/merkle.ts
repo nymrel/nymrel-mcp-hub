@@ -117,6 +117,8 @@ export class MerkleTree {
     return proof;
   }
 
+  /** Supplied-hash path consistency only. Caller must derive the leaf and trust
+   * the root; this API does not bind a leaf index or tree size. */
   public static verifyProof(
     leafHash: string,
     proof: MerkleProofStep[],

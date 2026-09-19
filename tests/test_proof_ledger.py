@@ -29,7 +29,7 @@ def test_security_cases(row):
     assert result['verified'] is row['trusted']
     assert bool(response.get('isError')) is not row['valid']
     if row.get('canonicalParity'):
-        expected = verify_receipt(row['args']['receipt'], public_key_or_secret=row['args'].get('publicKeyOrSecret'))
+        expected = verify_receipt(row['args']['receipt'], public_key_or_secret=row['args'].get('publicKeyOrSecret'), expected_algorithm=row['args'].get('expectedAlgorithm'))
         actual = {key: result[key] for key in expected}
         actual['warnings'] = actual['warnings'][:len(expected['warnings'])]
         assert actual == expected
@@ -70,10 +70,18 @@ def test_creation_rejects_invalid_inputs_without_echoing_key():
 
 def test_upstream_source_digests():
     manifest = json.loads((ROOT / 'docs/proof-ledger/SOURCE.json').read_text())
-    assert manifest['revision'] == 'e149d4448072b1931da25acd27f7d26ef255bbd2'
+    assert manifest['revision'] == '09a49a0e66d9443bff979f4d77cf7c0310ef0d8f'
     for entry in manifest['files']:
         content = (ROOT / entry['destination']).read_bytes().replace(b'\r\n', b'\n')
         assert hashlib.sha256(content).hexdigest() == entry['sha256'], entry['destination']
+
+
+def test_shared_unicode_blank_creation_fields():
+    base = dict(action='test', agentId='fixture', signingKey='synthetic-secret', algorithm='HMAC-SHA256', payload={})
+    for value in ('\u001f', '\u0085', '\ufeff'):
+        for field in ('action', 'agentId', 'signingKey', 'keyId'):
+            assert call('proof_ledger', {**base, field: value})[0]['isError']
+    assert not call('proof_ledger', {**base, 'action': '\u0085test\ufeff'})[0].get('isError')
 
 
 def test_ed25519_algorithm_confusion_is_rejected():

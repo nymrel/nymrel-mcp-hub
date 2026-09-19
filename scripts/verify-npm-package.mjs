@@ -31,7 +31,6 @@ const publicFiles = new Set([
   "THIRD_PARTY_NOTICES.md",
   "docs/proof-ledger/LICENSE",
   "docs/proof-ledger/SOURCE.json",
-  "docs/proof-ledger/disable-git-context.patch",
   "README.md",
   "SECURITY.md",
   "bin/mcp-server",

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import ntpath
 import os
 import platform
 import re
@@ -181,7 +182,7 @@ def create_receipt(
     metadata: dict[str, Any] | None = None,
     cwd: str | None = None,
     include_hostname: bool = False,
-    include_git_context: bool = True,
+    include_git_context: bool = False,
 ) -> dict[str, Any]:
     cwd = cwd or os.getcwd()
     now = datetime.now(UTC)
@@ -201,7 +202,7 @@ def create_receipt(
     }
     if include_hostname:
         environment["hostname"] = platform.node()
-    git = get_git_context(cwd) if include_git_context else None
+    git = get_git_context(cwd) if include_git_context is True else None
     if git is not None:
         environment["git"] = git
 
@@ -262,8 +263,19 @@ def create_receipt(
 
 
 def _artifact_path_within(cwd: str, artifact_path: str) -> str | None:
-    root = os.path.realpath(os.path.abspath(cwd))
-    candidate = os.path.realpath(os.path.abspath(os.path.join(root, artifact_path)))
+    # Reject network/drive paths and lexical escapes before filesystem lookup.
+    if os.path.isabs(artifact_path) or ntpath.isabs(artifact_path) or ntpath.splitdrive(artifact_path)[0]:
+        return None
+    unresolved_root = os.path.abspath(cwd)
+    portable_path = artifact_path.replace('\\', '/')
+    unresolved_candidate = os.path.abspath(os.path.join(unresolved_root, portable_path))
+    try:
+        if os.path.commonpath((unresolved_root, unresolved_candidate)) != unresolved_root:
+            return None
+    except ValueError:
+        return None
+    root = os.path.realpath(unresolved_root)
+    candidate = os.path.realpath(os.path.abspath(os.path.join(root, portable_path)))
     try:
         return candidate if os.path.commonpath((root, candidate)) == root else None
     except ValueError:
@@ -275,7 +287,23 @@ def verify_receipt(
     public_key_or_secret: str | None = None,
     check_files_on_disk: bool = False,
     cwd: str | None = None,
+    *,
+    expected_algorithm: str | None = None,
 ) -> dict[str, Any]:
+    def invalid_context(message: str) -> dict[str, Any]:
+        return {
+            'valid': False, 'trusted': False, 'merkleValid': False,
+            'signatureChecked': False, 'signatureValid': None, 'artifactsValid': False,
+            'checkedArtifacts': 0, 'receipt': None, 'errors': [message], 'warnings': [],
+        }
+
+    has_key = public_key_or_secret is not None
+    has_algorithm = expected_algorithm is not None
+    if has_key != has_algorithm or (has_key and (
+        not isinstance(public_key_or_secret, str) or not public_key_or_secret
+        or expected_algorithm not in ('HMAC-SHA256', 'Ed25519')
+    )):
+        return invalid_context('A non-empty verification key and explicit expectedAlgorithm must be supplied together')
     envelope = validate_receipt_envelope(receipt)
     if not envelope["valid"]:
         return {
@@ -296,16 +324,20 @@ def verify_receipt(
             "receipt": None,
         }
 
+    if has_key and expected_algorithm != receipt['signature']['algorithm']:
+        return invalid_context('Receipt signature algorithm does not match expectedAlgorithm')
+
     errors: list[str] = []
     warnings: list[str] = []
     cwd = cwd or os.getcwd()
     canonical_profile, merkle_profile = _profiles(receipt["version"])
-    expected_raw_leaves = _receipt_leaves(
-        receipt["task"],
-        receipt["environment"],
-        receipt["artifacts"],
-        receipt["version"],
-    )
+    try:
+        canonical_hash(receipt['metadata'], profile=canonical_profile)
+        expected_raw_leaves = _receipt_leaves(
+            receipt['task'], receipt['environment'], receipt['artifacts'], receipt['version']
+        )
+    except (TypeError, ValueError, OverflowError, RecursionError, UnicodeError):
+        return invalid_context('Receipt contains values outside its canonical JSON profile')
     calculated_tree = MerkleTree(
         expected_raw_leaves, is_pre_hashed=True, profile=merkle_profile
     )
@@ -349,14 +381,14 @@ def verify_receipt(
                     f"Artifact missing on disk: '{artifact['path']}' ({error})"
                 )
 
-    signature_checked = public_key_or_secret is not None
+    signature_checked = has_key
     signature_valid: bool | None = None
     if signature_checked:
         signature_valid = ProofSigner.verify_signature(
             _signing_payload(receipt, receipt["signature"]),
             receipt["signature"]["value"],
             public_key_or_secret,
-            receipt["signature"]["algorithm"],
+            expected_algorithm,
             canonical_profile,
         )
         if not signature_valid:
@@ -367,6 +399,9 @@ def verify_receipt(
         warnings.append(
             "Signature was not cryptographically verified (no public key or secret provided)"
         )
+
+    if receipt['version'] == LEGACY_RECEIPT_VERSION:
+        warnings.append('Legacy v1 authenticates artifact digests only, not artifact path/size/mimeType or artifact count, metadata, or signature identity fields')
 
     valid = not errors
     return {

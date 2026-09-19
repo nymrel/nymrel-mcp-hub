@@ -76,7 +76,7 @@ function isNonEmptyString(value: unknown): boolean {
 }
 
 function isNonNegativeInteger(value: unknown): boolean {
-  return typeof value === 'number' && Number.isInteger(value) && value >= 0;
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
 }
 
 function renderValue(value: unknown): string {
@@ -356,7 +356,15 @@ export function validateReceiptEnvelope(input: unknown): ReceiptEnvelopeValidati
     }
     requireNonEmptyString(signature, 'keyId', 'signature.keyId');
     requireNonEmptyString(signature, 'signerIdentity', 'signature.signerIdentity');
-    requireNonEmptyString(signature, 'value', 'signature.value');
+    const signatureValueValid = requireNonEmptyString(signature, 'value', 'signature.value');
+    if (signatureValueValid && ['HMAC-SHA256', 'Ed25519'].includes(signature['algorithm'] as string)) {
+      const length = signature['algorithm'] === 'HMAC-SHA256' ? 64 : 128;
+      const value = signature['value'] as string;
+      if (value.length !== length || !/^[0-9a-fA-F]+$/.test(value)) {
+        push(EnvelopeErrorCode.FIELD_TYPE_INVALID, 'signature.value',
+          "Field 'signature.value' encoding must match the declared algorithm.");
+      }
+    }
 
     if (!('timestamp' in signature)) {
       push(

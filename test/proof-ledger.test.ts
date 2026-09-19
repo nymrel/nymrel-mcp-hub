@@ -26,7 +26,7 @@ for (const row of cases) {
     assert.equal(result.verified, row.trusted);
     assert.equal(Boolean(response.isError), !row.valid);
     if (row.canonicalParity) {
-      const canonical = await verifyReceipt(row.args.receipt, { publicKeyOrSecret: row.args.publicKeyOrSecret });
+      const canonical = await verifyReceipt(row.args.receipt, row.args.publicKeyOrSecret === undefined ? {} : { publicKeyOrSecret: row.args.publicKeyOrSecret, expectedAlgorithm: row.args.expectedAlgorithm });
       for (const [key, value] of Object.entries(canonical)) {
         assert.deepEqual(key === 'warnings' ? result.warnings.slice(0, canonical.warnings.length) : result[key], value, key);
       }
@@ -71,7 +71,7 @@ test('creation fails closed without supplied key or with invalid options', async
 
 test('vendored core and fixtures match reviewed upstream source digests', () => {
   const manifest = readJson('docs/proof-ledger/SOURCE.json');
-  assert.equal(manifest.revision, 'e149d4448072b1931da25acd27f7d26ef255bbd2');
+  assert.equal(manifest.revision, '09a49a0e66d9443bff979f4d77cf7c0310ef0d8f');
   for (const entry of manifest.files) {
     const source = readFileSync(new URL(entry.destination, root), 'utf8').replace(/\r\n/g, '\n');
     assert.equal(createHash('sha256').update(source).digest('hex'), entry.sha256, entry.destination);
@@ -82,6 +82,16 @@ test('schemas require signing material and expose only explicit verification key
   assert(proofLedgerToolDefinition.inputSchema.required?.includes('signingKey'));
   assert('publicKeyOrSecret' in proofVerifyToolDefinition.inputSchema.properties);
   assert.equal(proofVerifyToolDefinition.inputSchema.additionalProperties, false);
+});
+
+test('creation rejects the same Unicode-only blank text in both runtimes', async () => {
+  const base = { action: 'test', agentId: 'fixture', signingKey: 'synthetic-secret', algorithm: 'HMAC-SHA256', payload: {} };
+  for (const value of ['\u001f', '\u0085', '\ufeff']) {
+    for (const field of ['action', 'agentId', 'signingKey', 'keyId']) {
+      assert.equal((await executeProofLedger({ ...base, [field]: value })).isError, true);
+    }
+  }
+  assert.equal((await executeProofLedger({ ...base, action: '\u0085test\ufeff' })).isError, undefined);
 });
 
 test('Ed25519 public material cannot authenticate an attacker HMAC receipt', async () => {

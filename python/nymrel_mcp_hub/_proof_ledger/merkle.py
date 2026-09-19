@@ -119,6 +119,7 @@ class MerkleTree:
     def verify_proof(
         leaf_hash: str, proof: list[dict[str, str]], expected_root: str
     ) -> bool:
+        """Check a supplied hash path, not leaf data, index, size or root provenance."""
         try:
             _require_hash(leaf_hash, "Leaf hash")
             _require_hash(expected_root, "Expected root")

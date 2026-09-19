@@ -1,5 +1,5 @@
 /** Thin MCP adapter over the pinned canonical Protocol v2 implementation. */
-import { validateProofInput } from './proofInput.js';
+import { validateProofInput, isNonBlankProofText } from './proofInput.js';
 import { createReceipt } from '../vendor/proof-ledger/receipt.js';
 import { MCPToolDefinition, ToolExecutionResult } from '../types/index.js';
 
@@ -29,10 +29,10 @@ export async function executeProofLedger(args: unknown): Promise<ToolExecutionRe
     const allowed = new Set(['action', 'agentId', 'payload', 'signingKey', 'algorithm', 'keyId', 'prevProofHash']);
     if (Object.keys(a).some(k => !allowed.has(k))) throw new Error();
     for (const key of ['action', 'agentId', 'signingKey']) {
-      if (typeof a[key] !== 'string' || !(a[key] as string).trim()) throw new Error();
+      if (!isNonBlankProofText(a[key])) throw new Error();
     }
     if (!a.payload || typeof a.payload !== 'object' || Array.isArray(a.payload)) throw new Error();
-    if ('keyId' in a && (typeof a.keyId !== 'string' || !a.keyId.trim())) throw new Error();
+    if ('keyId' in a && !isNonBlankProofText(a.keyId)) throw new Error();
     if ('prevProofHash' in a && (typeof a.prevProofHash !== 'string' || a.prevProofHash.length !== 64 || !/^[0-9a-fA-F]+$/.test(a.prevProofHash))) throw new Error();
     if (a.algorithm !== 'HMAC-SHA256' && a.algorithm !== 'Ed25519') throw new Error();
     if (a.algorithm === 'Ed25519' && ((a.signingKey as string).length !== 64 || !/^[0-9a-fA-F]+$/.test(a.signingKey as string))) throw new Error();
