@@ -1,5 +1,5 @@
 {
-  "reason": "Nine unchanged fixed-argument Git-context findings moved by one line after upstream added ntpath. Both MCP creation adapters explicitly disable Git; upstream now also defaults it off. These calls are not reachable from MCP input. Exact code/site/type/severity comparison verified before updating line coordinates; no new finding accepted.",
+  "reason": "Nine unchanged fixed-argument Git-context findings moved by one line after upstream added ntpath. Both MCP creation adapters explicitly disable Git; upstream now also defaults it off. These calls are not reachable from MCP input. Exact code/site/type/severity comparison verified before updating line coordinates; no new finding accepted. No exception for other code or new/changed call sites.",
   "findings": [
     {
       "code": "9 import re\n10 import subprocess\n11 from datetime import UTC, datetime\n",
