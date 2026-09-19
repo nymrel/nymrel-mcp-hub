@@ -85,6 +85,8 @@ export class ProofSigner {
     algorithm: SignatureAlgorithm = 'HMAC-SHA256',
     canonicalizationProfile: CanonicalizationProfile = 'rfc8785'
   ): string {
+    if (typeof privateKeyOrSecret !== 'string' || privateKeyOrSecret.length === 0) throw new TypeError('Signing key must be a non-empty string');
+    canonicalize(privateKeyOrSecret); // Validate Unicode without changing the key bytes.
     const canonicalPayload = typeof payload === 'string'
       ? payload
       : canonicalize(payload, canonicalizationProfile);
@@ -106,6 +108,8 @@ export class ProofSigner {
     canonicalizationProfile: CanonicalizationProfile = 'rfc8785'
   ): boolean {
     try {
+      if (typeof publicKeyOrSecret !== 'string' || publicKeyOrSecret.length === 0) return false;
+      canonicalize(publicKeyOrSecret);
       const canonicalPayload = typeof payload === 'string'
         ? payload
         : canonicalize(payload, canonicalizationProfile);

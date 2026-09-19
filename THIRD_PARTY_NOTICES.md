@@ -2,15 +2,15 @@
 
 This package contains the canonical Nymrel Proof Ledger core under the MIT license.
 Source: https://github.com/nymrel/nymrel-proof-ledger
-Revision: `e149d4448072b1931da25acd27f7d26ef255bbd2`.
+Revision: `c0cd721c7435421e9203af0852da7596397b762d`.
 
 The five TypeScript and five Python core modules share the pinned upstream implementation.
-Eight modules are copied without changes. Each receipt module has a minimal local
-patch adding an optional Git-context opt-out, which the MCP adapters always use.
-Canonicalization, envelopes, hashing and signatures are unchanged.
+All ten modules are copied without changes. Upstream verification now requires
+an independently configured expected algorithm with each key; adapters forward
+their already-validated context. Git collection defaults off upstream and remains
+explicitly disabled by both MCP adapters. No local core patch is needed.
 The upstream license is included at `docs/proof-ledger/LICENSE`; source paths and
-SHA-256 digests of LF-normalized local source and original receipt modules are in
-`docs/proof-ledger/SOURCE.json`; the exact patch is `docs/proof-ledger/disable-git-context.patch`.
+SHA-256 digests of LF-normalized source are in `docs/proof-ledger/SOURCE.json`.
 The upstream Protocol v2 fixture is included in the source repository tests.
 
 Thin MCP adapters are maintained in this repository. They require Protocol v2,

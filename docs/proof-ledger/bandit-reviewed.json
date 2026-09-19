@@ -1,8 +1,8 @@
 {
-  "reason": "Pinned canonical source collects local Git context using fixed argv, shell=False, no caller-supplied cwd or command. Server operator PATH and working directory are trusted. No exception for other code or new/changed call sites.",
+  "reason": "Nine unchanged fixed-argument Git-context findings moved by one line after upstream added ntpath. Both MCP creation adapters explicitly disable Git; upstream now also defaults it off. These calls are not reachable from MCP input. Exact code/site/type/severity comparison verified before updating line coordinates; no new finding accepted. No exception for other code or new/changed call sites.",
   "findings": [
     {
-      "code": "8 import re\n9 import subprocess\n10 from datetime import UTC, datetime\n",
+      "code": "9 import re\n10 import subprocess\n11 from datetime import UTC, datetime\n",
       "col_offset": 0,
       "end_col_offset": 17,
       "filename": "python/nymrel_mcp_hub/_proof_ledger/receipt.py",
@@ -13,16 +13,16 @@
       },
       "issue_severity": "LOW",
       "issue_text": "Consider possible security implications associated with the subprocess module.",
-      "line_number": 9,
+      "line_number": 10,
       "line_range": [
-        9
+        10
       ],
       "more_info": "https://bandit.readthedocs.io/en/1.9.4/blacklists/blacklist_imports.html#b404-import-subprocess",
       "test_id": "B404",
       "test_name": "blacklist"
     },
     {
-      "code": "45         commit = (\n46             subprocess.check_output(\n47                 [\"git\", \"rev-parse\", \"HEAD\"], cwd=cwd, stderr=subprocess.DEVNULL\n48             )\n49             .decode(\"utf-8\")\n",
+      "code": "46         commit = (\n47             subprocess.check_output(\n48                 [\"git\", \"rev-parse\", \"HEAD\"], cwd=cwd, stderr=subprocess.DEVNULL\n49             )\n50             .decode(\"utf-8\")\n",
       "col_offset": 12,
       "end_col_offset": 13,
       "filename": "python/nymrel_mcp_hub/_proof_ledger/receipt.py",
@@ -33,18 +33,18 @@
       },
       "issue_severity": "LOW",
       "issue_text": "Starting a process with a partial executable path",
-      "line_number": 46,
+      "line_number": 47,
       "line_range": [
-        46,
         47,
-        48
+        48,
+        49
       ],
       "more_info": "https://bandit.readthedocs.io/en/1.9.4/plugins/b607_start_process_with_partial_path.html",
       "test_id": "B607",
       "test_name": "start_process_with_partial_path"
     },
     {
-      "code": "45         commit = (\n46             subprocess.check_output(\n47                 [\"git\", \"rev-parse\", \"HEAD\"], cwd=cwd, stderr=subprocess.DEVNULL\n48             )\n49             .decode(\"utf-8\")\n",
+      "code": "46         commit = (\n47             subprocess.check_output(\n48                 [\"git\", \"rev-parse\", \"HEAD\"], cwd=cwd, stderr=subprocess.DEVNULL\n49             )\n50             .decode(\"utf-8\")\n",
       "col_offset": 12,
       "end_col_offset": 13,
       "filename": "python/nymrel_mcp_hub/_proof_ledger/receipt.py",
@@ -55,18 +55,18 @@
       },
       "issue_severity": "LOW",
       "issue_text": "subprocess call - check for execution of untrusted input.",
-      "line_number": 46,
+      "line_number": 47,
       "line_range": [
-        46,
         47,
-        48
+        48,
+        49
       ],
       "more_info": "https://bandit.readthedocs.io/en/1.9.4/plugins/b603_subprocess_without_shell_equals_true.html",
       "test_id": "B603",
       "test_name": "subprocess_without_shell_equals_true"
     },
     {
-      "code": "52         branch = (\n53             subprocess.check_output(\n54                 [\"git\", \"rev-parse\", \"--abbrev-ref\", \"HEAD\"],\n55                 cwd=cwd,\n56                 stderr=subprocess.DEVNULL,\n57             )\n58             .decode(\"utf-8\")\n",
+      "code": "53         branch = (\n54             subprocess.check_output(\n55                 [\"git\", \"rev-parse\", \"--abbrev-ref\", \"HEAD\"],\n56                 cwd=cwd,\n57                 stderr=subprocess.DEVNULL,\n58             )\n59             .decode(\"utf-8\")\n",
       "col_offset": 12,
       "end_col_offset": 13,
       "filename": "python/nymrel_mcp_hub/_proof_ledger/receipt.py",
@@ -77,20 +77,20 @@
       },
       "issue_severity": "LOW",
       "issue_text": "Starting a process with a partial executable path",
-      "line_number": 53,
+      "line_number": 54,
       "line_range": [
-        53,
         54,
         55,
         56,
-        57
+        57,
+        58
       ],
       "more_info": "https://bandit.readthedocs.io/en/1.9.4/plugins/b607_start_process_with_partial_path.html",
       "test_id": "B607",
       "test_name": "start_process_with_partial_path"
     },
     {
-      "code": "52         branch = (\n53             subprocess.check_output(\n54                 [\"git\", \"rev-parse\", \"--abbrev-ref\", \"HEAD\"],\n55                 cwd=cwd,\n56                 stderr=subprocess.DEVNULL,\n57             )\n58             .decode(\"utf-8\")\n",
+      "code": "53         branch = (\n54             subprocess.check_output(\n55                 [\"git\", \"rev-parse\", \"--abbrev-ref\", \"HEAD\"],\n56                 cwd=cwd,\n57                 stderr=subprocess.DEVNULL,\n58             )\n59             .decode(\"utf-8\")\n",
       "col_offset": 12,
       "end_col_offset": 13,
       "filename": "python/nymrel_mcp_hub/_proof_ledger/receipt.py",
@@ -101,20 +101,20 @@
       },
       "issue_severity": "LOW",
       "issue_text": "subprocess call - check for execution of untrusted input.",
-      "line_number": 53,
+      "line_number": 54,
       "line_range": [
-        53,
         54,
         55,
         56,
-        57
+        57,
+        58
       ],
       "more_info": "https://bandit.readthedocs.io/en/1.9.4/plugins/b603_subprocess_without_shell_equals_true.html",
       "test_id": "B603",
       "test_name": "subprocess_without_shell_equals_true"
     },
     {
-      "code": "61         dirty = bool(\n62             subprocess.check_output(\n63                 [\"git\", \"status\", \"--porcelain\"], cwd=cwd, stderr=subprocess.DEVNULL\n64             )\n65             .decode(\"utf-8\")\n",
+      "code": "62         dirty = bool(\n63             subprocess.check_output(\n64                 [\"git\", \"status\", \"--porcelain\"], cwd=cwd, stderr=subprocess.DEVNULL\n65             )\n66             .decode(\"utf-8\")\n",
       "col_offset": 12,
       "end_col_offset": 13,
       "filename": "python/nymrel_mcp_hub/_proof_ledger/receipt.py",
@@ -125,18 +125,18 @@
       },
       "issue_severity": "LOW",
       "issue_text": "Starting a process with a partial executable path",
-      "line_number": 62,
+      "line_number": 63,
       "line_range": [
-        62,
         63,
-        64
+        64,
+        65
       ],
       "more_info": "https://bandit.readthedocs.io/en/1.9.4/plugins/b607_start_process_with_partial_path.html",
       "test_id": "B607",
       "test_name": "start_process_with_partial_path"
     },
     {
-      "code": "61         dirty = bool(\n62             subprocess.check_output(\n63                 [\"git\", \"status\", \"--porcelain\"], cwd=cwd, stderr=subprocess.DEVNULL\n64             )\n65             .decode(\"utf-8\")\n",
+      "code": "62         dirty = bool(\n63             subprocess.check_output(\n64                 [\"git\", \"status\", \"--porcelain\"], cwd=cwd, stderr=subprocess.DEVNULL\n65             )\n66             .decode(\"utf-8\")\n",
       "col_offset": 12,
       "end_col_offset": 13,
       "filename": "python/nymrel_mcp_hub/_proof_ledger/receipt.py",
@@ -147,18 +147,18 @@
       },
       "issue_severity": "LOW",
       "issue_text": "subprocess call - check for execution of untrusted input.",
-      "line_number": 62,
+      "line_number": 63,
       "line_range": [
-        62,
         63,
-        64
+        64,
+        65
       ],
       "more_info": "https://bandit.readthedocs.io/en/1.9.4/plugins/b603_subprocess_without_shell_equals_true.html",
       "test_id": "B603",
       "test_name": "subprocess_without_shell_equals_true"
     },
     {
-      "code": "70             remote = sanitize_git_remote(\n71                 subprocess.check_output(\n72                     [\"git\", \"config\", \"--get\", \"remote.origin.url\"],\n73                     cwd=cwd,\n74                     stderr=subprocess.DEVNULL,\n75                 ).decode(\"utf-8\")\n76             )\n",
+      "code": "71             remote = sanitize_git_remote(\n72                 subprocess.check_output(\n73                     [\"git\", \"config\", \"--get\", \"remote.origin.url\"],\n74                     cwd=cwd,\n75                     stderr=subprocess.DEVNULL,\n76                 ).decode(\"utf-8\")\n77             )\n",
       "col_offset": 16,
       "end_col_offset": 17,
       "filename": "python/nymrel_mcp_hub/_proof_ledger/receipt.py",
@@ -169,20 +169,20 @@
       },
       "issue_severity": "LOW",
       "issue_text": "Starting a process with a partial executable path",
-      "line_number": 71,
+      "line_number": 72,
       "line_range": [
-        71,
         72,
         73,
         74,
-        75
+        75,
+        76
       ],
       "more_info": "https://bandit.readthedocs.io/en/1.9.4/plugins/b607_start_process_with_partial_path.html",
       "test_id": "B607",
       "test_name": "start_process_with_partial_path"
     },
     {
-      "code": "70             remote = sanitize_git_remote(\n71                 subprocess.check_output(\n72                     [\"git\", \"config\", \"--get\", \"remote.origin.url\"],\n73                     cwd=cwd,\n74                     stderr=subprocess.DEVNULL,\n75                 ).decode(\"utf-8\")\n76             )\n",
+      "code": "71             remote = sanitize_git_remote(\n72                 subprocess.check_output(\n73                     [\"git\", \"config\", \"--get\", \"remote.origin.url\"],\n74                     cwd=cwd,\n75                     stderr=subprocess.DEVNULL,\n76                 ).decode(\"utf-8\")\n77             )\n",
       "col_offset": 16,
       "end_col_offset": 17,
       "filename": "python/nymrel_mcp_hub/_proof_ledger/receipt.py",
@@ -193,13 +193,13 @@
       },
       "issue_severity": "LOW",
       "issue_text": "subprocess call - check for execution of untrusted input.",
-      "line_number": 71,
+      "line_number": 72,
       "line_range": [
-        71,
         72,
         73,
         74,
-        75
+        75,
+        76
       ],
       "more_info": "https://bandit.readthedocs.io/en/1.9.4/plugins/b603_subprocess_without_shell_equals_true.html",
       "test_id": "B603",

@@ -9,6 +9,10 @@ from ._proof_ledger.canonical import canonicalize
 from ._proof_ledger.receipt import create_receipt, verify_receipt
 
 
+def _non_blank_text(value):
+    return isinstance(value, str) and bool(re.search(r'[^\u0009-\u000d\u001c-\u0020\u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]', value))
+
+
 def _validate_input(value):
     pending = [(value, 0)]
     count = 0
@@ -43,11 +47,11 @@ def proof_ledger(args: Any) -> dict[str, Any]:
         }:
             raise ValueError()
         for key in ("action", "agentId", "signingKey"):
-            if not isinstance(args.get(key), str) or not args[key].strip():
+            if not _non_blank_text(args.get(key)):
                 raise ValueError()
         if not isinstance(args.get("payload"), dict):
             raise ValueError()
-        if "keyId" in args and (not isinstance(args["keyId"], str) or not args["keyId"].strip()):
+        if "keyId" in args and not _non_blank_text(args['keyId']):
             raise ValueError()
         if "prevProofHash" in args and (
             not isinstance(args["prevProofHash"], str)
@@ -80,9 +84,7 @@ def proof_verify(args: Any) -> dict[str, Any]:
             raise ValueError()
         if ('publicKeyOrSecret' in args) != ('expectedAlgorithm' in args):
             raise ValueError()
-        if "publicKeyOrSecret" in args and (
-            not isinstance(args["publicKeyOrSecret"], str) or not args["publicKeyOrSecret"].strip()
-        ):
+        if "publicKeyOrSecret" in args and not _non_blank_text(args['publicKeyOrSecret']):
             raise ValueError()
         receipt = args.get("receipt")
         if not isinstance(receipt, dict) or receipt.get("version") != "2.0.0":
@@ -112,7 +114,7 @@ def proof_verify(args: Any) -> dict[str, Any]:
         value = signature.get("value")
         if not length or not isinstance(value, str) or re.fullmatch(rf"[0-9a-fA-F]{{{length}}}", value) is None:
             raise ValueError()
-        result = verify_receipt(receipt, public_key_or_secret=args.get("publicKeyOrSecret"))
+        result = verify_receipt(receipt, public_key_or_secret=args.get("publicKeyOrSecret"), expected_algorithm=args.get('expectedAlgorithm'))
         if result['valid'] and any(set(record) - set(allowed) for record, allowed in [
             (receipt, ['protocol', 'version', 'proofId', 'timestamp', 'parentOrganization', 'task', 'environment', 'artifacts', 'merkle', 'signature', 'metadata']),
             (receipt['signature'], ['algorithm', 'keyId', 'signerIdentity', 'value', 'timestamp']),

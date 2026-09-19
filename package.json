@@ -40,8 +40,7 @@
     "llms.txt",
     "THIRD_PARTY_NOTICES.md",
     "docs/proof-ledger/LICENSE",
-    "docs/proof-ledger/SOURCE.json",
-    "docs/proof-ledger/disable-git-context.patch"
+    "docs/proof-ledger/SOURCE.json"
   ],
   "scripts": {
     "build": "tsc",

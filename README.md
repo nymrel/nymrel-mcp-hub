@@ -178,9 +178,10 @@ Unknown tool arguments fail instead of being silently ignored. Extra envelope
 fields follow the upstream forward-compatibility contract and may be outside
 the signature; do not use unrecognized fields as authenticated claims.
 
-The canonical core is vendored at a pinned commit, with a minimal Git-context
-opt-out patch, because it is not
+The canonical core is vendored verbatim at a pinned commit, because it is not
 available as a published dependency. See [source and license provenance](./THIRD_PARTY_NOTICES.md).
+Its verification API also binds the independently configured key algorithm.
+Git collection is off by default upstream and explicitly disabled by these adapters.
 Both language suites run the same adversarial fixtures; after building Node and
 installing Python, run `python tests/proof_cross_runtime.py` for schema equality
 and bidirectional HMAC/Ed25519 receipt verification.

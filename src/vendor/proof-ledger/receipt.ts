@@ -75,6 +75,7 @@ export interface CreateReceiptOptions {
   metadata?: Record<string, unknown>;
   cwd?: string;
   includeHostname?: boolean;
+  /** Opt in only for a trusted working directory and Git installation. */
   includeGitContext?: boolean;
 }
 
@@ -91,11 +92,13 @@ export interface VerificationResult {
   receipt: ProofReceipt | null;
 }
 
-export interface VerifyReceiptOptions {
-  publicKeyOrSecret?: string;
+export type VerifyReceiptOptions = {
   checkFilesOnDisk?: boolean;
   cwd?: string;
-}
+} & (
+  | { publicKeyOrSecret?: undefined; expectedAlgorithm?: undefined }
+  | { publicKeyOrSecret: string; expectedAlgorithm: SignatureAlgorithm }
+);
 
 export function sanitizeGitRemote(remote: string): string | undefined {
   const trimmed = remote.trim();
@@ -228,7 +231,7 @@ export async function createReceipt(options: CreateReceiptOptions): Promise<Proo
     artifacts.push(item.mimeType === undefined ? artifact : { ...artifact, mimeType: item.mimeType });
   }
 
-  const git = options.includeGitContext === false ? undefined : getGitContext(cwd);
+  const git = options.includeGitContext === true ? getGitContext(cwd) : undefined;
   const environment: ProofEnvironment = {
     platform: os.platform(),
     arch: os.arch(),
@@ -293,9 +296,14 @@ export async function createReceipt(options: CreateReceiptOptions): Promise<Proo
 }
 
 async function artifactPathWithin(cwd: string, artifactPath: string): Promise<string | undefined> {
+  // Reject network/drive paths and lexical escapes before any filesystem lookup.
+  if (path.posix.isAbsolute(artifactPath) || path.win32.isAbsolute(artifactPath) || /^[A-Za-z]:/.test(artifactPath)) return undefined;
   const unresolvedRoot = path.resolve(cwd);
+  const portablePath = artifactPath.replace(/\\/g, '/');
+  const lexicalRelative = path.relative(unresolvedRoot, path.resolve(unresolvedRoot, portablePath));
+  if (lexicalRelative === '..' || lexicalRelative.startsWith(`..${path.sep}`) || path.isAbsolute(lexicalRelative)) return undefined;
   const root = await fs.realpath(unresolvedRoot).catch(() => unresolvedRoot);
-  const unresolvedCandidate = path.resolve(root, artifactPath);
+  const unresolvedCandidate = path.resolve(root, portablePath);
   const candidate = await fs.realpath(unresolvedCandidate).catch(() => unresolvedCandidate);
   const relative = path.relative(root, candidate);
   if (relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative))) return candidate;
@@ -306,6 +314,22 @@ export async function verifyReceipt(
   receiptInput: unknown,
   options: VerifyReceiptOptions = {}
 ): Promise<VerificationResult> {
+  const invalidContext = (message: string): VerificationResult => ({
+    valid: false, trusted: false, merkleValid: false, signatureChecked: false,
+    signatureValid: null, artifactsValid: false, checkedArtifacts: 0, receipt: null,
+    errors: [message], warnings: [],
+  });
+  if (!options || typeof options !== 'object' || Array.isArray(options)) {
+    return invalidContext('Verification options must be an object');
+  }
+  const hasKey = options.publicKeyOrSecret != null;
+  const hasAlgorithm = options.expectedAlgorithm != null;
+  if (hasKey !== hasAlgorithm || (hasKey && (
+    typeof options.publicKeyOrSecret !== 'string' || options.publicKeyOrSecret.length === 0 ||
+    !['HMAC-SHA256', 'Ed25519'].includes(options.expectedAlgorithm as string)
+  ))) {
+    return invalidContext('A non-empty verification key and explicit expectedAlgorithm must be supplied together');
+  }
   const envelope = validateReceiptEnvelope(receiptInput);
   if (!envelope.valid) {
     return {
@@ -325,16 +349,21 @@ export async function verifyReceipt(
   }
 
   const receipt = receiptInput as ProofReceipt;
+  if (hasKey && options.expectedAlgorithm !== receipt.signature.algorithm) {
+    return invalidContext('Receipt signature algorithm does not match expectedAlgorithm');
+  }
   const errors: string[] = [];
   const warnings: string[] = [];
   const cwd = options.cwd ?? process.cwd();
   const profiles = profilesFor(receipt.version);
-  const expectedLeaves = receiptLeaves(
-    receipt.task,
-    receipt.environment,
-    receipt.artifacts,
-    receipt.version
-  );
+  let expectedLeaves: string[];
+  try {
+    // Metadata is a signed v2 field even when this caller asks only for integrity.
+    canonicalHash(receipt.metadata, 'sha256', profiles.canonical);
+    expectedLeaves = receiptLeaves(receipt.task, receipt.environment, receipt.artifacts, receipt.version);
+  } catch {
+    return invalidContext('Receipt contains values outside its canonical JSON profile');
+  }
   const calculatedTree = new MerkleTree(expectedLeaves, {
     isPreHashed: true,
     profile: profiles.merkle,
@@ -382,19 +411,23 @@ export async function verifyReceipt(
     }
   }
 
-  const signatureChecked = options.publicKeyOrSecret !== undefined;
+  const signatureChecked = hasKey;
   let signatureValid: boolean | null = null;
   if (signatureChecked) {
     signatureValid = ProofSigner.verifySignature(
       signingPayload(receipt, receipt.signature),
       receipt.signature.value,
       options.publicKeyOrSecret as string,
-      receipt.signature.algorithm,
+      options.expectedAlgorithm as SignatureAlgorithm,
       profiles.canonical
     );
     if (!signatureValid) errors.push('Cryptographic signature verification failed with provided key');
   } else {
     warnings.push('Signature was not cryptographically verified (no public key or secret provided)');
+  }
+
+  if (receipt.version === LEGACY_RECEIPT_VERSION) {
+    warnings.push('Legacy v1 authenticates artifact digests only, not artifact path/size/mimeType or artifact count, metadata, or signature identity fields');
   }
 
   const valid = errors.length === 0;

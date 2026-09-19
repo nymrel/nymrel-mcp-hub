@@ -46,7 +46,7 @@ HEX_64_PATTERN = re.compile(r"^[0-9a-fA-F]{64}$")
 # accept/reject set is deterministic cross-runtime (locale-dependent date
 # parsers are deliberately avoided).
 RFC3339_PATTERN = re.compile(
-    r"^\d{4}-\d{2}-\d{2}[Tt]\d{2}:\d{2}:\d{2}(\.\d+)?([Zz]|[+-]\d{2}:\d{2})$"
+    r"^[0-9]{4}-[0-9]{2}-[0-9]{2}[Tt][0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?([Zz]|[+-][0-9]{2}:[0-9]{2})$"
 )
 
 
@@ -61,7 +61,11 @@ def _is_non_empty_string(value: Any) -> bool:
 def _is_non_negative_integer(value: Any) -> bool:
     # bool is a subclass of int in Python; reject it explicitly so JSON
     # true/false never passes as sizeBytes.
-    return isinstance(value, int) and not isinstance(value, bool) and value >= 0
+    return (
+        isinstance(value, (int, float)) and not isinstance(value, bool)
+        and 0 <= value <= 9007199254740991
+        and (isinstance(value, int) or value.is_integer())
+    )
 
 
 def _render_value(value: Any) -> str:
@@ -168,7 +172,7 @@ def validate_receipt_envelope(receipt: Any) -> dict[str, Any]:
             "timestamp",
             "Field 'timestamp' must be a non-empty string.",
         )
-    elif RFC3339_PATTERN.match(receipt["timestamp"]) is None:
+    elif RFC3339_PATTERN.fullmatch(receipt["timestamp"]) is None:
         push(
             EnvelopeErrorCode.TIMESTAMP_MALFORMED,
             "timestamp",
@@ -242,7 +246,7 @@ def validate_receipt_envelope(receipt: Any) -> dict[str, Any]:
                 )
             elif (
                 not isinstance(item["sha256"], str)
-                or HEX_64_PATTERN.match(item["sha256"]) is None
+                or HEX_64_PATTERN.fullmatch(item["sha256"]) is None
             ):
                 push(
                     EnvelopeErrorCode.HASH_MALFORMED,
@@ -312,7 +316,7 @@ def validate_receipt_envelope(receipt: Any) -> dict[str, Any]:
             )
         else:
             for index, leaf in enumerate(merkle["leaves"]):
-                if not isinstance(leaf, str) or HEX_64_PATTERN.match(leaf) is None:
+                if not isinstance(leaf, str) or HEX_64_PATTERN.fullmatch(leaf) is None:
                     push(
                         EnvelopeErrorCode.HASH_MALFORMED,
                         f"merkle.leaves[{index}]",
@@ -327,7 +331,7 @@ def validate_receipt_envelope(receipt: Any) -> dict[str, Any]:
             )
         elif (
             not isinstance(merkle["root"], str)
-            or HEX_64_PATTERN.match(merkle["root"]) is None
+            or HEX_64_PATTERN.fullmatch(merkle["root"]) is None
         ):
             push(
                 EnvelopeErrorCode.HASH_MALFORMED,
@@ -366,7 +370,12 @@ def validate_receipt_envelope(receipt: Any) -> dict[str, Any]:
         require_non_empty_string(
             signature, "signerIdentity", "signature.signerIdentity"
         )
-        require_non_empty_string(signature, "value", "signature.value")
+        signature_value_valid = require_non_empty_string(signature, "value", "signature.value")
+        if signature_value_valid and signature.get('algorithm') in ('HMAC-SHA256', 'Ed25519'):
+            length = 64 if signature['algorithm'] == 'HMAC-SHA256' else 128
+            if re.fullmatch(rf'[0-9a-fA-F]{{{length}}}', signature['value']) is None:
+                push(EnvelopeErrorCode.FIELD_TYPE_INVALID, 'signature.value',
+                     "Field 'signature.value' encoding must match the declared algorithm.")
 
         if "timestamp" not in signature:
             push(
@@ -375,7 +384,7 @@ def validate_receipt_envelope(receipt: Any) -> dict[str, Any]:
                 "Required field 'signature.timestamp' is missing.",
             )
         elif not isinstance(signature["timestamp"], str) or (
-            RFC3339_PATTERN.match(signature["timestamp"]) is None
+            RFC3339_PATTERN.fullmatch(signature["timestamp"]) is None
         ):
             push(
                 EnvelopeErrorCode.TIMESTAMP_MALFORMED,
