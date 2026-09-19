@@ -3,7 +3,7 @@
 [![Registry status](https://img.shields.io/badge/registry%20publication-unverified-lightgrey.svg?style=flat-square)](#distribution-status)
 [![License: MIT](https://img.shields.io/badge/License-MIT-A8541F.svg?style=flat-square)](./LICENSE)
 [![MCP Spec](https://img.shields.io/badge/MCP-2026--07--28-2A332E.svg?style=flat-square)](https://modelcontextprotocol.io/specification/2026-07-28)
-[![Runtime dependencies](https://img.shields.io/badge/runtime%20dependencies-0-success.svg?style=flat-square)](#validation)
+[![Node runtime dependencies](https://img.shields.io/badge/Node%20runtime%20dependencies-0-success.svg?style=flat-square)](#validation)
 [![Engines](https://img.shields.io/badge/engines-TypeScript%20%2B%20Python-FAF8F2.svg?style=flat-square)](#run-from-source)
 
 A dual-engine Model Context Protocol server exposing 14 Nymrel tools, 3 resources, and 3 prompt templates through TypeScript/Node.js and Python stdio entry points.
@@ -116,7 +116,7 @@ The hub exposes Nymrel-oriented tools through one MCP surface. Repository names 
 | 2 | `nymrel_surety_guard` | `nymrel/agent-action-surety` | Destructive-command and path-safety inspection. |
 | 3 | `nymrel_swarm_claim` | `nymrel/nymrel-swarm-protocol` | Lease coordination and fencing generations. |
 | 4 | `nymrel_machine_trust` | `nymrel/nymrel-machine-trust` | Machine-readable organization and trust metadata. |
-| 5 | `nymrel_proof_ledger` | `nymrel/nymrel-proof-ledger` | Merkle-based execution attestation and proof generation. |
+| 5 | `nymrel_proof_ledger` | `nymrel/nymrel-proof-ledger` | Canonical signed claim receipt generation. |
 | 6 | `nymrel_crawler_mesh` | `nymrel/nymrel-crawler-mesh` | Web-content extraction and Markdown conversion. |
 | 7 | `nymrel_beacon_ping` | `nymrel/agent-beacon` | Agent liveness and heartbeat reporting. |
 | 8 | `nymrel_headless_quote` | `nymrel/headless-quote-layer` | Deterministic quote calculation. |
@@ -139,6 +139,57 @@ The hub exposes Nymrel-oriented tools through one MCP surface. Repository names 
 - `secure-agent-command` — command-safety review using Nymrel guardrail tools.
 - `init-two-seat-mission` — two-seat Command Studio setup.
 
+## Proof receipts and authentication
+
+`nymrel_proof_ledger` requires `action`, `agentId`, an object `payload`, and a
+caller-supplied `signingKey` and explicit `algorithm: "HMAC-SHA256"` or
+`"Ed25519"`. Ed25519 accepts a raw 32-byte hex private key; PEM is not accepted
+by these portable adapters. Use a cryptographically random HMAC secret of at
+least 32 bytes. The receipt is
+canonical `nymrel-proof-ledger` Protocol `2.0.0`, using RFC 8785 JSON and RFC 6962
+Merkle hashing. There is no built-in secret or identity registry. MCP clients may
+log request arguments, so use a client and transport appropriate for your signing
+material. Prefer Ed25519 public keys for verification-only clients.
+
+Call `nymrel_proof_verify` with `receipt`. To authenticate, supply both
+`publicKeyOrSecret` and `expectedAlgorithm` (`HMAC-SHA256` or `Ed25519`) from
+trusted key configuration. Never derive the expected algorithm from a receipt;
+this prevents treating a known public key as an HMAC secret.
+
+| Result | Meaning |
+| --- | --- |
+| `valid: true, trusted: false` | No key supplied: envelope and Merkle consistency only. Signature, identity, metadata/payload and previous-hash reference are **not authenticated**. |
+| `valid: true, trusted: true` | The signature matches the supplied HMAC secret or Ed25519 public key. The caller must obtain that key independently from a trusted source. |
+| `valid: false, trusted: false` | Malformed/unsupported input, Merkle mismatch, or signature failure with the supplied key. |
+
+The compatibility field `verified` aliases `trusted`. Verdicts are
+`INTEGRITY_ONLY`, `SIGNATURE_AUTHENTICATED`, or `INVALID`; no tool claims a
+receipt is universally tamper-free. `agentId` becomes the task runner and signed
+signer label, not a verified real-world identity. `payload` and optional
+`prevProofHash` are signed metadata; chain continuity and execution are not
+checked. Artifact files are never read and Git commands are never executed by
+these MCP adapters. Environment fields describe the server runtime only;
+`ATTESTED` and the canonical default `exitCode: 0` are claims, not execution evidence.
+
+Missing signatures fail. Old simulated hub receipts and Protocol v1 receipts
+are rejected; v1 does not authenticate all v2 identity and metadata fields.
+Callers must migrate to canonical v2 receipts and supply their own signing key.
+Unknown tool arguments fail instead of being silently ignored. Extra envelope
+fields follow the upstream forward-compatibility contract and may be outside
+the signature; do not use unrecognized fields as authenticated claims.
+
+The canonical core is vendored at a pinned commit, with a minimal Git-context
+opt-out patch, because it is not
+available as a published dependency. See [source and license provenance](./THIRD_PARTY_NOTICES.md).
+Both language suites run the same adversarial fixtures; after building Node and
+installing Python, run `python tests/proof_cross_runtime.py` for schema equality
+and bidirectional HMAC/Ed25519 receipt verification.
+
+Inputs are limited to 64 nested levels, 10,000 values, and 1 MiB of canonical
+JSON. Numbers must be finite and within JavaScript's safe integer magnitude
+(`±9007199254740991`); strings must contain valid Unicode scalar values. These
+limits keep the two runtimes interoperable. Proofs have no freshness/replay gate.
+
 ## Security boundary
 
 The hub exposes application-level inspection, proof, lease, and credential-pattern tools. These tools do not replace operating-system isolation, network enforcement, independent authorization, credential rotation, or sandboxing. Consumers must apply least privilege and validate tool results at the actual enforcement point.
@@ -147,7 +198,7 @@ See [SECURITY.md](./SECURITY.md) for responsible disclosure and supply-chain con
 
 ## Validation
 
-The repository pins npm `12.0.2` and targets Node.js 22/24 plus Python 3.11-3.14. Both package manifests declare no runtime dependencies.
+The repository pins npm `12.0.2` and targets Node.js 22/24 plus Python 3.11-3.14. The Node package has no runtime dependencies. Python uses `cryptography>=50.0.1,<51` for Ed25519 and `rfc8785==0.1.4` for canonical JSON, matching the pinned Proof Ledger implementation.
 
 ### Node.js
 
@@ -168,13 +219,15 @@ python -m pip install --requirement requirements-dev.txt
 python -m pip install --editable .
 python -m pip check
 python -m ruff check python tests
-python -m bandit -q -r python/nymrel_mcp_hub
+python scripts/check-bandit.py
 python -m pytest -q
 python -m pip uninstall --yes nymrel-mcp-hub
 python -m pip_audit --strict
 python -m build --outdir dist-py
 python -m twine check dist-py/*
 ```
+
+The Bandit gate scans all runtime sources and recognizes only nine exact reviewed low-severity findings for fixed-argument Git context collection in the pinned vendor source. Changed or additional findings fail; see `docs/proof-ledger/bandit-reviewed.json`.
 
 Local validation proves a source candidate; it does not prove a hosted check or registry publication.
 

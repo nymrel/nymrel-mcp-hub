@@ -37,7 +37,11 @@
     "README.md",
     "LICENSE",
     "SECURITY.md",
-    "llms.txt"
+    "llms.txt",
+    "THIRD_PARTY_NOTICES.md",
+    "docs/proof-ledger/LICENSE",
+    "docs/proof-ledger/SOURCE.json",
+    "docs/proof-ledger/disable-git-context.patch"
   ],
   "scripts": {
     "build": "tsc",

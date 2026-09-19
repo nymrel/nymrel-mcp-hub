@@ -1,0 +1,14 @@
+--- src/core/receipt.ts
++++ src/vendor/proof-ledger/receipt.ts
+@@ -77,0 +78 @@
++  includeGitContext?: boolean;
+@@ -230 +231 @@
+-  const git = getGitContext(cwd);
++  const git = options.includeGitContext === false ? undefined : getGitContext(cwd);
+--- python/nymrel_proof_ledger/receipt.py
++++ python/nymrel_mcp_hub/_proof_ledger/receipt.py
+@@ -183,0 +184 @@
++    include_git_context: bool = True,
+@@ -203 +204 @@
+-    git = get_git_context(cwd)
++    git = get_git_context(cwd) if include_git_context else None

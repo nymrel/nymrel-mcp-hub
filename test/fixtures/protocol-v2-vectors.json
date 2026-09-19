@@ -1,0 +1,146 @@
+{
+  "canonical": {
+    "sample": {
+      "numbers": [
+        333333333.3333333,
+        1e+30,
+        4.5,
+        0.002,
+        1e-27
+      ],
+      "literals": [
+        null,
+        true,
+        false
+      ],
+      "unicode": {
+        "€": "euro",
+        "😀": "emoji",
+        "דּ": "hebrew"
+      }
+    },
+    "sampleCanonical": "{\"literals\":[null,true,false],\"numbers\":[333333333.3333333,1e+30,4.5,0.002,1e-27],\"unicode\":{\"€\":\"euro\",\"😀\":\"emoji\",\"דּ\":\"hebrew\"}}",
+    "numeric": {
+      "integerFloat": 1.0,
+      "negativeZero": -0.0,
+      "tiny": 1e-7
+    },
+    "numericCanonical": "{\"integerFloat\":1,\"negativeZero\":0,\"tiny\":1e-7}"
+  },
+  "merkle": {
+    "items": [
+      "a",
+      "b",
+      "c"
+    ],
+    "emptyRoot": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "leaves": [
+      "022a6979e6dab7aa5ae4c3e5e45f7e977112a7e63593820dbec1ec738a24f93c",
+      "57eb35615d47f34ec714cacdf5fd74608a5e8e102724e80b24b287c0c27b6a31",
+      "597fcb31282d34654c200d3418fca5705c648ebf326ec73d8ddef11841f876d8"
+    ],
+    "threeLeafRoot": "36642e73c2540ab121e3a6bf9545b0a24982cd830eb13d3cd19de3ce6c021ec1"
+  },
+  "ed25519": {
+    "secretKey": "9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60",
+    "publicKey": "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a",
+    "message": "",
+    "signature": "e5564300c360ac729086e2cc806e828a84877f1eb8e5d974d873e065224901555fb8821590a33bacc61e39701cf9b46bd25bf5f0595bbe24655141438e7a100b"
+  },
+  "protocolV2": {
+    "secret": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "receipt": {
+      "protocol": "nymrel-proof-ledger",
+      "version": "2.0.0",
+      "proofId": "proof-v2-fixture",
+      "timestamp": "2026-08-29T12:34:56.000Z",
+      "parentOrganization": "Nymrel",
+      "task": {
+        "name": "Protocol v2 fixture",
+        "runner": "fixture-runner",
+        "status": "SUCCESS",
+        "exitCode": 0,
+        "description": "Cross-runtime receipt vector"
+      },
+      "merkle": {
+        "algorithm": "RFC6962-SHA256",
+        "leaves": [
+          "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+          "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+          "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+        ],
+        "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+      },
+      "environment": {
+        "platform": "fixture",
+        "arch": "portable",
+        "runtime": "cross-runtime-v2"
+      },
+      "artifacts": [
+        {
+          "path": "fixture.txt",
+          "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+          "sizeBytes": 7,
+          "mimeType": "text/plain"
+        }
+      ],
+      "signature": {
+        "algorithm": "HMAC-SHA256",
+        "keyId": "fixture-v2-key",
+        "signerIdentity": "fixture@nymrel.invalid",
+        "value": "b9df34e2dab65318387da101efedada5b09c3f6ea7df66b2e1a3ccb2b5781c41",
+        "timestamp": "2026-08-29T12:34:56.000Z"
+      },
+      "metadata": {
+        "fixture": true
+      }
+    }
+  },
+  "legacyV1": {
+    "secret": "0000000000000000000000000000000000000000000000000000000000000000",
+    "receipt": {
+      "protocol": "nymrel-proof-ledger",
+      "version": "1.0.0",
+      "proofId": "proof-v1-fixture",
+      "timestamp": "2026-01-02T03:04:05.000Z",
+      "parentOrganization": "Nymrel",
+      "task": {
+        "name": "Legacy fixture task",
+        "description": "Frozen v1 compatibility vector",
+        "status": "SUCCESS",
+        "runner": "fixture-runner",
+        "exitCode": 0
+      },
+      "environment": {
+        "hostname": "fixture-host",
+        "platform": "linux",
+        "arch": "x64",
+        "runtime": "Node.js v20.0.0"
+      },
+      "artifacts": [
+        {
+          "path": "artifact.txt",
+          "sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+          "sizeBytes": 12
+        }
+      ],
+      "merkle": {
+        "root": "6fbd8195a404e0c7fe6bb660e9ca8b3d36fce720ce7656671d59ea427d9b5095",
+        "algorithm": "SHA-256",
+        "leaves": [
+          "b79530ea7c273dea4d745f106dddc200a9c990963ef88c260db0bd0172e607ef",
+          "ecc6ce34d34b85abae1495749b99f6d47965b38ee52e3aac40e9039183eb661c",
+          "4635e1fa62a599a7880a8d14a56f720a1d40f6e5448ab5a5e39bedc8bd87fa8e"
+        ]
+      },
+      "signature": {
+        "algorithm": "HMAC-SHA256",
+        "keyId": "fixture-key",
+        "signerIdentity": "fixture@nymrel.invalid",
+        "value": "00983c74fb796259de97d08c1b6de0ecde23a2a63d99a00d599ea606692112c8",
+        "timestamp": "2026-01-02T03:04:05.000Z"
+      },
+      "metadata": {}
+    }
+  }
+}

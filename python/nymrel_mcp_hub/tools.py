@@ -6,9 +6,10 @@ import hashlib
 import json
 import re
 import os
-import hmac
 from datetime import datetime, timezone
 from typing import Dict, Any, List
+
+from .proof_tools import proof_ledger, proof_verify
 
 ALL_TOOLS: List[Dict[str, Any]] = [
     {
@@ -65,20 +66,30 @@ ALL_TOOLS: List[Dict[str, Any]] = [
             }
         }
     },
-    {
-        "name": "nymrel_proof_ledger",
-        "description": "Generates RFC-6962 compliant SHA-256 Merkle tree execution attestations and audit receipts.",
-        "inputSchema": {
-            "type": "object",
-            "properties": {
-                "action": {"type": "string", "description": "Action name"},
-                "agentId": {"type": "string", "description": "Agent identifier"},
-                "payload": {"type": "object", "description": "Payload metadata"},
-                "prevProofHash": {"type": "string"}
-            },
-            "required": ["action", "agentId", "payload"]
-        }
-    },
+    {'name': 'nymrel_proof_ledger',
+     'description': 'Creates a canonical Protocol v2 receipt signed with caller-supplied HMAC-SHA256 '
+                    'or Ed25519 material. A receipt records a claim; it does not prove the action ran. '
+                    'Never uses a built-in trust key.',
+     'inputSchema': {'type': 'object',
+                     'additionalProperties': False,
+                     'properties': {'action': {'type': 'string', 'minLength': 1},
+                                    'agentId': {'type': 'string', 'minLength': 1},
+                                    'payload': {'type': 'object',
+                                                'description': 'JSON claim stored in signed metadata.'},
+                                    'signingKey': {'type': 'string',
+                                                   'minLength': 1,
+                                                   'description': 'Caller-supplied HMAC secret or '
+                                                                  'Ed25519 private key (raw 32-byte '
+                                                                  'hex). MCP requests may be logged by '
+                                                                  'your client.'},
+                                    'algorithm': {'type': 'string', 'enum': ['HMAC-SHA256', 'Ed25519']},
+                                    'keyId': {'type': 'string', 'minLength': 1},
+                                    'prevProofHash': {'type': 'string',
+                                                      'pattern': '^[0-9a-fA-F]{64}$',
+                                                      'description': 'Optional reference stored in '
+                                                                     'signed metadata; chain '
+                                                                     'continuity is not checked.'}},
+                     'required': ['action', 'agentId', 'payload', 'signingKey', 'algorithm']}},
     {
         "name": "nymrel_crawler_mesh",
         "description": "Clean web crawler & Markdown AST extractor optimized for LLM token efficiency.",
@@ -188,21 +199,39 @@ ALL_TOOLS: List[Dict[str, Any]] = [
             "required": ["fromAgent", "toAgent", "topic", "payload"]
         }
     },
-    {
-        "name": "nymrel_proof_verify",
-        "description": "Cryptographically verifies RFC-6962 Merkle tree execution receipts and digital signatures.",
-        "inputSchema": {
-            "type": "object",
-            "properties": {
-                "receipt": {"type": "object"}
-            },
-            "required": ["receipt"]
-        }
-    }
+    {'name': 'nymrel_proof_verify',
+     'description': 'Checks canonical Protocol v2 receipt structure and Merkle integrity. Without '
+                    'publicKeyOrSecret, valid receipts remain trusted:false. Authentication requires a '
+                    'matching independently trusted key and expectedAlgorithm. Unknown envelope '
+                    'extension fields may be unsigned. Does not verify execution or files on disk.',
+     'inputSchema': {'type': 'object',
+                     'additionalProperties': False,
+                     'dependentRequired': {'publicKeyOrSecret': ['expectedAlgorithm'],
+                                           'expectedAlgorithm': ['publicKeyOrSecret']},
+                     'properties': {'receipt': {'type': 'object'},
+                                    'publicKeyOrSecret': {'type': 'string',
+                                                          'minLength': 1,
+                                                          'description': 'Independently trusted HMAC '
+                                                                         'secret or Ed25519 public key '
+                                                                         '(raw 32-byte hex); never '
+                                                                         'inferred from receipt '
+                                                                         'identity labels.'},
+                                    'expectedAlgorithm': {'type': 'string',
+                                                          'enum': ['HMAC-SHA256', 'Ed25519'],
+                                                          'description': 'Required with a key. Choose '
+                                                                         'from trusted key '
+                                                                         'configuration, never from '
+                                                                         'the receipt.'}},
+                     'required': ['receipt']}}
 ]
 
 def dispatch_tool_call(name: str, args: Dict[str, Any]) -> Dict[str, Any]:
-    tool_key = name.replace("nymrel_", "")
+    if not isinstance(name, str):
+        return {"content": [{"type": "text", "text": "Unknown tool"}], "isError": True}
+    tool_key = name.removeprefix("nymrel_")
+    known = {tool['name'].removeprefix('nymrel_') for tool in ALL_TOOLS}
+    if tool_key not in known | {'agentic_ucp_scanner', 'agent_surety', 'swarm_protocol'}:
+        return {"content": [{"type": "text", "text": "Unknown tool"}], "isError": True}
     
     if tool_key in ("ucp_audit", "agentic_ucp_scanner"):
         target = args.get("url", "https://nymrel.com")
@@ -262,34 +291,10 @@ def dispatch_tool_call(name: str, args: Dict[str, Any]) -> Dict[str, Any]:
         return {"content": [{"type": "text", "text": json.dumps(res, indent=2)}]}
 
     if tool_key in ("proof_ledger", "nymrel_proof_ledger"):
-        payload = args.get("payload", {})
-        canonical = json.dumps(payload, sort_keys=True)
-        leaf = hashlib.sha256(b"\x00" + canonical.encode()).hexdigest()
-        prev = args.get("prevProofHash", hashlib.sha256(b"genesis").hexdigest())
-        root = hashlib.sha256(b"\x01" + bytes.fromhex(prev) + bytes.fromhex(leaf)).hexdigest()
-        receipt = {
-            "receiptId": f"rcpt-{leaf[:12]}",
-            "protocol": "RFC-6962-MERKLE-SHA256",
-            "action": args.get("action", "test"),
-            "agentId": args.get("agentId", "py-agent"),
-            "leafHash": leaf,
-            "prevProofHash": prev,
-            "merkleRoot": root,
-            "signature": hmac.new(b"nymrel-trust-root", root.encode(), hashlib.sha256).hexdigest()
-        }
-        return {"content": [{"type": "text", "text": json.dumps(receipt, indent=2)}]}
+        return proof_ledger(args)
 
     if tool_key in ("proof_verify", "nymrel_proof_verify"):
-        rcpt = args.get("receipt", {})
-        leaf = rcpt.get("leafHash", "")
-        prev = rcpt.get("prevProofHash", hashlib.sha256(b"genesis").hexdigest())
-        computed = hashlib.sha256(b"\x01" + bytes.fromhex(prev) + bytes.fromhex(leaf)).hexdigest()
-        valid = (computed.lower() == rcpt.get("merkleRoot", "").lower())
-        res = {
-            "verified": valid,
-            "verificationVerdict": "PROOF_VALID_AND_TAMPER_FREE" if valid else "PROOF_INVALID"
-        }
-        return {"content": [{"type": "text", "text": json.dumps(res, indent=2)}], "isError": not valid}
+        return proof_verify(args)
 
     # Fallback generic handler for other registered tools
     res = {

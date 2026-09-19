@@ -1,0 +1,3734 @@
+[
+  {
+    "name": "canonical HMAC without key",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "b9df34e2dab65318387da101efedada5b09c3f6ea7df66b2e1a3ccb2b5781c41",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      }
+    },
+    "valid": true,
+    "trusted": false,
+    "canonicalParity": true
+  },
+  {
+    "name": "canonical HMAC correct key",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "b9df34e2dab65318387da101efedada5b09c3f6ea7df66b2e1a3ccb2b5781c41",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      },
+      "publicKeyOrSecret": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "expectedAlgorithm": "HMAC-SHA256"
+    },
+    "valid": true,
+    "trusted": true,
+    "canonicalParity": true
+  },
+  {
+    "name": "wrong HMAC key",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "b9df34e2dab65318387da101efedada5b09c3f6ea7df66b2e1a3ccb2b5781c41",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      },
+      "publicKeyOrSecret": "wrong-test-key",
+      "expectedAlgorithm": "HMAC-SHA256"
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": true
+  },
+  {
+    "name": "invalid verification key None",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "b9df34e2dab65318387da101efedada5b09c3f6ea7df66b2e1a3ccb2b5781c41",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      },
+      "publicKeyOrSecret": null,
+      "expectedAlgorithm": "HMAC-SHA256"
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": false
+  },
+  {
+    "name": "invalid verification key ''",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "b9df34e2dab65318387da101efedada5b09c3f6ea7df66b2e1a3ccb2b5781c41",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      },
+      "publicKeyOrSecret": "",
+      "expectedAlgorithm": "HMAC-SHA256"
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": false
+  },
+  {
+    "name": "invalid verification key 42",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "b9df34e2dab65318387da101efedada5b09c3f6ea7df66b2e1a3ccb2b5781c41",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      },
+      "publicKeyOrSecret": 42,
+      "expectedAlgorithm": "HMAC-SHA256"
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": false
+  },
+  {
+    "name": "invalid verification key []",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "b9df34e2dab65318387da101efedada5b09c3f6ea7df66b2e1a3ccb2b5781c41",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      },
+      "publicKeyOrSecret": [],
+      "expectedAlgorithm": "HMAC-SHA256"
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": false
+  },
+  {
+    "name": "invalid verification key {}",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "b9df34e2dab65318387da101efedada5b09c3f6ea7df66b2e1a3ccb2b5781c41",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      },
+      "publicKeyOrSecret": {},
+      "expectedAlgorithm": "HMAC-SHA256"
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": false
+  },
+  {
+    "name": "unknown identityKey is not silently ignored",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "b9df34e2dab65318387da101efedada5b09c3f6ea7df66b2e1a3ccb2b5781c41",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      },
+      "identityKey": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": false
+  },
+  {
+    "name": "file-check opt-in is not exposed",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "b9df34e2dab65318387da101efedada5b09c3f6ea7df66b2e1a3ccb2b5781c41",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      },
+      "checkFilesOnDisk": true
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": false
+  },
+  {
+    "name": "malformed receipt None",
+    "args": {
+      "receipt": null
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": false
+  },
+  {
+    "name": "malformed receipt []",
+    "args": {
+      "receipt": []
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": false
+  },
+  {
+    "name": "malformed receipt {}",
+    "args": {
+      "receipt": {}
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": false
+  },
+  {
+    "name": "malformed receipt 'receipt'",
+    "args": {
+      "receipt": "receipt"
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": false
+  },
+  {
+    "name": "malformed receipt 1",
+    "args": {
+      "receipt": 1
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": false
+  },
+  {
+    "name": "missing protocol",
+    "args": {
+      "receipt": {
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "b9df34e2dab65318387da101efedada5b09c3f6ea7df66b2e1a3ccb2b5781c41",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      },
+      "publicKeyOrSecret": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "expectedAlgorithm": "HMAC-SHA256"
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": false
+  },
+  {
+    "name": "missing version",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "b9df34e2dab65318387da101efedada5b09c3f6ea7df66b2e1a3ccb2b5781c41",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      },
+      "publicKeyOrSecret": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "expectedAlgorithm": "HMAC-SHA256"
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": false
+  },
+  {
+    "name": "missing proofId",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "b9df34e2dab65318387da101efedada5b09c3f6ea7df66b2e1a3ccb2b5781c41",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      },
+      "publicKeyOrSecret": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "expectedAlgorithm": "HMAC-SHA256"
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": false
+  },
+  {
+    "name": "missing timestamp",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "b9df34e2dab65318387da101efedada5b09c3f6ea7df66b2e1a3ccb2b5781c41",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      },
+      "publicKeyOrSecret": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "expectedAlgorithm": "HMAC-SHA256"
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": false
+  },
+  {
+    "name": "missing parentOrganization",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "b9df34e2dab65318387da101efedada5b09c3f6ea7df66b2e1a3ccb2b5781c41",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      },
+      "publicKeyOrSecret": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "expectedAlgorithm": "HMAC-SHA256"
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": false
+  },
+  {
+    "name": "missing task",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "b9df34e2dab65318387da101efedada5b09c3f6ea7df66b2e1a3ccb2b5781c41",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      },
+      "publicKeyOrSecret": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "expectedAlgorithm": "HMAC-SHA256"
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": false
+  },
+  {
+    "name": "missing merkle",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "b9df34e2dab65318387da101efedada5b09c3f6ea7df66b2e1a3ccb2b5781c41",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      },
+      "publicKeyOrSecret": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "expectedAlgorithm": "HMAC-SHA256"
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": false
+  },
+  {
+    "name": "missing environment",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "b9df34e2dab65318387da101efedada5b09c3f6ea7df66b2e1a3ccb2b5781c41",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      },
+      "publicKeyOrSecret": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "expectedAlgorithm": "HMAC-SHA256"
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": false
+  },
+  {
+    "name": "missing artifacts",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "b9df34e2dab65318387da101efedada5b09c3f6ea7df66b2e1a3ccb2b5781c41",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      },
+      "publicKeyOrSecret": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "expectedAlgorithm": "HMAC-SHA256"
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": false
+  },
+  {
+    "name": "missing signature",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "metadata": {
+          "fixture": true
+        }
+      },
+      "publicKeyOrSecret": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "expectedAlgorithm": "HMAC-SHA256"
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": false
+  },
+  {
+    "name": "missing metadata",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "b9df34e2dab65318387da101efedada5b09c3f6ea7df66b2e1a3ccb2b5781c41",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        }
+      },
+      "publicKeyOrSecret": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "expectedAlgorithm": "HMAC-SHA256"
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": false
+  },
+  {
+    "name": "missing signature.algorithm",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "b9df34e2dab65318387da101efedada5b09c3f6ea7df66b2e1a3ccb2b5781c41",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      },
+      "publicKeyOrSecret": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "expectedAlgorithm": "HMAC-SHA256"
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": false
+  },
+  {
+    "name": "missing signature.keyId",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "b9df34e2dab65318387da101efedada5b09c3f6ea7df66b2e1a3ccb2b5781c41",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      },
+      "publicKeyOrSecret": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "expectedAlgorithm": "HMAC-SHA256"
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": false
+  },
+  {
+    "name": "missing signature.signerIdentity",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "value": "b9df34e2dab65318387da101efedada5b09c3f6ea7df66b2e1a3ccb2b5781c41",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      },
+      "publicKeyOrSecret": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "expectedAlgorithm": "HMAC-SHA256"
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": false
+  },
+  {
+    "name": "missing signature.value",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      },
+      "publicKeyOrSecret": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "expectedAlgorithm": "HMAC-SHA256"
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": false
+  },
+  {
+    "name": "missing signature.timestamp",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "b9df34e2dab65318387da101efedada5b09c3f6ea7df66b2e1a3ccb2b5781c41"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      },
+      "publicKeyOrSecret": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "expectedAlgorithm": "HMAC-SHA256"
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": false
+  },
+  {
+    "name": "malformed signature 'zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz'",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      }
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": false
+  },
+  {
+    "name": "malformed signature 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      }
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": false
+  },
+  {
+    "name": "malformed signature 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\n'",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      }
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": false
+  },
+  {
+    "name": "malformed signature ''",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      }
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": false
+  },
+  {
+    "name": "malformed signature None",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": null,
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      }
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": false
+  },
+  {
+    "name": "malformed signature {}",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": {},
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      }
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": false
+  },
+  {
+    "name": "malformed signature []",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": [],
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      }
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": false
+  },
+  {
+    "name": "malformed ['merkle', 'root']",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "ff"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "b9df34e2dab65318387da101efedada5b09c3f6ea7df66b2e1a3ccb2b5781c41",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      }
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": false
+  },
+  {
+    "name": "malformed ['merkle', 'root']",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "gggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "b9df34e2dab65318387da101efedada5b09c3f6ea7df66b2e1a3ccb2b5781c41",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      }
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": false
+  },
+  {
+    "name": "malformed ['merkle', 'leaves']",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "bad"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "b9df34e2dab65318387da101efedada5b09c3f6ea7df66b2e1a3ccb2b5781c41",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      }
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": false
+  },
+  {
+    "name": "malformed ['signature', 'algorithm']",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": [],
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "b9df34e2dab65318387da101efedada5b09c3f6ea7df66b2e1a3ccb2b5781c41",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      }
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": false
+  },
+  {
+    "name": "malformed ['signature', 'algorithm']",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "ed25519",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "b9df34e2dab65318387da101efedada5b09c3f6ea7df66b2e1a3ccb2b5781c41",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      }
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": false
+  },
+  {
+    "name": "malformed ['protocol']",
+    "args": {
+      "receipt": {
+        "protocol": "RFC-6962-MERKLE-SHA256",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "b9df34e2dab65318387da101efedada5b09c3f6ea7df66b2e1a3ccb2b5781c41",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      }
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": false
+  },
+  {
+    "name": "Merkle tampering ['task', 'name']",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "forged",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "b9df34e2dab65318387da101efedada5b09c3f6ea7df66b2e1a3ccb2b5781c41",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      }
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": true
+  },
+  {
+    "name": "Merkle tampering ['environment', 'runtime']",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "forged"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "b9df34e2dab65318387da101efedada5b09c3f6ea7df66b2e1a3ccb2b5781c41",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      }
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": true
+  },
+  {
+    "name": "Merkle tampering ['artifacts', 0, 'path']",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "forged",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "b9df34e2dab65318387da101efedada5b09c3f6ea7df66b2e1a3ccb2b5781c41",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      }
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": true
+  },
+  {
+    "name": "Merkle tampering ['artifacts', 0, 'sizeBytes']",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 8,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "b9df34e2dab65318387da101efedada5b09c3f6ea7df66b2e1a3ccb2b5781c41",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      }
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": true
+  },
+  {
+    "name": "Merkle tampering ['merkle', 'root']",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "0000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "b9df34e2dab65318387da101efedada5b09c3f6ea7df66b2e1a3ccb2b5781c41",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      }
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": true
+  },
+  {
+    "name": "Merkle tampering ['merkle', 'leaves']",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "b9df34e2dab65318387da101efedada5b09c3f6ea7df66b2e1a3ccb2b5781c41",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      }
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": true
+  },
+  {
+    "name": "authenticated tampering ['metadata']",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "b9df34e2dab65318387da101efedada5b09c3f6ea7df66b2e1a3ccb2b5781c41",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "forged": true
+        }
+      },
+      "publicKeyOrSecret": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "expectedAlgorithm": "HMAC-SHA256"
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": true
+  },
+  {
+    "name": "no-key cannot authenticate ['metadata']",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "b9df34e2dab65318387da101efedada5b09c3f6ea7df66b2e1a3ccb2b5781c41",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "forged": true
+        }
+      }
+    },
+    "valid": true,
+    "trusted": false,
+    "canonicalParity": true
+  },
+  {
+    "name": "authenticated tampering ['signature', 'signerIdentity']",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "attacker",
+          "value": "b9df34e2dab65318387da101efedada5b09c3f6ea7df66b2e1a3ccb2b5781c41",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      },
+      "publicKeyOrSecret": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "expectedAlgorithm": "HMAC-SHA256"
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": true
+  },
+  {
+    "name": "no-key cannot authenticate ['signature', 'signerIdentity']",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "attacker",
+          "value": "b9df34e2dab65318387da101efedada5b09c3f6ea7df66b2e1a3ccb2b5781c41",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      }
+    },
+    "valid": true,
+    "trusted": false,
+    "canonicalParity": true
+  },
+  {
+    "name": "authenticated tampering ['signature', 'keyId']",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "attacker",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "b9df34e2dab65318387da101efedada5b09c3f6ea7df66b2e1a3ccb2b5781c41",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      },
+      "publicKeyOrSecret": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "expectedAlgorithm": "HMAC-SHA256"
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": true
+  },
+  {
+    "name": "no-key cannot authenticate ['signature', 'keyId']",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "attacker",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "b9df34e2dab65318387da101efedada5b09c3f6ea7df66b2e1a3ccb2b5781c41",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      }
+    },
+    "valid": true,
+    "trusted": false,
+    "canonicalParity": true
+  },
+  {
+    "name": "authenticated tampering ['signature', 'timestamp']",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "b9df34e2dab65318387da101efedada5b09c3f6ea7df66b2e1a3ccb2b5781c41",
+          "timestamp": "2026-09-19T00:00:00Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      },
+      "publicKeyOrSecret": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "expectedAlgorithm": "HMAC-SHA256"
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": true
+  },
+  {
+    "name": "no-key cannot authenticate ['signature', 'timestamp']",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "b9df34e2dab65318387da101efedada5b09c3f6ea7df66b2e1a3ccb2b5781c41",
+          "timestamp": "2026-09-19T00:00:00Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      }
+    },
+    "valid": true,
+    "trusted": false,
+    "canonicalParity": true
+  },
+  {
+    "name": "authenticated tampering ['proofId']",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "forged",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "b9df34e2dab65318387da101efedada5b09c3f6ea7df66b2e1a3ccb2b5781c41",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      },
+      "publicKeyOrSecret": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "expectedAlgorithm": "HMAC-SHA256"
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": true
+  },
+  {
+    "name": "no-key cannot authenticate ['proofId']",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "forged",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "b9df34e2dab65318387da101efedada5b09c3f6ea7df66b2e1a3ccb2b5781c41",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      }
+    },
+    "valid": true,
+    "trusted": false,
+    "canonicalParity": true
+  },
+  {
+    "name": "authenticated tampering ['timestamp']",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-09-19T00:00:00Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "b9df34e2dab65318387da101efedada5b09c3f6ea7df66b2e1a3ccb2b5781c41",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      },
+      "publicKeyOrSecret": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "expectedAlgorithm": "HMAC-SHA256"
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": true
+  },
+  {
+    "name": "no-key cannot authenticate ['timestamp']",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-09-19T00:00:00Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "b9df34e2dab65318387da101efedada5b09c3f6ea7df66b2e1a3ccb2b5781c41",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      }
+    },
+    "valid": true,
+    "trusted": false,
+    "canonicalParity": true
+  },
+  {
+    "name": "authenticated tampering ['signature', 'value']",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "0000000000000000000000000000000000000000000000000000000000000000",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      },
+      "publicKeyOrSecret": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "expectedAlgorithm": "HMAC-SHA256"
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": true
+  },
+  {
+    "name": "no-key cannot authenticate ['signature', 'value']",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "0000000000000000000000000000000000000000000000000000000000000000",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      }
+    },
+    "valid": true,
+    "trusted": false,
+    "canonicalParity": true
+  },
+  {
+    "name": "deleted bad signature cannot improve validity",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "metadata": {
+          "fixture": true
+        }
+      },
+      "publicKeyOrSecret": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "expectedAlgorithm": "HMAC-SHA256"
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": false
+  },
+  {
+    "name": "v1 not promoted to authenticated v2",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "1.0.0",
+        "proofId": "proof-v1-fixture",
+        "timestamp": "2026-01-02T03:04:05.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Legacy fixture task",
+          "description": "Frozen v1 compatibility vector",
+          "status": "SUCCESS",
+          "runner": "fixture-runner",
+          "exitCode": 0
+        },
+        "environment": {
+          "hostname": "fixture-host",
+          "platform": "linux",
+          "arch": "x64",
+          "runtime": "Node.js v20.0.0"
+        },
+        "artifacts": [
+          {
+            "path": "artifact.txt",
+            "sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+            "sizeBytes": 12
+          }
+        ],
+        "merkle": {
+          "root": "6fbd8195a404e0c7fe6bb660e9ca8b3d36fce720ce7656671d59ea427d9b5095",
+          "algorithm": "SHA-256",
+          "leaves": [
+            "b79530ea7c273dea4d745f106dddc200a9c990963ef88c260db0bd0172e607ef",
+            "ecc6ce34d34b85abae1495749b99f6d47965b38ee52e3aac40e9039183eb661c",
+            "4635e1fa62a599a7880a8d14a56f720a1d40f6e5448ab5a5e39bedc8bd87fa8e"
+          ]
+        },
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "00983c74fb796259de97d08c1b6de0ecde23a2a63d99a00d599ea606692112c8",
+          "timestamp": "2026-01-02T03:04:05.000Z"
+        },
+        "metadata": {}
+      },
+      "publicKeyOrSecret": "0000000000000000000000000000000000000000000000000000000000000000",
+      "expectedAlgorithm": "HMAC-SHA256"
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": false
+  },
+  {
+    "name": "extra envelope fields follow canonical contract",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "b9df34e2dab65318387da101efedada5b09c3f6ea7df66b2e1a3ccb2b5781c41",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        },
+        "futureExtension": "not-authenticated"
+      },
+      "publicKeyOrSecret": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "expectedAlgorithm": "HMAC-SHA256"
+    },
+    "valid": true,
+    "trusted": true,
+    "canonicalParity": true
+  },
+  {
+    "name": "trailing newline ['timestamp']",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z\n",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "b9df34e2dab65318387da101efedada5b09c3f6ea7df66b2e1a3ccb2b5781c41",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      }
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": false
+  },
+  {
+    "name": "trailing newline ['signature', 'timestamp']",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "b9df34e2dab65318387da101efedada5b09c3f6ea7df66b2e1a3ccb2b5781c41",
+          "timestamp": "2026-08-29T12:34:56.000Z\n"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      }
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": false
+  },
+  {
+    "name": "trailing newline ['artifacts', 0, 'sha256']",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222\n",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "b9df34e2dab65318387da101efedada5b09c3f6ea7df66b2e1a3ccb2b5781c41",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      }
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": false
+  },
+  {
+    "name": "duplicate final artifact changes RFC6962 root",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          },
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "b9df34e2dab65318387da101efedada5b09c3f6ea7df66b2e1a3ccb2b5781c41",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      },
+      "publicKeyOrSecret": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "expectedAlgorithm": "HMAC-SHA256"
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": true
+  },
+  {
+    "name": "expected algorithm without key",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "b9df34e2dab65318387da101efedada5b09c3f6ea7df66b2e1a3ccb2b5781c41",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      },
+      "expectedAlgorithm": "HMAC-SHA256"
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": false
+  },
+  {
+    "name": "key without expected algorithm",
+    "args": {
+      "receipt": {
+        "protocol": "nymrel-proof-ledger",
+        "version": "2.0.0",
+        "proofId": "proof-v2-fixture",
+        "timestamp": "2026-08-29T12:34:56.000Z",
+        "parentOrganization": "Nymrel",
+        "task": {
+          "name": "Protocol v2 fixture",
+          "runner": "fixture-runner",
+          "status": "SUCCESS",
+          "exitCode": 0,
+          "description": "Cross-runtime receipt vector"
+        },
+        "merkle": {
+          "algorithm": "RFC6962-SHA256",
+          "leaves": [
+            "9fb9d1ae404824df5c6ac51fd496df19c0fb2a7e46e4ac9304343cd8aa4f14cf",
+            "7873fe7ce595bd7febe27382402669b0b5374b5476675ed249d9019f05c3d35e",
+            "d6faa92bb359d4318489a87ace77447afc66e4a0777272e54bc477c5a67b41a0"
+          ],
+          "root": "f9ed68e106ba758515c91d511214ffeac3bc97ca3832edf10bf4feddd7747ae2"
+        },
+        "environment": {
+          "platform": "fixture",
+          "arch": "portable",
+          "runtime": "cross-runtime-v2"
+        },
+        "artifacts": [
+          {
+            "path": "fixture.txt",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "sizeBytes": 7,
+            "mimeType": "text/plain"
+          }
+        ],
+        "signature": {
+          "algorithm": "HMAC-SHA256",
+          "keyId": "fixture-v2-key",
+          "signerIdentity": "fixture@nymrel.invalid",
+          "value": "b9df34e2dab65318387da101efedada5b09c3f6ea7df66b2e1a3ccb2b5781c41",
+          "timestamp": "2026-08-29T12:34:56.000Z"
+        },
+        "metadata": {
+          "fixture": true
+        }
+      },
+      "publicKeyOrSecret": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    },
+    "valid": false,
+    "trusted": false,
+    "canonicalParity": false
+  }
+]

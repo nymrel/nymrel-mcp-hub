@@ -16,7 +16,7 @@
 - A local build, GitHub artifact, tag, or release workflow is not equivalent to registry publication.
 
 ## Overview
-`@nymrel/mcp-hub` is a zero-runtime-dependency, dual-engine TypeScript/Node.js and Python Model Context Protocol server. It exposes 14 Nymrel-oriented tools, 3 resources, and 3 prompt templates for MCP clients including Claude Desktop, Cursor, Codex, and OpenAI agents.
+`@nymrel/mcp-hub` is a dual-engine TypeScript/Node.js and Python Model Context Protocol server. Node has no runtime dependencies; Python uses cryptography and rfc8785 for canonical authenticated receipts. It exposes 14 Nymrel-oriented tools, 3 resources, and 3 prompt templates for MCP clients including Claude Desktop, Cursor, Codex, and OpenAI agents.
 
 ## Protocol Contract
 - Modern MCP revision: `2026-07-28`, using `server/discover` and per-request `params._meta`.
@@ -30,7 +30,7 @@
 2. `nymrel_surety_guard` - Pre-execution destructive-command inspection and path-jail checks.
 3. `nymrel_swarm_claim` - Distributed directory lock and lease coordination with fencing generations.
 4. `nymrel_machine_trust` - Schema.org JSON-LD organization graph and llms.txt generation.
-5. `nymrel_proof_ledger` - RFC-6962 SHA-256 Merkle execution attestation and proof generation.
+5. `nymrel_proof_ledger` - Canonical signed claim receipt generation.
 6. `nymrel_crawler_mesh` - Web content extraction and Markdown conversion for agent consumption.
 7. `nymrel_beacon_ping` - Liveness telemetry and multi-agent heartbeat reporting.
 8. `nymrel_headless_quote` - Deterministic service-quote calculation.
@@ -50,3 +50,11 @@
 - `audit-website-ucp` - Guided AI commerce readiness audit.
 - `secure-agent-command` - Command-safety review using Nymrel guardrail tools.
 - `init-two-seat-mission` - Two-seat Command Studio setup.
+
+## Proof Receipt Trust
+- Proof tools use canonical Protocol v2 from pinned vendored nymrel-proof-ledger source; see THIRD_PARTY_NOTICES.md.
+- Creation requires a caller-supplied signingKey and explicit algorithm; supports HMAC-SHA256 or Ed25519. No universal trust key exists.
+- Verification takes receipt and optional publicKeyOrSecret plus required expectedAlgorithm from trusted key configuration. Without a key: valid:true, trusted:false is only envelope/Merkle consistency; signature, identity, metadata/payload and previous-hash reference are unverified.
+- With a matching independently trusted key: valid:true, trusted:true authenticates the canonical signed fields, not execution or unrecognized extension fields.
+- Malformed or unsigned receipts, legacy hub simulations, Protocol v1, unknown tool arguments, and failed keyed verification return valid:false/trusted:false.
+- verified aliases trusted. No Git command execution, tamper-free guarantee, identity registry, disk checks, or audit-chain validation is implied. Ed25519 keys must be raw 32-byte hex (no PEM). Input limits and migration details are in README.md.

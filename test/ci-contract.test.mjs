@@ -73,7 +73,7 @@ test("CI covers supported Node and Python lines on current hosted runners", () =
   assert(!ci.includes("cache: npm"), "setup-node must not invoke npm before the pinned toolchain");
   assert.equal(
     (ci.match(/package-manager-cache: false/gu) ?? []).length,
-    1,
+    2,
     "the Node bootstrap must explicitly disable setup-node's implicit npm cache",
   );
   assert(
@@ -84,7 +84,9 @@ test("CI covers supported Node and Python lines on current hosted runners", () =
   assert(ci.includes("python -m pip install --upgrade pip==26.2.1"));
   assert(ci.includes("python -m pip uninstall --yes nymrel-mcp-hub"));
   assert(ci.includes("python -m pip_audit --strict"));
-  assert(ci.includes("python -m bandit -q -r python/nymrel_mcp_hub"));
+  assert(ci.includes("python tests/proof_cross_runtime.py"));
+  assert(ci.includes("python tests/proof_cross_runtime.py"));
+  assert(ci.includes("python scripts/check-bandit.py"));
   assert(ci.includes("python -m build --outdir"));
   assert(ci.includes("python -m twine check"));
   assert(ci.includes('"$RUNNER_TEMP/consumer/bin/nymrel-mcp" --list-tools'));

@@ -96,7 +96,7 @@ jobs:
         run: python -m ruff check python tests
 
       - name: Scan Python sources
-        run: python -m bandit -q -r python/nymrel_mcp_hub
+        run: python scripts/check-bandit.py
 
       - name: Compile Python sources
         run: python -m compileall -q python tests
@@ -175,3 +175,29 @@ jobs:
           persona: pedantic
           advanced-security: false
           annotations: false
+
+  proof-cross-runtime:
+    name: Proof Ledger cross-runtime authentication
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Use Node.js 24
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24.20.0"
+          package-manager-cache: false
+      - name: Use Python 3.13
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+      - name: Build TypeScript and install Python runtime
+        run: |
+          corepack npm@12.0.2 ci
+          corepack npm@12.0.2 run build
+          python -m pip install .
+      - name: Check shared attack corpus and both signature algorithms in both directions
+        run: python tests/proof_cross_runtime.py

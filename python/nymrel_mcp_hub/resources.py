@@ -57,6 +57,15 @@ def read_resource(uri: str) -> Dict[str, str]:
         return {
             "uri": "nymrel://llms-manifest",
             "mimeType": "text/markdown",
-            "text": "# Nymrel LLMs Manifest\nUnified tools for autonomous AI agents."
+            "text": (
+                "# Nymrel LLMs Manifest\nUnified tools for autonomous AI agents.\n\n"
+                "## Proof Trust\n"
+                "Receipt creation requires signingKey and explicit HMAC-SHA256 or Ed25519 algorithm.\n"
+                "Verification without a key checks envelope/Merkle consistency only: valid:true, trusted:false, verified:false. Metadata and identity are not authenticated.\n"
+                "Authentication requires publicKeyOrSecret AND expectedAlgorithm from independently trusted key configuration, never inferred from the receipt.\n"
+                "Matching signatures authenticate canonical fields, not execution or unknown extension fields. Ed25519 keys are raw 32-byte hex; no PEM.\n"
+                "Old simulated/unsigned/v1 receipts fail. No disk checks, Git commands, chain continuity, or replay guarantee.\n"
+                "Python runtime dependencies: cryptography and rfc8785.\n"
+            )
         }
     raise ValueError(f"Resource {uri} not found")

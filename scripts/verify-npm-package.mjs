@@ -28,6 +28,10 @@ assert.deepEqual(forbidden, [], `npm package contains non-runtime files: ${forbi
 
 const publicFiles = new Set([
   "LICENSE",
+  "THIRD_PARTY_NOTICES.md",
+  "docs/proof-ledger/LICENSE",
+  "docs/proof-ledger/SOURCE.json",
+  "docs/proof-ledger/disable-git-context.patch",
   "README.md",
   "SECURITY.md",
   "bin/mcp-server",
