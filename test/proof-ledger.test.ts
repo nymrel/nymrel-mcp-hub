@@ -71,7 +71,7 @@ test('creation fails closed without supplied key or with invalid options', async
 
 test('vendored core and fixtures match reviewed upstream source digests', () => {
   const manifest = readJson('docs/proof-ledger/SOURCE.json');
-  assert.equal(manifest.revision, '09a49a0e66d9443bff979f4d77cf7c0310ef0d8f');
+  assert.equal(manifest.revision, 'c0cd721c7435421e9203af0852da7596397b762d');
   for (const entry of manifest.files) {
     const source = readFileSync(new URL(entry.destination, root), 'utf8').replace(/\r\n/g, '\n');
     assert.equal(createHash('sha256').update(source).digest('hex'), entry.sha256, entry.destination);

@@ -1,6 +1,6 @@
 {
   "repository": "https://github.com/nymrel/nymrel-proof-ledger",
-  "revision": "09a49a0e66d9443bff979f4d77cf7c0310ef0d8f",
+  "revision": "c0cd721c7435421e9203af0852da7596397b762d",
   "files": [
     {
       "source": "src/core/canonical.ts",

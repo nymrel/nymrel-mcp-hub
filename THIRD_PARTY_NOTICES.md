@@ -2,7 +2,7 @@
 
 This package contains the canonical Nymrel Proof Ledger core under the MIT license.
 Source: https://github.com/nymrel/nymrel-proof-ledger
-Revision: `09a49a0e66d9443bff979f4d77cf7c0310ef0d8f`.
+Revision: `c0cd721c7435421e9203af0852da7596397b762d`.
 
 The five TypeScript and five Python core modules share the pinned upstream implementation.
 All ten modules are copied without changes. Upstream verification now requires
