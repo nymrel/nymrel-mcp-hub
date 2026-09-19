@@ -116,7 +116,7 @@ The hub exposes Nymrel-oriented tools through one MCP surface. Repository names 
 | 2 | `nymrel_surety_guard` | `nymrel/agent-action-surety` | Destructive-command and path-safety inspection. |
 | 3 | `nymrel_swarm_claim` | `nymrel/nymrel-swarm-protocol` | Lease coordination and fencing generations. |
 | 4 | `nymrel_machine_trust` | `nymrel/nymrel-machine-trust` | Machine-readable organization and trust metadata. |
-| 5 | `nymrel_proof_ledger` | `nymrel/nymrel-proof-ledger` | Merkle-based execution attestation and proof generation. |
+| 5 | `nymrel_proof_ledger` | `nymrel/nymrel-proof-ledger` | Canonical signed claim receipt generation. |
 | 6 | `nymrel_crawler_mesh` | `nymrel/nymrel-crawler-mesh` | Web-content extraction and Markdown conversion. |
 | 7 | `nymrel_beacon_ping` | `nymrel/agent-beacon` | Agent liveness and heartbeat reporting. |
 | 8 | `nymrel_headless_quote` | `nymrel/headless-quote-layer` | Deterministic quote calculation. |

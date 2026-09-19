@@ -29,7 +29,7 @@ export function getLlmsManifestResourceContent(): string {
 2. \`nymrel_surety_guard\` - Pre-execution safety firewall intercepting destructive commands.
 3. \`nymrel_swarm_claim\` - Distributed directory lock & lease coordinator with fencing generations.
 4. \`nymrel_machine_trust\` - Schema.org JSON-LD parentOrganization graph & /llms.txt generator.
-5. \`nymrel_proof_ledger\` - RFC-6962 SHA-256 Merkle tree execution attestations & receipts.
+5. \`nymrel_proof_ledger\` - Canonical signed claim receipt generation.
 6. \`nymrel_crawler_mesh\` - Clean Markdown AST extractor optimized for LLM token savings.
 7. \`nymrel_beacon_ping\` - Liveness telemetry & multi-agent fleet heartbeat registry.
 8. \`nymrel_headless_quote\` - Dynamic pricing formula calculator with Warm Paper tokens.

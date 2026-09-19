@@ -30,7 +30,7 @@
 2. `nymrel_surety_guard` - Pre-execution destructive-command inspection and path-jail checks.
 3. `nymrel_swarm_claim` - Distributed directory lock and lease coordination with fencing generations.
 4. `nymrel_machine_trust` - Schema.org JSON-LD organization graph and llms.txt generation.
-5. `nymrel_proof_ledger` - RFC-6962 SHA-256 Merkle execution attestation and proof generation.
+5. `nymrel_proof_ledger` - Canonical signed claim receipt generation.
 6. `nymrel_crawler_mesh` - Web content extraction and Markdown conversion for agent consumption.
 7. `nymrel_beacon_ping` - Liveness telemetry and multi-agent heartbeat reporting.
 8. `nymrel_headless_quote` - Deterministic service-quote calculation.
