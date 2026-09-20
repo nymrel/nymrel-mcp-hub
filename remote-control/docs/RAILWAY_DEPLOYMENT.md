@@ -44,7 +44,12 @@ NYMREL_REMOTE_AUTHORIZATION_SERVERS=https://<oauth-issuer>
 NYMREL_REMOTE_OAUTH_ISSUER=https://<oauth-issuer>
 NYMREL_REMOTE_OAUTH_AUDIENCE=https://<production-host>/mcp
 NYMREL_REMOTE_CHATGPT_OAUTH_AUDIENCE=https://<production-host>/chatgpt/mcp
+NYMREL_REMOTE_OAUTH_SUBJECT_TENANTS={"<operator-sub-claim>":"<tenant-id>"}
 ```
+
+`NYMREL_REMOTE_OAUTH_SUBJECT_TENANTS` is mandatory with external OAuth: production startup fails without it, and an OAuth subject that is not listed is denied on `/mcp`, `/chatgpt/mcp`, `/chatgpt/readonly/mcp`, and the `/v1/*` operator API. The tenant comes from this mapping, never from a token claim. `NYMREL_REMOTE_OAUTH_ISSUER` must be exactly one of `NYMREL_REMOTE_AUTHORIZATION_SERVERS`, including any trailing slash the provider publishes.
+
+The regular-ChatGPT read-only resource at `/chatgpt/readonly/mcp` is OAuth-only and has no audience variable; see `CHATGPT_PRO_READONLY.md` for provider requirements, restricted local roots, onboarding, the `--profile=readonly` cutover probe, and rollback.
 
 Configure either JWKS verification or OAuth introspection according to the authorization server:
 

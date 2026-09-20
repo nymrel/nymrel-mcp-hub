@@ -11,6 +11,7 @@ const advertised = config.publicBaseUrl || `http://${config.host}:${config.port}
 console.log(`Nymrel Remote listening on ${advertised}`);
 console.log(`MCP endpoint: ${advertised}/mcp`);
 console.log(`ChatGPT MCP endpoint: ${advertised}/chatgpt/mcp`);
+console.log(`ChatGPT read-only MCP endpoint (OAuth only): ${advertised}/chatgpt/readonly/mcp`);
 if (config.production && config.allowStaticMcpTokens) {
   console.warn('WARNING: static MCP bearer tokens are enabled; configure OAuth authorization servers for MCP authorization interoperability.');
 }

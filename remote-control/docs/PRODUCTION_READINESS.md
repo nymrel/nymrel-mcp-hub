@@ -43,6 +43,9 @@ The current JalenPC relay is reachable and responds to transport-level pings, bu
 - [ ] persistent volume provisioned and backup tested
 - [ ] independent signing/data/audit keys installed from secret storage
 - [ ] external OAuth AS configured for the exact MCP resource audience
+- [ ] `NYMREL_REMOTE_OAUTH_SUBJECT_TENANTS` maps only the operator's OAuth subject to the paired tenant
+- [ ] JalenPC `NYMREL_REMOTE_ALLOWED_DIRECTORIES` narrowed from the whole user profile before any cloud client is connected
+- [ ] `check-production-cutover.mjs --profile=readonly` reports `ready` without `--allow-static-auth`
 - [ ] static compatibility modes confirmed off unless deliberately approved
 - [ ] bootstrap HTTP mint route confirmed off unless deliberately approved
 - [ ] public smoke gate in `DEPLOYMENT.md` passed

@@ -1,7 +1,8 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { OAuthAccessTokenVerifier } from './oauth.js';
+import { OAuthPrincipalDeniedError, createExternalOAuthAuthenticator } from './oauth-principal-policy.js';
 import { ChatgptMcpEdge } from './chatgpt-mcp-edge.js';
+import { CHATGPT_READONLY_SCOPES, ChatgptReadonlyMcpEdge } from './chatgpt-readonly-profile.js';
 import { HeaderMismatchError, isModernMcpRequest, validateModernMcpHeaders } from './mcp-http-validation.js';
 import { NymrelRemoteError, UnauthorizedError } from './errors.js';
 import { bearerFromHeaders } from './token.js';
@@ -22,19 +23,22 @@ function publicOrigin(config) {
   return config.publicBaseUrl || `http://${config.host}:${config.port}`;
 }
 
-function chatgptResource(config) {
-  return `${publicOrigin(config)}/chatgpt/mcp`;
+const CHATGPT_MCP_PATH = '/chatgpt/mcp';
+const CHATGPT_READONLY_MCP_PATH = '/chatgpt/readonly/mcp';
+
+function resourceUrl(config, resourcePath) {
+  return `${publicOrigin(config)}${resourcePath}`;
 }
 
-function metadataUrl(config) {
-  return `${publicOrigin(config)}/.well-known/oauth-protected-resource/chatgpt/mcp`;
+function metadataPath(resourcePath) {
+  return `/.well-known/oauth-protected-resource${resourcePath}`;
 }
 
-function challenge(config, { scope = CHATGPT_INITIAL_SCOPES.join(' '), insufficient = false } = {}) {
+function challenge(config, profile, { scope = profile.initialScopes.join(' '), insufficient = false } = {}) {
   const parts = [];
   if (insufficient) parts.push('error="insufficient_scope"');
   if (scope) parts.push(`scope="${scope}"`);
-  parts.push(`resource_metadata="${metadataUrl(config)}"`);
+  parts.push(`resource_metadata="${resourceUrl(config, metadataPath(profile.path))}"`);
   return `Bearer ${parts.join(', ')}`;
 }
 
@@ -132,18 +136,37 @@ export async function createChatgptRemoteHttpServer(config, options = {}) {
   if (!original) throw new Error('Nymrel Remote HTTP request handler is unavailable');
 
   const edge = new ChatgptMcpEdge({ broker: runtime.broker, syncWaitMs: config.syncWaitMs });
-  const oauth = new OAuthAccessTokenVerifier({
-    issuer: config.oauthIssuer,
-    jwksUrl: config.oauthJwksUrl,
-    audience: process.env.NYMREL_REMOTE_CHATGPT_OAUTH_AUDIENCE || chatgptResource(config),
-    tenantClaim: config.oauthTenantClaim,
-    introspectionUrl: config.oauthIntrospectionUrl,
-    introspectionClientId: config.oauthIntrospectionClientId,
-    introspectionClientSecret: config.oauthIntrospectionClientSecret
+  const oauth = createExternalOAuthAuthenticator(config, {
+    audience: process.env.NYMREL_REMOTE_CHATGPT_OAUTH_AUDIENCE || resourceUrl(config, CHATGPT_MCP_PATH),
+    fetchImpl: options.oauthFetchImpl
   });
+  // The read-only audience is always the exact resource URL and may never be shared: a shared
+  // audience would let a token issued for one ChatGPT resource be replayed against the other.
+  const readonlyAudience = resourceUrl(config, CHATGPT_READONLY_MCP_PATH);
+  if (oauth.audience === readonlyAudience || runtime.oauth?.audience === readonlyAudience) {
+    throw new Error('The read-only ChatGPT resource audience must not be shared with another MCP resource');
+  }
+  const readonlyEdge = new ChatgptReadonlyMcpEdge({ broker: runtime.broker, syncWaitMs: config.syncWaitMs });
+  const readonlyOauth = createExternalOAuthAuthenticator(config, { audience: readonlyAudience, fetchImpl: options.oauthFetchImpl });
   const limiter = new FixedWindowRateLimiter();
   runtime.chatgptMcp = edge;
   runtime.chatgptOauth = oauth;
+  runtime.chatgptReadonlyMcp = readonlyEdge;
+  runtime.chatgptReadonlyOauth = readonlyOauth;
+
+  const profiles = [
+    {
+      path: CHATGPT_MCP_PATH, edge, oauth, rateKey: 'chatgpt-mcp',
+      scopes: CHATGPT_MCP_SCOPES, initialScopes: CHATGPT_INITIAL_SCOPES,
+      allowStatic: config.allowStaticMcpTokens, honoredScopes: null
+    },
+    {
+      // Regular ChatGPT read-only resource: OAuth only, so the static compatibility flag is ignored here.
+      path: CHATGPT_READONLY_MCP_PATH, edge: readonlyEdge, oauth: readonlyOauth, rateKey: 'chatgpt-readonly-mcp',
+      scopes: CHATGPT_READONLY_SCOPES, initialScopes: CHATGPT_READONLY_SCOPES,
+      allowStatic: false, honoredScopes: new Set(CHATGPT_READONLY_SCOPES)
+    }
+  ];
 
   server.removeListener('request', original);
   server.on('request', async (req, res) => {
@@ -161,20 +184,23 @@ export async function createChatgptRemoteHttpServer(config, options = {}) {
       }
     }
 
-    if (pathname === '/.well-known/oauth-protected-resource/chatgpt/mcp' && req.method === 'GET') {
+    const metadataProfile = req.method === 'GET' ? profiles.find((item) => pathname === metadataPath(item.path)) : null;
+    if (metadataProfile) {
       return sendJson(res, 200, {
-        resource: chatgptResource(config),
+        resource: resourceUrl(config, metadataProfile.path),
         authorization_servers: config.authorizationServers,
-        scopes_supported: CHATGPT_MCP_SCOPES,
+        scopes_supported: [...metadataProfile.scopes],
         bearer_methods_supported: ['header']
       }, { 'cache-control': 'public, max-age=300' });
     }
 
-    if (pathname !== '/chatgpt/mcp') return original(req, res);
+    const profile = profiles.find((item) => pathname === item.path);
+    if (!profile) return original(req, res);
+    const { edge } = profile;
 
     const started = Date.now();
     let status = 500;
-    const finishLog = () => runtime.logger.info?.(`${req.method} /chatgpt/mcp ${status} ${Date.now() - started}ms`);
+    const finishLog = () => runtime.logger.info?.(`${req.method} ${profile.path} ${status} ${Date.now() - started}ms`);
     res.once('finish', finishLog);
     res.setHeader('x-content-type-options', 'nosniff');
     res.setHeader('referrer-policy', 'no-referrer');
@@ -186,7 +212,7 @@ export async function createChatgptRemoteHttpServer(config, options = {}) {
         return sendJson(res, 403, { error: { code: 'ORIGIN_DENIED', message: 'Origin is not allowed' } });
       }
       const ip = req.socket.remoteAddress || 'unknown';
-      const rate = limiter.take(`${ip}:chatgpt-mcp`, 600);
+      const rate = limiter.take(`${ip}:${profile.rateKey}`, 600);
       if (!rate.allowed) {
         status = 429;
         return sendJson(res, 429, { error: { code: 'RATE_LIMITED', message: 'Too many requests' } }, { 'retry-after': String(rate.retryAfterSec) });
@@ -199,26 +225,32 @@ export async function createChatgptRemoteHttpServer(config, options = {}) {
       const token = bearerFromHeaders(req.headers);
       if (!token) {
         status = 401;
-        return sendJson(res, 401, errorBody(new UnauthorizedError('OAuth bearer token required')), { 'www-authenticate': challenge(config) });
+        return sendJson(res, 401, errorBody(new UnauthorizedError('OAuth bearer token required')), { 'www-authenticate': challenge(config, profile) });
       }
 
       let principal = null;
       if (config.authorizationServers.length > 0) {
-        try { principal = await oauth.verify(token); }
-        catch {
-          if (!config.allowStaticMcpTokens) {
+        try { principal = await profile.oauth.verify(token); }
+        catch (externalError) {
+          // A verified but unmapped external subject is denied outright, never retried as a static token.
+          if (externalError instanceof OAuthPrincipalDeniedError) throw externalError;
+          if (!profile.allowStatic) {
             status = 401;
-            return sendJson(res, 401, errorBody(new UnauthorizedError('Invalid or expired OAuth bearer token')), { 'www-authenticate': challenge(config) });
+            return sendJson(res, 401, errorBody(new UnauthorizedError('Invalid or expired OAuth bearer token')), { 'www-authenticate': challenge(config, profile) });
           }
         }
       }
-      if (!principal && config.allowStaticMcpTokens) {
+      if (!principal && profile.allowStatic) {
         try { principal = runtime.tokenService.verify(token, { expectedType: 'user' }); }
         catch { /* handled below */ }
       }
       if (!principal) {
         status = 401;
-        return sendJson(res, 401, errorBody(new UnauthorizedError('Invalid or expired OAuth bearer token')), { 'www-authenticate': challenge(config) });
+        return sendJson(res, 401, errorBody(new UnauthorizedError('Invalid or expired OAuth bearer token')), { 'www-authenticate': challenge(config, profile) });
+      }
+      if (profile.honoredScopes) {
+        // Least privilege: broader scopes carried by the token are not honored on this resource.
+        principal = { ...principal, scopes: (principal.scopes || []).filter((scope) => profile.honoredScopes.has(scope)) };
       }
 
       const body = await readJson(req, config.maxBodyBytes);
@@ -254,17 +286,17 @@ export async function createChatgptRemoteHttpServer(config, options = {}) {
         status = 403;
         const capability = response?.error?.data?.details?.capability;
         const explicitScope = extractRequiredScope(response?.error?.message);
-        const required = explicitScope || (capability ? `tools:${capability}` : CHATGPT_MCP_SCOPES.join(' '));
-        return sendJson(res, 403, response, { 'www-authenticate': challenge(config, { scope: required, insufficient: true }) });
+        const required = explicitScope || (capability ? `tools:${capability}` : profile.scopes.join(' '));
+        return sendJson(res, 403, response, { 'www-authenticate': challenge(config, profile, { scope: required, insufficient: true }) });
       } else status = 200;
       return sendJson(res, status, response);
     } catch (error) {
       status = error?.status || (error instanceof NymrelRemoteError ? error.status : 500);
       if (status >= 500) runtime.logger.error?.(`ChatGPT MCP request failed: ${error?.name || 'Error'} (${error?.code || 'no-code'})`);
       const headers = {};
-      if (status === 401) headers['www-authenticate'] = challenge(config);
+      if (status === 401) headers['www-authenticate'] = challenge(config, profile);
       const missingScope = status === 403 ? extractRequiredScope(error.message) : null;
-      if (missingScope) headers['www-authenticate'] = challenge(config, { scope: missingScope, insufficient: true });
+      if (missingScope) headers['www-authenticate'] = challenge(config, profile, { scope: missingScope, insufficient: true });
       return sendJson(res, status, errorBody(error), headers);
     }
   });
