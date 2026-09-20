@@ -1,10 +1,10 @@
 # Nymrel Remote cloud-recovery release candidate, 2026-09-20
 
-Branch `studio/remote-cloud-recovery-20260920`, based on `origin/main` at `28aef5c`. This is a reviewable candidate. It has not been pushed, merged, or deployed, and it makes no claim that ChatGPT can connect.
+Branch `studio/remote-cloud-recovery-20260920`, based on `origin/main` at `28aef5c`. This is a reviewable candidate. Publication and hosted validation are tracked on its draft PR. It has not been merged or deployed and makes no claim that ChatGPT can connect.
 
 ## Included reviewed-candidate commits
 
-Each commit was taken with `git cherry-pick -x` from the exact ref below, with its original author preserved. All applied without conflicts, the resulting files are byte-identical to the source branches, and the source branches were not modified.
+Each commit was taken with `git cherry-pick -x` from the exact ref below, with its original author preserved. All applied without conflicts. At the integration checkpoint, the copied PR25 and PR27 files matched their source branches; the implementation below then deliberately extended some of those files. The source branches were not modified.
 
 | PR | Source ref | Source commit | Subject |
 | --- | --- | --- | --- |
@@ -43,4 +43,13 @@ Before this candidate, an external OAuth token with no tenant claim landed in th
 
 ## Not done here
 
-No deployment, push, merge, provider or account provisioning, secret access, token minting, DNS, pairing, agent restart, or agent configuration change. See `CHATGPT_PRO_READONLY.md` for the operator inputs that remain.
+No deployment, merge, provider or account provisioning, secret access, token minting, DNS, pairing, agent restart, or agent configuration change. See `CHATGPT_PRO_READONLY.md` for the operator inputs that remain.
+
+## Independent integration review
+
+Codex independently reran the full suite (88 passed, no skips) and found a startup
+lease leak when a shared read-only audience was rejected after runtime creation.
+A production-mode regression reproduced the retained lease. Audience validation
+and facade verifier construction now precede runtime creation; the regression
+requires no leftover lease and a successful subsequent valid startup. This does
+not relax audience or subject admission checks.

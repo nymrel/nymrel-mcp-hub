@@ -131,23 +131,25 @@ class FixedWindowRateLimiter {
 }
 
 export async function createChatgptRemoteHttpServer(config, options = {}) {
-  const { server, runtime } = await createRemoteHttpServer(config, options);
-  const original = server.listeners('request')[0];
-  if (!original) throw new Error('Nymrel Remote HTTP request handler is unavailable');
-
-  const edge = new ChatgptMcpEdge({ broker: runtime.broker, syncWaitMs: config.syncWaitMs });
+  // Validate facade configuration before the underlying runtime takes its
+  // production lease. A rejected deployment must not strand a renewing lease.
+  const readonlyAudience = resourceUrl(config, CHATGPT_READONLY_MCP_PATH);
+  const chatgptAudience = process.env.NYMREL_REMOTE_CHATGPT_OAUTH_AUDIENCE || resourceUrl(config, CHATGPT_MCP_PATH);
+  const mcpAudience = config.oauthAudience || resourceUrl(config, '/mcp');
+  if (chatgptAudience === readonlyAudience || mcpAudience === readonlyAudience) {
+    throw new Error('The read-only ChatGPT resource audience must not be shared with another MCP resource');
+  }
   const oauth = createExternalOAuthAuthenticator(config, {
-    audience: process.env.NYMREL_REMOTE_CHATGPT_OAUTH_AUDIENCE || resourceUrl(config, CHATGPT_MCP_PATH),
-    fetchImpl: options.oauthFetchImpl
+    audience: chatgptAudience, fetchImpl: options.oauthFetchImpl
   });
   // The read-only audience is always the exact resource URL and may never be shared: a shared
   // audience would let a token issued for one ChatGPT resource be replayed against the other.
-  const readonlyAudience = resourceUrl(config, CHATGPT_READONLY_MCP_PATH);
-  if (oauth.audience === readonlyAudience || runtime.oauth?.audience === readonlyAudience) {
-    throw new Error('The read-only ChatGPT resource audience must not be shared with another MCP resource');
-  }
-  const readonlyEdge = new ChatgptReadonlyMcpEdge({ broker: runtime.broker, syncWaitMs: config.syncWaitMs });
   const readonlyOauth = createExternalOAuthAuthenticator(config, { audience: readonlyAudience, fetchImpl: options.oauthFetchImpl });
+  const { server, runtime } = await createRemoteHttpServer(config, options);
+  const original = server.listeners('request')[0];
+  if (!original) throw new Error('Nymrel Remote HTTP request handler is unavailable');
+  const edge = new ChatgptMcpEdge({ broker: runtime.broker, syncWaitMs: config.syncWaitMs });
+  const readonlyEdge = new ChatgptReadonlyMcpEdge({ broker: runtime.broker, syncWaitMs: config.syncWaitMs });
   const limiter = new FixedWindowRateLimiter();
   runtime.chatgptMcp = edge;
   runtime.chatgptOauth = oauth;

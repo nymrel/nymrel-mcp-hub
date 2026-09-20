@@ -353,7 +353,12 @@ test('the read-only audience cannot be shared with another MCP resource', async 
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'nymrel-readonly-'));
   t.after(() => fs.rm(dir, { recursive: true, force: true }));
   await assert.rejects(
-    createChatgptRemoteHttpServer(configFor(dir, { oauthAudience: READONLY_AUDIENCE }), { logger: { info() {}, error() {} } }),
+    createChatgptRemoteHttpServer(configFor(dir, { production: true, oauthAudience: READONLY_AUDIENCE }), { logger: { info() {}, error() {} } }),
     /must not be shared/
   );
+  // Reject bad deployment configuration before acquiring a live production lease.
+  await assert.rejects(fs.access(path.join(dir, 'state.json.server-lease')), { code: 'ENOENT' });
+  const { server, runtime } = await createChatgptRemoteHttpServer(configFor(dir, { production: true }), { logger: { info() {}, error() {} } });
+  await runtime.instanceLease.release();
+  server.close();
 });
