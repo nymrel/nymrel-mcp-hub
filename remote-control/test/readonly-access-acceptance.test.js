@@ -46,7 +46,9 @@ function fixture({ mutate, publicStatus = 'ready', metadataStatus = 200, plan = 
   const publicCheck = async (_base, options) => {
     assert.equal(options.requireOAuth, true); assert.equal(options.profile, 'readonly');
     assert.equal(typeof options.fetchImpl, 'function');
-    return { status: publicStatus, profile: 'readonly', requireOAuth: true };
+    return { status: publicStatus, profile: 'readonly', requireOAuth: true, checks: [
+      { name: 'authorization-server metadata', passed: true, detail: { issuer: plan.expectedIssuer, expectedIssuer: plan.expectedIssuer } }
+    ] };
   };
   return { plan, fetchImpl, publicCheck, accessToken: TOKEN, calls };
 }
@@ -128,7 +130,7 @@ test('wrong device identity, duplicate IDs, offline or unready devices are not c
 });
 test('root refusal accepts native tool error as well as failed broker call', async () => {
   const f = fixture({ mutate: (e, b) => {
-    if (b.params.name === 'get_file_info') e.result = structured({ error: { message: 'Path is outside allowed directories: private' } }, { isError: true });
+    if (b.params.name === 'get_file_info') e.result = structured({ error: { message: `Path is outside allowed directories: ${config().deniedAncestor}` } }, { isError: true });
     return e;
   }});
   assert.equal((await verifyReadonlyAccess(f)).status, 'roundtrip_pass');
@@ -185,4 +187,26 @@ test('CLI reports unreadable configuration without echoing the path', async () =
   const output = []; const privatePath = '/private/token-containing-name.json';
   assert.equal(await runCli(['--plan', privatePath], {}, (v) => output.push(v)), 2);
   assert.equal(output.join('').includes(privatePath), false);
+});
+
+
+test('an out-of-root error for another path or a contradictory pending result cannot pass', async () => {
+  for (const data of [
+    { error: { message: 'Path is outside allowed directories: C:\\Other' } },
+    { error: { message: `Path is outside allowed directories: ${config().deniedAncestor}` }, pending: true },
+    { error: { message: `Path is outside allowed directories: ${config().deniedAncestor}` }, call: { status: 'queued' } }
+  ]) {
+    const f = fixture({ mutate: (e, b) => { if (b.params.name === 'get_file_info') e.result = structured(data, { isError: true }); return e; } });
+    await expectBlocked(f, 'ROOT_DENIAL_NOT_PROVEN');
+    assert.equal(f.calls.some((c) => c.body?.params.name === 'read_file'), false);
+  }
+});
+
+test('same-origin issuer drift during the strict probe blocks before token transmission', async () => {
+  const f = fixture();
+  f.publicCheck = async () => ({ status: 'ready', profile: 'readonly', requireOAuth: true, checks: [
+    { name: 'authorization-server metadata', passed: true, detail: { issuer: 'https://issuer.example.test/other', expectedIssuer: 'https://issuer.example.test/other' } }
+  ] });
+  await expectBlocked(f, 'STRICT_ISSUER_PIN_MISMATCH');
+  assert.equal(f.calls.length, 1);
 });
