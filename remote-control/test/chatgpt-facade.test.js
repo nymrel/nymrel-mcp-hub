@@ -123,6 +123,20 @@ test('ChatGPT HTTP endpoint keeps public review pages and a frozen action catalo
     assert.equal(out.body.resource, `${base}/chatgpt/mcp`);
     assert.deepEqual(out.body.scopes_supported, ['devices:read', 'tools:read', 'tools:write', 'tools:execute', 'tools:network']);
 
+    const unauthenticatedList = { jsonrpc: '2.0', id: 0, method: 'tools/list', params: { _meta: modernMeta() } };
+    out = await jsonFetch(base, '/chatgpt/mcp', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json', accept: 'application/json, text/event-stream',
+        'mcp-protocol-version': MODERN_PROTOCOL_VERSION, 'mcp-method': 'tools/list'
+      },
+      body: JSON.stringify(unauthenticatedList)
+    });
+    assert.equal(out.response.status, 401);
+    const initialChallenge = out.response.headers.get('www-authenticate') || '';
+    assert.match(initialChallenge, /scope="devices:read tools:read"/);
+    assert.doesNotMatch(initialChallenge, /tools:write|tools:execute|tools:network/);
+
     const chatgptToken = runtime.tokenService.mint({
       subject: 'chatgpt-user', tenantId: 't1', type: 'user',
       scopes: ['devices:read', 'tools:read', 'tools:write', 'tools:execute', 'tools:network']

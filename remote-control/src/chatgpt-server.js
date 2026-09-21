@@ -10,6 +10,7 @@ import { createRemoteHttpServer } from './server.js';
 const CHATGPT_MCP_SCOPES = [
   'devices:read', 'tools:read', 'tools:write', 'tools:execute', 'tools:network'
 ];
+const CHATGPT_INITIAL_SCOPES = ['devices:read', 'tools:read'];
 
 const PUBLIC_PAGES = new Map([
   ['/privacy', 'remote-privacy.html'],
@@ -29,7 +30,7 @@ function metadataUrl(config) {
   return `${publicOrigin(config)}/.well-known/oauth-protected-resource/chatgpt/mcp`;
 }
 
-function challenge(config, { scope = CHATGPT_MCP_SCOPES.join(' '), insufficient = false } = {}) {
+function challenge(config, { scope = CHATGPT_INITIAL_SCOPES.join(' '), insufficient = false } = {}) {
   const parts = [];
   if (insufficient) parts.push('error="insufficient_scope"');
   if (scope) parts.push(`scope="${scope}"`);
