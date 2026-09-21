@@ -1,4 +1,4 @@
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 export const REQUIRED_CHATGPT_SCOPES = Object.freeze([
   'devices:read',
@@ -224,7 +224,7 @@ function publicReport(result) {
 }
 
 function isMain() {
-  return process.argv[1] && fileURLToPath(import.meta.url) === fileURLToPath(new URL(`file:///${process.argv[1].replace(/\\/g, '/')}`));
+  return Boolean(process.argv[1]) && pathToFileURL(process.argv[1]).href === import.meta.url;
 }
 
 if (isMain()) {
