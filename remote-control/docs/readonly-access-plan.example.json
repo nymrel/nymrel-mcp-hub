@@ -1,0 +1,14 @@
+{
+  "schema": "nymrel.remote.readonly-acceptance.v1",
+  "baseUrl": "https://nymrel-remote-production.up.railway.app",
+  "expectedIssuer": "https://replace-with-approved-issuer.example.invalid/",
+  "deviceId": "REPLACE_WITH_AUTHENTICATED_DEVICE_ID",
+  "deviceName": "JalenPC",
+  "projectRoot": "C:\\REPLACE_WITH_APPROVED_ANCESTOR\\projects\\builderwars",
+  "probeFile": "C:\\REPLACE_WITH_APPROVED_ANCESTOR\\projects\\builderwars\\README.md",
+  "lineCount": 40,
+  "expectedLineSha256": "REPLACE_WITH_SHA256_OF_INDEPENDENTLY_VERIFIED_LINE_WINDOW",
+  "deniedAncestor": "C:\\REPLACE_WITH_APPROVED_ANCESTOR",
+  "nonsecretProbeApproved": false,
+  "hasPredefinedClient": false
+}
