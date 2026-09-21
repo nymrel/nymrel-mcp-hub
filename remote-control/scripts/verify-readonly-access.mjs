@@ -123,13 +123,21 @@ function usableResult(result) {
   insist(result.isError !== true && record(result.structuredContent), 'DEVICE_TOOL_FAILED');
   return result.structuredContent;
 }
-function deniedByRoot(result) {
+function deniedByRoot(result, expectedPath) {
   if (!record(result) || result.resultType !== 'complete' || result.isError !== true) return false;
   if (result._meta?.[SERVER_INFO_META_KEY]?.name !== '@nymrel/remote-control') return false;
   const data = result.structuredContent;
+  if (!record(data) || data.pending || data.approvalRequired ||
+      (data.call && data.call.status !== 'failed')) return false;
   // The native backend can return either a tool error or a broker-recorded failed call.
   const message = data?.error?.message ?? (data?.call?.status === 'failed' ? data.call.error : null);
-  return typeof message === 'string' && message.startsWith('Path is outside allowed directories: ');
+  const prefix = 'Path is outside allowed directories: ';
+  if (typeof message !== 'string' || !message.startsWith(prefix)) return false;
+  try {
+    const denied = absoluteProjectPath(message.slice(prefix.length));
+    const expected = absoluteProjectPath(expectedPath);
+    return denied.win === expected.win && denied.folded === expected.folded;
+  } catch { return false; }
 }
 
 /** Run only read-only protocol operations. The CLI report is deliberately not a release attestation. */
@@ -152,6 +160,10 @@ export async function verifyReadonlyAccess({ plan: input, accessToken, fetchImpl
     const readiness = await publicCheck(plan.baseUrl, { profile: 'readonly', requireOAuth: true,
       hasPredefinedClient: plan.hasPredefinedClient, fetchImpl: transport });
     insist(readiness?.status === 'ready' && readiness?.profile === 'readonly' && readiness?.requireOAuth === true, 'PUBLIC_CUTOVER_BLOCKED');
+    // The strict probe fetches metadata independently: bind its observed issuer too.
+    const issuerCheck = readiness.checks?.find((item) => item.name === 'authorization-server metadata');
+    insist(issuerCheck?.passed === true && issuerCheck.detail?.issuer === plan.expectedIssuer &&
+      issuerCheck.detail?.expectedIssuer === plan.expectedIssuer, 'STRICT_ISSUER_PIN_MISMATCH');
     passed('strict_public_cutover');
     insist(typeof accessToken === 'string' && accessToken.length >= 16 && accessToken.length <= 16384 &&
       /^[A-Za-z0-9._~+\/-]+=*$/.test(accessToken), 'ACCESS_TOKEN_REQUIRED');
@@ -184,7 +196,7 @@ export async function verifyReadonlyAccess({ plan: input, accessToken, fetchImpl
     insist(matched.length === 1 && matched[0].name === plan.deviceName && matched[0].status === 'online' && matched[0].mcpReady === true, 'DEVICE_IDENTITY_OR_READINESS_FAILED');
     passed('exact_device_online');
     const denial = await rpc('tools/call', { name: 'get_file_info', arguments: { device: plan.deviceId, path: plan.deniedAncestor } });
-    insist(deniedByRoot(denial), 'ROOT_DENIAL_NOT_PROVEN'); passed('ancestor_metadata_denied');
+    insist(deniedByRoot(denial, plan.deniedAncestor), 'ROOT_DENIAL_NOT_PROVEN'); passed('ancestor_metadata_denied');
     const window = usableResult(await rpc('tools/call', { name: 'read_file',
       arguments: { device: plan.deviceId, path: plan.probeFile, offset: 0, length: plan.lineCount } }));
     const returnedPath = absoluteProjectPath(window.path);
