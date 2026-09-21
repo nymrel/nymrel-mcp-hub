@@ -10,7 +10,7 @@ The credentialed sequence is bounded and read-only:
 
 1. Require exactly the six known readonly tools and their readonly/non-destructive annotations.
 2. Require the exact authenticated device ID and name to be online and MCP-ready. A heartbeat or ambiguous device name is insufficient.
-3. Ask `get_file_info` about the explicitly chosen denied ancestor. Require the native allowed-directory refusal; a generic error, missing path, authentication failure, timeout, or pending call does not pass. This reads no directory listing or file body.
+3. Ask `get_file_info` about the explicitly chosen denied ancestor. Require the native allowed-directory refusal bound to that exact canonical ancestor; a generic error, missing path, authentication failure, timeout, or pending call does not pass. This reads no directory listing or file body.
 4. Read at most 100 lines of an approved nonsecret README, AGENTS, CLAUDE or presence Markdown file below the selected project root. Require the returned canonical path, line window and SHA-256 to match the operator's independently computed expectation.
 
 The output contains only fixed check names, booleans, timestamp and fixed failure codes. It omits the token, issuer, device identity, paths, file contents and file digest. No real credential is used in the fixture tests.
@@ -53,7 +53,7 @@ Only `get_file_info` is requested outside the project root. If the server mistak
 
 Implementation baseline: `ae97fe775c5e4ddf33583108f510c23dcdbd2a9e`, PR #33. New files only; the server, auth policy, config, catalog, native backend and CI are unchanged.
 
-Local Node 22.16.0 fixture suite: 22 tests passing. It exercises success, origin/token separation, wrong issuer, missing route, auth rejection, tool-catalog mismatch, device mismatch/offline state, exact root-denial handling, queued calls, path/window/hash mismatch, output redaction, response limits, request budget and CLI input refusal. This is synthetic fixture evidence, not a JalenPC or external OAuth run. Full repository validation and independent review must be recorded against the final submitted commit separately.
+Local Node 22.16.0 fixture suite: 24 tests passing (the initial 22 plus two reproduced false-positive regressions). It exercises success, origin/token separation, wrong issuer, missing route, auth rejection, tool-catalog mismatch, device mismatch/offline state, exact root-denial handling, queued calls, path/window/hash mismatch, output redaction, response limits, request budget and CLI input refusal. This is synthetic fixture evidence, not a JalenPC or external OAuth run. Wrong-path denial and same-origin issuer drift both reproduced as false passes before their corrections and now fail closed. Full repository validation and independent review must be recorded against the final submitted commit separately.
 
 During this continuation, Nymrel Remote app discovery returned no matching app. The authorized Supabase connection exposed only an unrelated inactive project, not an existing Nymrel OAuth provider. No unrelated project was restored or repurposed, and no paid resource, identity, credential or new auth grant was created. The historical private-connection receipt is not substituted for a current tool roundtrip.
 
