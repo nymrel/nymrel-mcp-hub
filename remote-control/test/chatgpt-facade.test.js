@@ -11,7 +11,7 @@ const key = Buffer.alloc(32, 29);
 
 function configFor(dir) {
   return {
-    production: false, host: '127.0.0.1', port: 0, publicBaseUrl: null,
+    production: false, host: '127.0.0.1', port: 0, publicBaseUrl: null, openaiAppsChallenge: null,
     storePath: path.join(dir, 'state.json'), signingKey: key, dataKey: key, auditKey: key,
     bootstrapToken: 'bootstrap-test-token-not-for-production', callTtlMs: 60_000, callRetentionMs: 86_400_000, syncWaitMs: 0,
     heartbeatTtlMs: 60_000, pairingTtlMs: 60_000, pairingRetentionMs: 3_600_000, maxBodyBytes: 1024 * 1024,
@@ -100,9 +100,25 @@ test('open-world process actions require network scope before device dispatch', 
   );
 });
 
+test('OpenAI app domain challenge fails closed when no verification token is configured', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'nymrel-chatgpt-challenge-'));
+  const config = configFor(dir);
+  const { server } = await createChatgptRemoteHttpServer(config, { logger: { info() {}, error() {} } });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  try {
+    const response = await fetch(`${base}/.well-known/openai-apps-challenge`);
+    assert.equal(response.status, 404);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+});
+
 test('ChatGPT HTTP endpoint keeps public review pages and a frozen action catalog while device registration changes underneath it', async () => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'nymrel-chatgpt-'));
   const config = configFor(dir);
+  config.openaiAppsChallenge = 'openai-domain-verification-test-token';
   const { server, runtime } = await createChatgptRemoteHttpServer(config, { logger: { info() {}, error() {} } });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   config.port = server.address().port;
@@ -117,6 +133,12 @@ test('ChatGPT HTTP endpoint keeps public review pages and a frozen action catalo
       assert.match(text, new RegExp(marker));
       assert.match(response.headers.get('content-security-policy') || '', /frame-ancestors 'none'/);
     }
+
+    const challengeResponse = await fetch(`${base}/.well-known/openai-apps-challenge`);
+    assert.equal(challengeResponse.status, 200);
+    assert.match(challengeResponse.headers.get('content-type') || '', /text\/plain/);
+    assert.equal(challengeResponse.headers.get('cache-control'), 'no-store');
+    assert.equal(await challengeResponse.text(), config.openaiAppsChallenge);
 
     let out = await jsonFetch(base, '/.well-known/oauth-protected-resource/chatgpt/mcp');
     assert.equal(out.response.status, 200);

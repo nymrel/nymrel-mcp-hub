@@ -75,6 +75,7 @@ export function loadServerConfig() {
     host: process.env.NYMREL_REMOTE_HOST || '127.0.0.1',
     port: intEnv('NYMREL_REMOTE_PORT', 8787, { min: 1, max: 65535 }),
     publicBaseUrl,
+    openaiAppsChallenge: process.env.NYMREL_REMOTE_OPENAI_APPS_CHALLENGE || null,
     storePath: path.resolve(process.env.NYMREL_REMOTE_STORE || defaultStorePath()),
     signingKey,
     dataKey,
