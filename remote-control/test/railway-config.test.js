@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { devNull, tmpdir } from 'node:os';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
@@ -13,14 +13,16 @@ const patterns = config.build.watchPatterns;
 // approximation. This fixture never accesses the working repository or network.
 function matchedPaths(paths) {
   const root = mkdtempSync(path.join(tmpdir(), 'nymrel-railway-watch-'));
+  const emptyConfig = path.join(root, 'empty.gitconfig');
+  writeFileSync(emptyConfig, '');
   const env = { ...process.env };
   for (const key of Object.keys(env)) {
     if (key.toUpperCase().startsWith('GIT_')) delete env[key];
   }
   env.GIT_CONFIG_NOSYSTEM = '1';
-  env.GIT_CONFIG_GLOBAL = devNull;
+  env.GIT_CONFIG_GLOBAL = emptyConfig;
   const run = (args, input) => {
-    const result = spawnSync('git', ['-c', `core.excludesFile=${devNull}`, ...args], {
+    const result = spawnSync('git', ['-c', `core.excludesFile=${emptyConfig}`, ...args], {
       cwd: root, env, input, encoding: 'utf8', windowsHide: true,
       timeout: 10_000, maxBuffer: 64 * 1024
     });
