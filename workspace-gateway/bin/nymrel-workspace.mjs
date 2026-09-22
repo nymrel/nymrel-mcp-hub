@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { normalizeRepoId } from "../src/paths.js";
 import { canonicalJson, sha256Hex } from "../src/utils.js";
+import { fetchGateway } from "../src/cli-transport.js";
 
 function usage() {
   console.error(`
@@ -13,6 +14,7 @@ Environment:
   NYMREL_WORKSPACE_URL    Gateway origin (for example https://workspace.example)
   NYMREL_WORKSPACE_TOKEN  Bearer token for the requested operation
   NYMREL_WORKSPACE_PRINCIPAL  Optional stable agent/node identity
+  NYMREL_WORKSPACE_ALLOW_LOOPBACK_HTTP  Set to 1 only for literal-loopback development
 
 Commands:
   list
@@ -35,11 +37,6 @@ function requiredEnv(name) {
     throw new Error(`${name} is required`);
   }
   return value;
-}
-
-function gatewayUrl(route) {
-  const base = requiredEnv("NYMREL_WORKSPACE_URL").replace(/\/+$/, "");
-  return new URL(route, `${base}/`).toString();
 }
 
 function principal() {
@@ -67,7 +64,7 @@ function readHeaders() {
 }
 
 async function request(route, { method = "GET", body, mutation = false, key } = {}) {
-  const response = await fetch(gatewayUrl(route), {
+  const response = await fetchGateway(route, {
     method,
     headers: mutation ? mutationHeaders(key) : readHeaders(),
     body: body === undefined ? undefined : JSON.stringify(body),
