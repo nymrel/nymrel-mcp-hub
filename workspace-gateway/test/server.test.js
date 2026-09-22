@@ -398,7 +398,26 @@ test("CLI bootstraps candidate registry and publishes node mirror state", async 
       NYMREL_WORKSPACE_URL: ctx.origin,
       NYMREL_WORKSPACE_TOKEN: ctx.config.adminToken,
       NYMREL_WORKSPACE_PRINCIPAL: "node:jalenpc",
+      NYMREL_WORKSPACE_ALLOW_LOOPBACK_HTTP: "1",
     };
+    await assert.rejects(
+      runCli([cli, "bootstrap-candidate", candidatePath, "node:jalenpc"], {
+        cwd: path.resolve("."),
+        env: { ...env, NYMREL_WORKSPACE_ALLOW_LOOPBACK_HTTP: "0" },
+        encoding: "utf8",
+      }),
+      (error) => {
+        assert.equal(error.code, 1);
+        assert.match(JSON.parse(error.stderr).message, /literal-loopback HTTP needs an explicit development opt-in/);
+        return true;
+      },
+    );
+    const beforeImport = await fetch(`${ctx.origin}/v1/repos`, {
+      headers: auth(ctx.config.readToken, "agent:reader"),
+    });
+    assert.equal(beforeImport.status, 200);
+    assert.deepEqual((await jsonResponse(beforeImport)).repos, []);
+
     const output = await runCli(
       [cli, "bootstrap-candidate", candidatePath, "node:jalenpc"],
       { cwd: path.resolve("."), env, encoding: "utf8" },
