@@ -4,12 +4,14 @@
     "builder": "DOCKERFILE",
     "dockerfilePath": "Dockerfile",
     "watchPatterns": [
-      "bin/**",
-      "src/**",
-      "public/**",
-      "package.json",
-      "package-lock.json",
-      "Dockerfile"
+      "/remote-control/bin/**",
+      "/remote-control/src/**",
+      "/remote-control/public/**",
+      "/remote-control/package.json",
+      "/remote-control/package-lock.json",
+      "/remote-control/Dockerfile",
+      "/remote-control/.dockerignore",
+      "/remote-control/railway.json"
     ]
   },
   "deploy": {
