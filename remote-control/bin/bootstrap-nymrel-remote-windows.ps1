@@ -4,6 +4,7 @@ param(
   [string]$DeviceName = $env:COMPUTERNAME,
   [string[]]$AllowedDirectory = @($env:USERPROFILE),
   [string]$TaskName = 'Nymrel Remote',
+  [string]$InstanceName = 'Remote',
   [string]$Ref = 'main'
 )
 
@@ -24,6 +25,12 @@ if ($server.Scheme -ne 'https' -or $server.UserInfo -or $server.Query -or $serve
 if (-not $DeviceName -or $DeviceName.Length -gt 128) {
   throw 'DeviceName must contain 1 to 128 characters.'
 }
+if ($InstanceName -cnotmatch '^[A-Za-z][A-Za-z0-9_-]{0,31}$') {
+  throw 'InstanceName must be 1 to 32 letters, digits, underscores, or hyphens, starting with a letter.'
+}
+if ($InstanceName -ne 'Remote' -and $TaskName -eq 'Nymrel Remote') {
+  throw 'A separate instance requires a distinct TaskName.'
+}
 if (-not $AllowedDirectory -or $AllowedDirectory.Count -eq 0) {
   throw 'At least one allowed directory is required.'
 }
@@ -43,7 +50,7 @@ if ($nodeVersion.Major -lt 22) {
   throw "Nymrel Remote requires Node.js 22 or newer; found $nodeVersionText."
 }
 
-$runtimeDir = Join-Path $env:LOCALAPPDATA 'Nymrel\Remote'
+$runtimeDir = Join-Path (Join-Path $env:LOCALAPPDATA 'Nymrel') $InstanceName
 $appDir = Join-Path $runtimeDir 'app'
 $stagingDir = Join-Path $runtimeDir ("app.staging.{0}" -f [Guid]::NewGuid().ToString('N'))
 $backupDir = Join-Path $runtimeDir 'app.previous'
@@ -52,6 +59,30 @@ $logFile = Join-Path $runtimeDir 'supervisor.log'
 $tempRoot = Join-Path ([IO.Path]::GetTempPath()) ("nymrel-remote-{0}" -f [Guid]::NewGuid().ToString('N'))
 $archive = Join-Path $tempRoot 'source.zip'
 $extract = Join-Path $tempRoot 'source'
+
+foreach ($boundary in @((Join-Path $env:LOCALAPPDATA 'Nymrel'), $runtimeDir)) {
+  if (Test-Path -LiteralPath $boundary) {
+    $boundaryItem = Get-Item -LiteralPath $boundary -Force
+    if ($boundaryItem.Attributes -band [IO.FileAttributes]::ReparsePoint) {
+      throw "Refusing to install through a linked runtime directory: $boundary"
+    }
+  }
+}
+
+function Assert-InstancePath {
+  param([string]$Path)
+  $root = [IO.Path]::GetFullPath($runtimeDir).TrimEnd('\') + '\'
+  $target = [IO.Path]::GetFullPath($Path)
+  if (-not $target.StartsWith($root, [StringComparison]::OrdinalIgnoreCase)) {
+    throw "Refusing to modify a path outside this instance: $target"
+  }
+  if (Test-Path -LiteralPath $target) {
+    $item = Get-Item -LiteralPath $target -Force
+    if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) {
+      throw "Refusing to modify a linked instance path: $target"
+    }
+  }
+}
 
 New-Item -ItemType Directory -Path $runtimeDir -Force | Out-Null
 New-Item -ItemType Directory -Path $tempRoot -Force | Out-Null
@@ -93,6 +124,9 @@ try {
     Start-Sleep -Milliseconds 500
   }
   Copy-Item -LiteralPath $remoteSource -Destination $stagingDir -Recurse -Force
+  Assert-InstancePath $backupDir
+  Assert-InstancePath $appDir
+  Assert-InstancePath $stagingDir
   if (Test-Path -LiteralPath $backupDir) {
     Remove-Item -LiteralPath $backupDir -Recurse -Force
   }
@@ -103,13 +137,15 @@ try {
 
   $allowedJson = ConvertTo-Json -InputObject @($resolvedAllowed) -Compress
   $origin = $server.GetLeftPart([UriPartial]::Authority)
-  Set-UserEnvironmentVariable 'NYMREL_REMOTE_SERVER_URL' $origin
-  Set-UserEnvironmentVariable 'NYMREL_REMOTE_DEVICE_NAME' $DeviceName
-  Set-UserEnvironmentVariable 'NYMREL_REMOTE_DEVICE_FILE' $deviceFile
-  Set-UserEnvironmentVariable 'NYMREL_REMOTE_ALLOWED_DIRECTORIES' $allowedJson
-  Set-UserEnvironmentVariable 'NYMREL_REMOTE_LOCAL_CWD' $resolvedAllowed[0]
-  Set-UserEnvironmentVariable 'NYMREL_REMOTE_LOCAL_SHELL' 'powershell.exe'
-  Set-UserEnvironmentVariable 'NYMREL_REMOTE_LOCAL_BACKEND' 'native'
+  if ($InstanceName -eq 'Remote') {
+    Set-UserEnvironmentVariable 'NYMREL_REMOTE_SERVER_URL' $origin
+    Set-UserEnvironmentVariable 'NYMREL_REMOTE_DEVICE_NAME' $DeviceName
+    Set-UserEnvironmentVariable 'NYMREL_REMOTE_DEVICE_FILE' $deviceFile
+    Set-UserEnvironmentVariable 'NYMREL_REMOTE_ALLOWED_DIRECTORIES' $allowedJson
+    Set-UserEnvironmentVariable 'NYMREL_REMOTE_LOCAL_CWD' $resolvedAllowed[0]
+    Set-UserEnvironmentVariable 'NYMREL_REMOTE_LOCAL_SHELL' 'powershell.exe'
+    Set-UserEnvironmentVariable 'NYMREL_REMOTE_LOCAL_BACKEND' 'native'
+  }
 
   $agentEnvironment = @{
     NYMREL_REMOTE_SERVER_URL = $origin
@@ -122,7 +158,7 @@ try {
   }
   $installer = Join-Path $appDir 'bin\install-nymrel-remote-windows.ps1'
   Remove-Item -LiteralPath $logFile -Force -ErrorAction SilentlyContinue
-  & $installer -TaskName $TaskName -Environment $agentEnvironment
+  & $installer -TaskName $TaskName -InstanceName $InstanceName -Environment $agentEnvironment
 
   $deadline = (Get-Date).AddSeconds(60)
   do {
@@ -156,6 +192,10 @@ catch {
   throw
 }
 finally {
+  Assert-InstancePath $stagingDir
   Remove-Item -LiteralPath $stagingDir -Recurse -Force -ErrorAction SilentlyContinue
+  if (-not ([IO.Path]::GetFullPath($tempRoot).StartsWith([IO.Path]::GetFullPath([IO.Path]::GetTempPath()), [StringComparison]::OrdinalIgnoreCase))) {
+    throw 'Refusing to remove a temp path outside the temp root.'
+  }
   Remove-Item -LiteralPath $tempRoot -Recurse -Force -ErrorAction SilentlyContinue
 }

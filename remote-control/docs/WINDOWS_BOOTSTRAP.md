@@ -31,6 +31,24 @@ The default allowed root is the current user's profile directory. To narrow it:
   -AllowedDirectory 'C:\Users\johns\Desktop'
 ```
 
+## Separate ChatGPT Studio device
+
+Keep the existing `Nymrel Remote` installation intact when it serves other clients. A second instance has its own runtime directory, device credential, log, task, and pinned allowed roots. Use a reviewed folder path that does not contain credentials or private browser data:
+
+```powershell
+& powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass `
+  -File $bootstrap `
+  -Ref '<reviewed-40-character-commit-sha>' `
+  -InstanceName ChatGPTStudio `
+  -TaskName 'Nymrel Remote ChatGPT Studio' `
+  -DeviceName 'JalenPC-ChatGPTStudio' `
+  -AllowedDirectory '<reviewed-studio-folder>'
+```
+
+This uses `%LOCALAPPDATA%\Nymrel\ChatGPTStudio`. It does not overwrite the first instance's User environment variables. The launcher must carry its own explicit server URL, device file, allowed directories, and working directory. Pair the new code with a token for a **separate tenant**, then map only the operator's ChatGPT OAuth subject to that tenant. Pairing under the existing broad-root device's tenant would let ChatGPT list that device too.
+
+To remove just this instance's autostart, run its installer with both `-InstanceName ChatGPTStudio` and `-TaskName 'Nymrel Remote ChatGPT Studio'`, plus `-Uninstall`. Device credentials and logs remain for review.
+
 A new device prints one machine-readable line:
 
 ```text

@@ -113,3 +113,15 @@ test('Windows bootstrap preserves credentials outside replaceable application so
   assert.match(bootstrap, /app\.previous/);
   assert.match(guide, /preserves `device\.json`/);
 });
+
+test('a second Windows instance keeps its device file, task, and roots separate', () => {
+  assert.match(bootstrap, /\[string\]\$InstanceName = 'Remote'/);
+  assert.match(installer, /\[string\]\$InstanceName = 'Remote'/);
+  assert.match(bootstrap, /Join-Path \(Join-Path \$env:LOCALAPPDATA 'Nymrel'\) \$InstanceName/);
+  assert.match(installer, /Join-Path \(Join-Path \$env:LOCALAPPDATA 'Nymrel'\) \$InstanceName/);
+  assert.match(bootstrap, /separate instance requires a distinct TaskName/);
+  assert.match(installer, /separate instance requires an explicit launcher value/);
+  assert.match(bootstrap, /if \(\$InstanceName -eq 'Remote'\) \{\s+Set-UserEnvironmentVariable/);
+  assert.match(bootstrap, /\$installer -TaskName \$TaskName -InstanceName \$InstanceName -Environment \$agentEnvironment/);
+  assert.match(guide, /Nymrel\\ChatGPTStudio/);
+});

@@ -80,15 +80,15 @@ Revocation: JWT access tokens are verified offline and stay valid until `exp`, s
 
 **This is an explicit rollout item, not a solved problem.** The native device agent has no sensitive-path denylist: `NYMREL_REMOTE_ALLOWED_DIRECTORIES` is the only file boundary, and every file beneath it is readable and searchable through this profile.
 
-JalenPC currently allows `C:\Users\johns`, the whole user profile. A profile root is where the agent's own device credential lives by default (`~/.nymrel-remote/device.json`) and where SSH keys, browser profiles, and application data normally live. The contents were not inspected for this change, and the agent's settings were neither read nor modified. A whole-profile root is not an acceptable root for a cloud-reachable resource, and nothing in this change makes it one.
+JalenPC currently allows `C:\Users\johns`, the whole user profile. A profile root is where SSH keys, browser profiles, and application data normally live. A whole-profile root is not an acceptable root for a cloud-reachable resource, and nothing in this change makes it one. The Windows bootstrap supports a second `ChatGPTStudio` instance with its own device credential and restricted roots, so existing clients can retain their current device configuration.
 
 Before ChatGPT is connected:
 
 1. The operator chooses the narrowest project directories that regular ChatGPT actually needs.
-2. The operator sets `NYMREL_REMOTE_ALLOWED_DIRECTORIES` on JalenPC to that JSON array (see `docs/WINDOWS_BOOTSTRAP.md`, `-AllowedDirectory`) and restarts the agent.
-3. The operator confirms from ChatGPT that `list_directory` on `C:\Users\johns` and on the credential directory is refused.
+2. Install the separate instance described in `docs/WINDOWS_BOOTSTRAP.md` with only those roots, and pair it under a dedicated tenant. Map the operator's OAuth subject to that tenant. Alternatively, narrow the existing JalenPC agent with `-AllowedDirectory` and restart it if every current client should lose access outside the chosen roots.
+3. The operator confirms from ChatGPT that only the narrow device is listed and that `list_directory` on `C:\Users\johns` and on the credential directory is refused.
 
-The allowed roots are per device, not per resource: narrowing them also narrows `/chatgpt/mcp` and `/mcp` for that device.
+The allowed roots are per device, not per resource. Tenant isolation is what prevents the regular ChatGPT profile from discovering a different, broader device.
 
 ## Client onboarding
 
