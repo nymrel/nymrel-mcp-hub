@@ -65,6 +65,8 @@ Issuer identifiers are compared exactly. Configure `https://issuer.example/` wit
 
 These are operator/account inputs. None can be produced from this repository.
 
+Provider-specific fit, custom-scope limitations, and the exact cutover values are recorded in [OAuth provider cutover](OAUTH_PROVIDER_CUTOVER_20260922.md).
+
 1. Authorization-server metadata discoverable from the issuer, whose `issuer` value equals the configured issuer exactly.
 2. `authorization_endpoint`, `token_endpoint`, and `jwks_uri` (or RFC 7662 introspection, configured through `NYMREL_REMOTE_OAUTH_INTROSPECTION_URL`).
 3. PKCE `S256`.
