@@ -1,6 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
+import { spawnSync } from 'node:child_process';
+import os from 'node:os';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const bootstrapPath = new URL('../bin/bootstrap-nymrel-remote-windows.ps1', import.meta.url);
 const installerPath = new URL('../bin/install-nymrel-remote-windows.ps1', import.meta.url);
@@ -124,4 +128,48 @@ test('a second Windows instance keeps its device file, task, and roots separate'
   assert.match(bootstrap, /if \(\$InstanceName -eq 'Remote'\) \{\s+Set-UserEnvironmentVariable/);
   assert.match(bootstrap, /\$installer -TaskName \$TaskName -InstanceName \$InstanceName -Environment \$agentEnvironment/);
   assert.match(guide, /Nymrel\\ChatGPTStudio/);
+});
+
+test('ChatGPTStudio bootstrap refuses implicit or whole-profile roots before download', { skip: process.platform !== 'win32' }, () => {
+  const script = fileURLToPath(bootstrapPath);
+  const baseArgs = [
+    '-NoLogo', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', script,
+    '-InstanceName', 'ChatGPTStudio', '-TaskName', 'Nymrel Remote ChatGPT Studio', '-PreflightOnly'
+  ];
+  for (const [label, args, expected] of [
+    ['omitted root', [], /requires an explicit -AllowedDirectory/],
+    ['user profile', ['-AllowedDirectory', os.homedir()], /must be narrower than the user profile/],
+    ['profile ancestor', ['-AllowedDirectory', path.dirname(os.homedir())], /must be narrower than the user profile/]
+  ]) {
+    const result = spawnSync('powershell.exe', [...baseArgs, ...args], { encoding: 'utf8', timeout: 10_000 });
+    assert.equal(result.status, 1, `${label}: ${result.error?.message ?? result.stderr}`);
+    assert.match(result.stderr, expected, label);
+    assert.doesNotMatch(result.stdout, /Downloading Nymrel Remote/, label);
+  }
+
+  const narrow = spawnSync('powershell.exe', [
+    ...baseArgs, '-AllowedDirectory', path.dirname(script)
+  ], { encoding: 'utf8', timeout: 10_000 });
+  assert.equal(narrow.status, 0, narrow.error?.message ?? narrow.stderr);
+  assert.match(narrow.stdout, /NYMREL_REMOTE_BOOTSTRAP_PREFLIGHT=OK/);
+  assert.doesNotMatch(narrow.stdout, /Downloading Nymrel Remote/);
+});
+
+test('ChatGPTStudio bootstrap refuses a junction that aliases the user profile', { skip: process.platform !== 'win32' }, async () => {
+  const temporary = await fs.mkdtemp(path.join(os.tmpdir(), 'nymrel-studio-root-test-'));
+  const alias = path.join(temporary, 'profile-alias');
+  try {
+    await fs.symlink(os.homedir(), alias, 'junction');
+    const result = spawnSync('powershell.exe', [
+      '-NoLogo', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', fileURLToPath(bootstrapPath),
+      '-InstanceName', 'ChatGPTStudio', '-TaskName', 'Nymrel Remote ChatGPT Studio',
+      '-PreflightOnly', '-AllowedDirectory', alias
+    ], { encoding: 'utf8', timeout: 10_000 });
+    assert.equal(result.status, 1, result.error?.message ?? result.stderr);
+    assert.match(result.stderr, /cannot traverse a linked path/);
+    assert.doesNotMatch(result.stdout, /Downloading Nymrel Remote/);
+  } finally {
+    await fs.unlink(alias).catch((error) => { if (error.code !== 'ENOENT') throw error; });
+    await fs.rmdir(temporary);
+  }
 });

@@ -5,7 +5,8 @@ param(
   [string[]]$AllowedDirectory = @($env:USERPROFILE),
   [string]$TaskName = 'Nymrel Remote',
   [string]$InstanceName = 'Remote',
-  [string]$Ref = 'main'
+  [string]$Ref = 'main',
+  [switch]$PreflightOnly
 )
 
 $ErrorActionPreference = 'Stop'
@@ -31,6 +32,9 @@ if ($InstanceName -cnotmatch '^[A-Za-z][A-Za-z0-9_-]{0,31}$') {
 if ($InstanceName -ne 'Remote' -and $TaskName -eq 'Nymrel Remote') {
   throw 'A separate instance requires a distinct TaskName.'
 }
+if ($InstanceName -ieq 'ChatGPTStudio' -and -not $PSBoundParameters.ContainsKey('AllowedDirectory')) {
+  throw 'ChatGPTStudio requires an explicit -AllowedDirectory; the user-profile default is unsafe for a cloud client.'
+}
 if (-not $AllowedDirectory -or $AllowedDirectory.Count -eq 0) {
   throw 'At least one allowed directory is required.'
 }
@@ -42,6 +46,30 @@ $resolvedAllowed = @(
     (Resolve-Path -LiteralPath $item).Path
   }
 )
+if ($InstanceName -ieq 'ChatGPTStudio') {
+  if (-not $env:USERPROFILE) {
+    throw 'ChatGPTStudio cannot validate allowed roots without USERPROFILE.'
+  }
+  $profileRoot = [IO.Path]::GetFullPath($env:USERPROFILE).TrimEnd([char[]]@('\', '/'))
+  foreach ($root in $resolvedAllowed) {
+    $component = Get-Item -LiteralPath $root -Force
+    while ($component) {
+      if ($component.Attributes -band [IO.FileAttributes]::ReparsePoint) {
+        throw "ChatGPTStudio allowed directory cannot traverse a linked path: $root"
+      }
+      $component = $component.Parent
+    }
+    $allowedRoot = [IO.Path]::GetFullPath($root).TrimEnd([char[]]@('\', '/'))
+    if ($profileRoot.Equals($allowedRoot, [StringComparison]::OrdinalIgnoreCase) -or
+        $profileRoot.StartsWith($allowedRoot + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
+      throw "ChatGPTStudio allowed directory must be narrower than the user profile: $root"
+    }
+  }
+}
+if ($PreflightOnly) {
+  Write-Output 'NYMREL_REMOTE_BOOTSTRAP_PREFLIGHT=OK'
+  return
+}
 
 $node = (Get-Command node.exe -ErrorAction Stop).Source
 $nodeVersionText = (& $node --version).Trim().TrimStart('v').Split('-')[0]

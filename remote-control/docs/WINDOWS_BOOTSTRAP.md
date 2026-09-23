@@ -47,6 +47,10 @@ Keep the existing `Nymrel Remote` installation intact when it serves other clien
 
 This uses `%LOCALAPPDATA%\Nymrel\ChatGPTStudio`. It does not overwrite the first instance's User environment variables. The launcher must carry its own explicit server URL, device file, allowed directories, and working directory. Pair the new code with a token for a **separate tenant**, then map only the operator's ChatGPT OAuth subject to that tenant. Pairing under the existing broad-root device's tenant would let ChatGPT list that device too.
 
+The bootstrap refuses a `ChatGPTStudio` install when `-AllowedDirectory` is omitted, names the whole user profile or an ancestor such as `C:\Users`, or traverses a linked directory. This check runs before any source download or scheduled-task change. It still cannot decide whether a chosen subfolder contains sensitive files, so review every selected root before pairing.
+
+Add `-PreflightOnly` to the command above to validate the server URL, instance values, and selected roots without downloading source or changing the scheduled task. A successful check prints `NYMREL_REMOTE_BOOTSTRAP_PREFLIGHT=OK`; it does not pair or start a device.
+
 To remove just this instance's autostart, run its installer with both `-InstanceName ChatGPTStudio` and `-TaskName 'Nymrel Remote ChatGPT Studio'`, plus `-Uninstall`. Device credentials and logs remain for review.
 
 A new device prints one machine-readable line:

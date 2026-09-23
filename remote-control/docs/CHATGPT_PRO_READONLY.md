@@ -84,6 +84,8 @@ Revocation: JWT access tokens are verified offline and stay valid until `exp`, s
 
 JalenPC currently allows `C:\Users\johns`, the whole user profile. A profile root is where SSH keys, browser profiles, and application data normally live. A whole-profile root is not an acceptable root for a cloud-reachable resource, and nothing in this change makes it one. The Windows bootstrap supports a second `ChatGPTStudio` instance with its own device credential and restricted roots, so existing clients can retain their current device configuration.
 
+The `ChatGPTStudio` bootstrap now requires an explicit allowed root and rejects the whole user profile or an ancestor before downloading or changing a scheduled task. The operator must still select and inspect narrow project roots; the guard does not make an arbitrary descendant safe.
+
 Before ChatGPT is connected:
 
 1. The operator chooses the narrowest project directories that regular ChatGPT actually needs.
