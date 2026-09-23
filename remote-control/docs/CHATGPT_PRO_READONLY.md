@@ -8,7 +8,7 @@ This profile is intentionally separate from the full public/plugin catalog. It i
 
 ## Status
 
-The profile is wired and tested locally. It is **not deployed and not proven against ChatGPT**. Nymrel Remote contains no OAuth authorization server: it only verifies tokens from an external one. Until the operator provisions a provider (see [Provider requirements](#provider-requirements)) the read-only resource answers every request with `401`, by design.
+The profile is wired, tested, and deployed to `https://nymrel-remote-production.up.railway.app` as of 2026-09-22. Live probes returned `200` for `/healthz`, `/readyz`, and the read-only protected-resource metadata, and `401` for an unauthenticated MCP request. It is **not yet connected to ChatGPT or authorized to read local files**. Nymrel Remote contains no OAuth authorization server: it only verifies tokens from an external one. Until the operator provisions a provider (see [Provider requirements](#provider-requirements)) the read-only resource answers every request with `401`, by design.
 
 ## Tool surface
 
@@ -99,12 +99,12 @@ The allowed roots are per device, not per resource. Tenant isolation is what pre
 
 ## Deployment
 
-Production currently runs a revision that predates this work and has no authorization server configured. Each step below needs the operator; none was performed here.
+Production runs this profile, but has no authorization server configured. Deployment `d32760f9-aa83-44c6-8bc9-b36d1ac744f3` succeeded on 2026-09-22. The remaining steps below require an authorization provider, a narrow device pairing, and an operator identity decision.
 
-1. Provision the provider and record the operator `sub` and the tenant JalenPC is paired under (`default` unless pairing was approved under another tenant).
-2. Restrict the JalenPC allowed roots as described above.
+1. Provision the provider and record the operator `sub`. Create a dedicated tenant for the read-only ChatGPT device; do not map that subject to the tenant containing the existing whole-profile JalenPC device.
+2. Pair the separate `ChatGPTStudio` Windows instance with only the operator-selected roots under that tenant, as described above.
 3. Set the service variables: `NYMREL_REMOTE_AUTHORIZATION_SERVERS`, `NYMREL_REMOTE_OAUTH_ISSUER`, `NYMREL_REMOTE_OAUTH_SUBJECT_TENANTS`, and either `NYMREL_REMOTE_OAUTH_JWKS_URL` (optional when discovery publishes `jwks_uri`) or the introspection variables. Leave `NYMREL_REMOTE_OAUTH_AUDIENCE` and `NYMREL_REMOTE_CHATGPT_OAUTH_AUDIENCE` at their own resource URLs.
-4. Deploy the reviewed revision. A rejected configuration stops the process at startup instead of serving with open tenancy.
+4. Redeploy after the configuration changes. A rejected configuration stops the process at startup instead of serving with open tenancy.
 5. Run the strict probe; it prints check names and pass/fail only:
 
    ```text
