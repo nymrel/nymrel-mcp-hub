@@ -26,5 +26,8 @@
     "README.md",
     "SECURITY.md",
     "LICENSE"
-  ]
+  ],
+  "devDependencies": {
+    "railway": "3.11.0"
+  }
 }

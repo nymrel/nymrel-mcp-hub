@@ -5,8 +5,10 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 
-const config = JSON.parse(readFileSync(new URL('../railway.json', import.meta.url), 'utf8'));
-const patterns = config.build.watchPatterns;
+const infrastructure = readFileSync(new URL('../.railway/railway.ts', import.meta.url), 'utf8');
+const watchList = infrastructure.match(/watchPatterns:\s*(\[[\s\S]*?\])/);
+assert.ok(watchList, 'Railway infrastructure must declare watch paths');
+const patterns = JSON.parse(watchList[1].replace(/,\s*\]$/, ']'));
 
 // Railway documents repository-root gitignore-style matching, not service-root
 // matching. Exercise those semantics with local Git rather than a custom glob
@@ -70,7 +72,7 @@ test('service build inputs and Railway configuration changes are watched', () =>
     'remote-control/package-lock.json',
     'remote-control/Dockerfile',
     'remote-control/.dockerignore',
-    'remote-control/railway.json'
+    'remote-control/.railway/railway.ts'
   ];
   assert.deepEqual(matchedPaths(changed), changed);
 });
