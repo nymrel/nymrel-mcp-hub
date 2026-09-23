@@ -15,6 +15,8 @@ const ISSUER = 'https://issuer.example.test/';
 const JWKS_URL = 'https://issuer.example.test/.well-known/jwks.json';
 const INTROSPECTION_URL = 'https://issuer.example.test/oauth/introspect';
 const READONLY_AUDIENCE = `${PUBLIC_URL}/chatgpt/readonly/mcp`;
+const NYMREL_PLUGIN_AUDIENCE = 'https://mcp.nymrel.com/mcp';
+const NYMREL_PLUGIN_ROUTE = '/nymrel/plugin/readonly/mcp';
 const CHATGPT_AUDIENCE = `${PUBLIC_URL}/chatgpt/mcp`;
 const MCP_AUDIENCE = `${PUBLIC_URL}/mcp`;
 const OPERATOR_SUBJECT = 'auth0|operator';
@@ -186,6 +188,67 @@ test('read-only ChatGPT resource stays closed when no authorization server is co
   const f = await fixture(t, { configOverrides: { authorizationServers: [] } });
   const out = await listTools(f.base, '/chatgpt/readonly/mcp', f.jwt(claims()));
   assert.equal(out.response.status, 401);
+});
+
+test('Nymrel plugin backend is absent by default and accepts only mapped, plugin-audience OAuth reads when enabled', async (t) => {
+  const disabled = await fixture(t);
+  let out = await listTools(disabled.base, NYMREL_PLUGIN_ROUTE, disabled.jwt(claims({ aud: NYMREL_PLUGIN_AUDIENCE })));
+  assert.equal(out.response.status, 404);
+
+  const f = await fixture(t, { configOverrides: { nymrelPluginReadonlyEnabled: true } });
+  out = await jsonFetch(f.base, `/.well-known/oauth-protected-resource${NYMREL_PLUGIN_ROUTE}`);
+  assert.equal(out.response.status, 200);
+  assert.equal(out.body.resource, NYMREL_PLUGIN_AUDIENCE);
+  assert.deepEqual(out.body.authorization_servers, [ISSUER]);
+  assert.deepEqual(out.body.scopes_supported, ['devices:read', 'tools:read']);
+
+  out = await listTools(f.base, NYMREL_PLUGIN_ROUTE, null);
+  assert.equal(out.response.status, 401);
+  assert.match(out.response.headers.get('www-authenticate') || '', /https:\/\/mcp\.nymrel\.com\/\.well-known\/oauth-protected-resource\/mcp/);
+
+  const staticToken = f.runtime.tokenService.mint({
+    subject: 'static-operator', tenantId: OPERATOR_TENANT, type: 'user',
+    scopes: ['devices:read', 'tools:read']
+  });
+  assert.equal((await listTools(f.base, NYMREL_PLUGIN_ROUTE, staticToken)).response.status, 401);
+  assert.equal((await listTools(f.base, NYMREL_PLUGIN_ROUTE, f.jwt(claims()))).response.status, 401);
+  const missingScope = await listTools(f.base, NYMREL_PLUGIN_ROUTE,
+    f.jwt(claims({ aud: NYMREL_PLUGIN_AUDIENCE, scope: 'devices:read' })));
+  assert.equal(missingScope.response.status, 403);
+  assert.match(missingScope.response.headers.get('www-authenticate') || '', /error="insufficient_scope"/);
+
+  const token = f.jwt(claims({ aud: NYMREL_PLUGIN_AUDIENCE, tenant: FOREIGN_TENANT, tid: FOREIGN_TENANT }));
+  out = await listTools(f.base, NYMREL_PLUGIN_ROUTE, token);
+  assert.equal(out.response.status, 200);
+  assert.deepEqual(out.body.result.tools.map((tool) => tool.name), CHATGPT_READONLY_TOOL_NAMES);
+  out = await callTool(f.base, NYMREL_PLUGIN_ROUTE, token, 'list_devices');
+  assert.equal(out.response.status, 200);
+  assert.match(JSON.stringify(out.body.result), /JalenPC/);
+  assert.doesNotMatch(JSON.stringify(out.body.result), /ForeignPC/);
+
+  for (const name of ['write_file', 'edit_block', 'start_process', 'kill_process']) {
+    out = await callTool(f.base, NYMREL_PLUGIN_ROUTE, token, name, { device: 'JalenPC', path: 'a.txt' });
+    assert.equal(out.body.error.data.code, 'NOT_FOUND', name);
+  }
+  assert.equal((await f.runtime.broker.listQueuedForDevice(f.operatorDevice)).length, 0);
+});
+
+test('Nymrel plugin pending results are isolated from the direct ChatGPT read-only profile', async (t) => {
+  const f = await fixture(t, { configOverrides: { nymrelPluginReadonlyEnabled: true } });
+  const pluginToken = f.jwt(claims({ aud: NYMREL_PLUGIN_AUDIENCE }));
+  const directToken = f.jwt(claims());
+  const started = await callTool(f.base, NYMREL_PLUGIN_ROUTE, pluginToken, 'read_file', { device: 'JalenPC', path: 'notes/a.txt' });
+  assert.equal(started.response.status, 200);
+  assert.equal(started.body.result.structuredContent.pending, true);
+  const callId = started.body.result.structuredContent.call.id;
+  assert.equal(typeof callId, 'string');
+
+  let out = await callTool(f.base, NYMREL_PLUGIN_ROUTE, pluginToken, 'get_read_result', { callId });
+  assert.equal(out.response.status, 200);
+  assert.equal(out.body.result.structuredContent.pending, true);
+
+  out = await callTool(f.base, '/chatgpt/readonly/mcp', directToken, 'get_read_result', { callId });
+  assert.equal(out.body.error.data.code, 'NOT_FOUND');
 });
 
 test('mapped OAuth subject gets the frozen seven-tool catalog and only its mapped tenant, whatever tenant the token claims', async (t) => {
