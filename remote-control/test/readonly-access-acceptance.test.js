@@ -235,3 +235,19 @@ test('same-origin issuer drift during the strict probe blocks before token trans
   await expectBlocked(f, 'STRICT_ISSUER_PIN_MISMATCH');
   assert.equal(f.calls.length, 1);
 });
+
+
+test('verified dynamic onboarding is validated and forwarded to the strict public probe', async () => {
+  for (const method of ['cimd', 'dcr']) {
+    const f = fixture({ plan: config({ verifiedDynamicClient: method }) });
+    const original = f.publicCheck;
+    f.publicCheck = async (base, options) => {
+      assert.equal(options.verifiedDynamicClient, method);
+      assert.equal(options.hasPredefinedClient, false);
+      return original(base, options);
+    };
+    assert.equal((await verifyReadonlyAccess(f)).status, 'roundtrip_pass');
+  }
+  assert.throws(() => validatePlan(config({ verifiedDynamicClient: 'auto' })), /INVALID_PLAN/);
+  assert.throws(() => validatePlan(config({ verifiedDynamicClient: 'cimd', hasPredefinedClient: true })), /INVALID_PLAN/);
+});

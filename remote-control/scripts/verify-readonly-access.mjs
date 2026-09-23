@@ -57,10 +57,12 @@ function stagedShareIndexProbe(root, file, denied) {
 }
 
 export function validatePlan(input) {
-  insist(record(input) && Object.keys(input).length === PLAN_KEYS.length &&
+  insist(record(input) && Object.keys(input).every((key) => PLAN_KEYS.includes(key) || key === 'verifiedDynamicClient') &&
     PLAN_KEYS.every((key) => Object.hasOwn(input, key)), 'INVALID_PLAN');
   insist(input.schema === PLAN_SCHEMA && input.nonsecretProbeApproved === true &&
     typeof input.hasPredefinedClient === 'boolean', 'INVALID_PLAN');
+  insist(!Object.hasOwn(input, 'verifiedDynamicClient') ||
+    (['cimd', 'dcr'].includes(input.verifiedDynamicClient) && !input.hasPredefinedClient), 'INVALID_PLAN');
   httpsUrl(input.baseUrl, true);
   httpsUrl(input.expectedIssuer);
   insist(text(input.deviceId, 256) && text(input.deviceName, 128), 'INVALID_DEVICE_PLAN');
@@ -165,7 +167,7 @@ export async function verifyReadonlyAccess({ plan: input, accessToken, fetchImpl
       metadata.authorization_servers[0] === plan.expectedIssuer, 'ISSUER_OR_RESOURCE_MISMATCH');
     passed('expected_issuer_and_resource');
     const readiness = await publicCheck(plan.baseUrl, { profile: 'readonly', requireOAuth: true,
-      hasPredefinedClient: plan.hasPredefinedClient, fetchImpl: transport });
+      hasPredefinedClient: plan.hasPredefinedClient, verifiedDynamicClient: plan.verifiedDynamicClient ?? null, fetchImpl: transport });
     insist(readiness?.status === 'ready' && readiness?.profile === 'readonly' && readiness?.requireOAuth === true, 'PUBLIC_CUTOVER_BLOCKED');
     // The strict probe fetches metadata independently: bind its observed issuer too.
     const issuerCheck = readiness.checks?.find((item) => item.name === 'authorization-server metadata');

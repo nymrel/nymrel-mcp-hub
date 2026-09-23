@@ -81,7 +81,7 @@ Provider-specific fit, custom-scope limitations, and the exact cutover values ar
 1. Authorization-server metadata discoverable from the issuer, whose `issuer` value equals the configured issuer exactly.
 2. `authorization_endpoint`, `token_endpoint`, and `jwks_uri` (or RFC 7662 introspection, configured through `NYMREL_REMOTE_OAUTH_INTROSPECTION_URL`).
 3. PKCE `S256`.
-4. A client onboarding path ChatGPT can use: a client-ID metadata document, dynamic client registration, or a predefined client (probe flag `--predefined-client`).
+4. A verified client onboarding path ChatGPT can use: a predefined client (probe flag `--predefined-client`), or a completed CIMD/DCR registration (`--verified-dynamic-client=cimd` or `--verified-dynamic-client=dcr`). Discovery capability advertisements alone do not satisfy the strict read-only probe.
 5. `offline_access` / refresh tokens, otherwise the connection dies when the first access token expires.
 6. Access tokens whose `aud` is exactly the read-only resource URL (RFC 8707 resource indicators, or an API identifier equal to that URL) and whose scope contains `devices:read tools:read`.
 7. Signup restricted to the operator's account. The subject mapping is the enforcement; restricted signup is defense in depth.
@@ -126,7 +126,7 @@ Production runs this profile, but has no authorization server configured. Deploy
    node scripts/check-production-cutover.mjs https://<production-host> --profile=readonly
    ```
 
-   `--profile=readonly` cannot be combined with `--allow-static-auth`. Add `--predefined-client` only when the provider has a client registered for ChatGPT in advance.
+   `--profile=readonly` cannot be combined with `--allow-static-auth`. Add `--predefined-client` only when the provider has a client registered for ChatGPT in advance. For a dynamic route, pass `--verified-dynamic-client=cimd` or `--verified-dynamic-client=dcr` only after verifying successful ChatGPT client registration with that provider. Select exactly one path. These flags are operator attestations; the public probe checks matching discovery capabilities but does not create clients or independently verify tenant registration policy. A passing result still requires the real sign-in, read, and refresh acceptance checks.
 6. Onboard ChatGPT as above.
 7. Only after OAuth is proven, and with separate approval, turn off `NYMREL_REMOTE_ALLOW_STATIC_MCP_TOKENS`, `NYMREL_REMOTE_ALLOW_STATIC_ADMIN_TOKENS`, and `NYMREL_REMOTE_ALLOW_BOOTSTRAP_HTTP`.
 
