@@ -49,6 +49,12 @@ function inside(parent, child) {
   const relative = parent.p.relative(parent.folded, child.folded);
   return relative !== '' && !relative.startsWith('..') && !parent.p.isAbsolute(relative);
 }
+function stagedShareIndexProbe(root, file, denied) {
+  if (!root.win || !file.win || !denied.win) return false;
+  if (!/^[a-z]:\\users\\[^\\]+\\appdata\\local\\nymrel\\chatgptstudioshare-\d{8}$/.test(root.folded)) return false;
+  return file.folded === root.folded + '\\index.md' &&
+    denied.folded === path.win32.dirname(root.folded);
+}
 
 export function validatePlan(input) {
   insist(record(input) && Object.keys(input).length === PLAN_KEYS.length &&
@@ -62,8 +68,9 @@ export function validatePlan(input) {
   const file = absoluteProjectPath(input.probeFile);
   const denied = absoluteProjectPath(input.deniedAncestor);
   insist(inside(root, file) && inside(denied, root), 'INVALID_PLAN_PATH');
-  insist(!/(^|[\\/])(\.ssh|\.aws|\.azure|\.config|\.nymrel-remote|AppData)([\\/]|$)/i.test(input.probeFile), 'INVALID_PLAN_PATH');
-  insist(['readme.md', 'agents.md', 'claude.md', 'presence.md'].includes(file.p.basename(file.value).toLowerCase()), 'INVALID_PROBE_FILE');
+  const stagedIndex = stagedShareIndexProbe(root, file, denied);
+  insist(stagedIndex || !/(^|[\\/])(\.ssh|\.aws|\.azure|\.config|\.nymrel-remote|AppData)([\\/]|$)/i.test(input.probeFile), 'INVALID_PLAN_PATH');
+  insist(stagedIndex || ['readme.md', 'agents.md', 'claude.md', 'presence.md'].includes(file.p.basename(file.value).toLowerCase()), 'INVALID_PROBE_FILE');
   insist(Number.isSafeInteger(input.lineCount) && input.lineCount >= 1 && input.lineCount <= 100, 'INVALID_LINE_COUNT');
   insist(typeof input.expectedLineSha256 === 'string' && /^[a-f0-9]{64}$/.test(input.expectedLineSha256), 'INVALID_PROBE_DIGEST');
   return structuredClone(input);
