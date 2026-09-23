@@ -1,6 +1,6 @@
 # OAuth provider cutover for regular ChatGPT (2026-09-22)
 
-The deployed read-only resource is `https://nymrel-remote-production.up.railway.app/chatgpt/readonly/mcp`. The service verifies OAuth tokens; it does not issue them. The live strict cutover probe currently stops at authorization-server metadata because no provider is configured in Remote. ChatGPT's MCP app form also reports that this resource does not yet implement OAuth. No ordinary ChatGPT conversation has read a local file yet.
+The deployed read-only resource is `https://nymrel-remote-production.up.railway.app/chatgpt/readonly/mcp`. The service verifies OAuth tokens; it does not issue them. The live strict cutover probe currently fails its protected-resource metadata check because no authorization server is configured in Remote. ChatGPT's MCP app form also reports that this resource does not yet implement OAuth. No ordinary ChatGPT conversation has read a local file yet.
 
 ## Auth0 setup in progress
 
