@@ -61,8 +61,10 @@ During this continuation, Nymrel Remote app discovery returned no matching app. 
 
 Configure the approved issuer/client path and explicit subject-to-tenant admission, verify the local roots, deploy the reviewed candidate with rollback available, run the strict public probe and this operator test, then complete ChatGPT web sign-in/tool scan and a real ChatGPT file read. Repeat an allowed read after access-token expiration to test actual refresh. Keep the exact deployment/source and private acceptance receipts; do not relabel CLI proof as ChatGPT proof.
 
-Custom MCP developer-mode access for Pro remains a read/fetch web path in the official documentation checked September 20, 2026. iOS distribution is separate; the CLI does not change that boundary.
+OpenAI's current developer-mode guidance says ChatGPT Plus and Pro can use general MCP tools in regular conversations. Standard `search` and `fetch` schemas are required for company knowledge eligibility, a separate feature this CLI does not test. The operator must still add the deployed read-only MCP URL through ChatGPT Plugins, select that connection in a new conversation, and prove the six-tool scan and one permitted read. iOS distribution is separate; the CLI does not change that boundary.
 
 References:
 - Existing architecture and activation gates: `CHATGPT_PRO_READONLY.md`, `RAILWAY_DEPLOYMENT.md` and PR #33.
-- OpenAI developer mode: https://help.openai.com/en/articles/12584461-developer-mode-and-mcp-apps-in-chatgpt
+- ChatGPT developer mode: https://developers.openai.com/chatgpt
+- Connect and test a plugin: https://developers.openai.com/plugins/deploy/connect-chatgpt
+- Company knowledge compatibility: https://developers.openai.com/plugins/build/mcp-server#company-knowledge-compatibility

@@ -4,7 +4,7 @@
 
 Give ordinary ChatGPT conversations on the web a narrow Nymrel Remote surface for inspecting JalenPC files without depending on ChatGPT Work or Codex.
 
-This profile is intentionally separate from the full public/plugin catalog. It is a compatibility profile for the current ChatGPT Pro custom-MCP capability and must not widen local permissions.
+This profile is intentionally separate from the full public/plugin catalog and must not widen local permissions. OpenAI's current developer-mode guidance says ChatGPT Plus and Pro support general MCP tools, so the six read-only tools below are suitable for a regular conversation connection. Company knowledge eligibility is a separate feature that requires standard `search` and `fetch` schemas; this profile does not claim that eligibility. See [ChatGPT developer mode](https://developers.openai.com/chatgpt) and [company knowledge compatibility](https://developers.openai.com/plugins/build/mcp-server#company-knowledge-compatibility).
 
 ## Status
 
@@ -96,10 +96,10 @@ The allowed roots are per device, not per resource. Tenant isolation is what pre
 
 ## Client onboarding
 
-1. In ChatGPT.com, enable developer mode for connectors and add a custom MCP connector with the URL `https://<production-host>/chatgpt/readonly/mcp`. Do not use `/chatgpt/mcp`.
+1. In ChatGPT, open **Settings → Security and login** and turn on **Developer mode**. Go to **ChatGPT Plugins**, select the plus button, and create a connection with the public MCP URL `https://<production-host>/chatgpt/readonly/mcp`. Do not use `/chatgpt/mcp`. Developer-mode availability can depend on account or workspace policy.
 2. ChatGPT receives the `401` challenge, reads the protected-resource metadata, discovers the authorization server, and runs authorization-code + PKCE for `devices:read tools:read`.
 3. The operator signs in with the mapped account and consents.
-4. Prove `list_devices`, `search_content`, and `read_file` against the narrow ChatGPTStudio device, then confirm the connection still works after the first access token has expired.
+4. Review the six discovered tools, start a new regular conversation, add the connection from the tools menu, and prove `list_devices`, `search_content`, and `read_file` against the narrow ChatGPTStudio device. Confirm the connection still works after the first access token has expired. If tool metadata changes later, refresh the connection and repeat the checks. See [OpenAI's connection and test flow](https://developers.openai.com/plugins/deploy/connect-chatgpt#add-the-mcp-server).
 
 ## Deployment
 
