@@ -23,6 +23,8 @@ The output contains only fixed check names, booleans, timestamp and fixed failur
 
 Use the exact reviewed source and the existing PR #33 deployment runbook. Do not run this against an unapproved host or provide a static/bootstrap token as a substitute for a real readonly OAuth grant.
 
+Set `hasPredefinedClient` to true only after the predefined ChatGPT client exists. Alternatively, keep it false and add the optional `verifiedDynamicClient` field with `"cimd"` or `"dcr"` only after successful ChatGPT registration through that method has been verified. An advertised registration endpoint alone is insufficient. These are operator attestations, not proof produced by the public probe; retain actual registration evidence privately. With neither attestation, the strict public check blocks before transmitting the access token.
+
 Copy `readonly-access-plan.example.json` to a private working location outside version control. Fill the actual expected issuer, authenticated device ID, approved project root, known nonsecret probe path and an existing denied ancestor. Do not guess the device ID or paired tenant. The example intentionally fails validation until completed and approved.
 
 Set `lineCount` to 1–100. The expected digest is SHA-256 over the UTF-8 string formed by splitting the file on CRLF/LF, taking the first `lineCount` entries, and joining them with LF. This is a **line-window digest**, not necessarily the raw-file digest. No trailing newline is added beyond entries already present in that window.

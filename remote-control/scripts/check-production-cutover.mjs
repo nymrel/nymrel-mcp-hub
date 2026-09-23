@@ -70,11 +70,16 @@ export async function checkProductionCutover(baseUrl, {
   fetchImpl = fetch,
   requireOAuth = true,
   hasPredefinedClient = false,
+  verifiedDynamicClient = null,
   profile = 'full'
 } = {}) {
   const selected = Object.hasOwn(CUTOVER_PROFILES, profile) ? CUTOVER_PROFILES[profile] : null;
   if (!selected) throw new Error('Unknown cutover profile');
   if (selected.oauthOnly && !requireOAuth) throw new Error('The read-only profile is OAuth-only and cannot allow static auth');
+  if (verifiedDynamicClient !== null && !['cimd', 'dcr'].includes(verifiedDynamicClient)) {
+    throw new Error('Verified dynamic client must be cimd or dcr');
+  }
+  if (hasPredefinedClient && verifiedDynamicClient !== null) throw new Error('Select only one client onboarding path');
   const base = normalizedBaseUrl(baseUrl);
   const checks = [];
 
@@ -127,7 +132,15 @@ export async function checkProductionCutover(baseUrl, {
       : [];
     const supportsCimd = authMetadata.json?.client_id_metadata_document_supported === true;
     const supportsDcr = typeof authMetadata.json?.registration_endpoint === 'string';
-    const clientOnboardingReady = supportsCimd || supportsDcr || hasPredefinedClient;
+    // Discovery advertises capabilities, not tenant policy or successful client registration.
+    // In strict readonly mode an operator must attest to the selected, completed setup.
+    const selectedClient = hasPredefinedClient ? 'predefined' : verifiedDynamicClient;
+    const verifiedOnboarding = hasPredefinedClient === true ||
+      (verifiedDynamicClient === 'cimd' && supportsCimd) ||
+      (verifiedDynamicClient === 'dcr' && supportsDcr);
+    const clientOnboardingReady = selected.oauthOnly
+      ? verifiedOnboarding
+      : supportsCimd || supportsDcr || hasPredefinedClient;
     const authMetadataPassed = authMetadata.status === 200
       && authMetadata.json?.issuer === authorizationServer
       && typeof authMetadata.json?.authorization_endpoint === 'string'
@@ -150,6 +163,8 @@ export async function checkProductionCutover(baseUrl, {
       missingScopes: missingAuthScopes,
       clientOnboarding: {
         ready: clientOnboardingReady,
+        selected: selectedClient,
+        evidence: verifiedOnboarding ? 'operator-attested' : 'metadata-only',
         cimd: supportsCimd,
         dcr: supportsDcr,
         predefined: hasPredefinedClient
@@ -231,11 +246,13 @@ if (isMain()) {
   const args = process.argv.slice(2);
   const allowStaticAuth = args.includes('--allow-static-auth');
   const hasPredefinedClient = args.includes('--predefined-client');
+  const verifiedDynamicClient = args.find((arg) => arg.startsWith('--verified-dynamic-client='))?.slice('--verified-dynamic-client='.length) ?? null;
+  const onboardingValid = (verifiedDynamicClient === null || ['cimd', 'dcr'].includes(verifiedDynamicClient)) && !(hasPredefinedClient && verifiedDynamicClient !== null);
   const profile = args.find((arg) => arg.startsWith('--profile='))?.slice('--profile='.length) || 'full';
   const profileValid = Object.hasOwn(CUTOVER_PROFILES, profile) && !(CUTOVER_PROFILES[profile].oauthOnly && allowStaticAuth);
   const urlArg = args.find((arg) => !arg.startsWith('--')) || process.env.NYMREL_REMOTE_PUBLIC_URL;
-  if (!urlArg || !profileValid) {
-    console.error('Usage: node scripts/check-production-cutover.mjs <https://remote.example.com> [--profile=full|readonly] [--allow-static-auth] [--predefined-client]');
+  if (!urlArg || !profileValid || !onboardingValid) {
+    console.error('Usage: node scripts/check-production-cutover.mjs <https://remote.example.com> [--profile=full|readonly] [--allow-static-auth] [--predefined-client | --verified-dynamic-client=cimd|dcr]');
     console.error('--profile=readonly is OAuth-only and cannot be combined with --allow-static-auth.');
     process.exitCode = 2;
   } else {
@@ -243,6 +260,7 @@ if (isMain()) {
       const result = await checkProductionCutover(urlArg, {
         requireOAuth: !allowStaticAuth,
         hasPredefinedClient,
+        verifiedDynamicClient,
         profile
       });
       console.log(JSON.stringify(publicReport(result), null, 2));
