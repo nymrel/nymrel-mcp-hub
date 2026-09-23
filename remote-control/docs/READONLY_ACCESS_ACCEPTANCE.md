@@ -2,7 +2,7 @@
 
 This additive operator CLI continues the PR #33 release candidate. It does not install an app, provision OAuth, change a device, or replace the existing production cutover probe.
 
-The current catalog check expects seven tools, including `get_read_result`. That continuation addition must be deployed before this CLI can pass against production. The CLI still treats a pending probe as blocked; it does not automatically poll. Interactive callers may use `get_read_result` as described in `CHATGPT_PRO_READONLY.md`. The stable receipt check name is now `readonly_tool_catalog`.
+The catalog check expects seven tools, including `get_read_result`. The current Railway deployment reports a source commit that includes this tool, but the authenticated catalog has not been scanned: the production cutover probe still fails because no authorization server is advertised. The CLI treats a pending probe as blocked and does not automatically poll. Interactive callers may use `get_read_result` as described in `CHATGPT_PRO_READONLY.md` after OAuth is proven. The stable receipt check name is `readonly_tool_catalog`.
 
 ## What it proves
 
