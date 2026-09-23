@@ -8,12 +8,14 @@ Use the Nymrel MCP Hub repository with:
 
 ```text
 Root Directory: /remote-control
-Config File: /remote-control/railway.json
+Infrastructure file: /remote-control/.railway/railway.ts
 Volume mount: /data
 Replicas: 1
 ```
 
-The repository `railway.json` uses the Dockerfile, `/readyz` as the health check, an always-restart policy, and a drain window. The Docker entrypoint starts with the minimum root privilege required to take ownership of a newly mounted `/data` volume, validates that the state path stays under `/data`, and then drops to UID/GID 1000 before importing the Nymrel Remote server.
+Railway Infrastructure as Code uses the Dockerfile, `/readyz` as the health check, an always-restart policy, and a 30-second drain window. The Docker entrypoint starts with the minimum root privilege required to take ownership of a newly mounted `/data` volume, validates that the state path stays under `/data`, and then drops to UID/GID 1000 before importing the Nymrel Remote server.
+
+Run `railway config plan` from `remote-control` to review the production configuration. Apply only the intended changes with `railway config apply`. Railway does not read `.railway/railway.ts` during a source deployment; applying the configuration and deploying the code are separate operations. Existing variable values use `preserve()` and stay in Railway. The service's Config File setting must remain empty.
 
 Set Railway's runtime UID override so the entrypoint can perform that one ownership step:
 
@@ -27,15 +29,13 @@ The application process itself does not remain root after startup. CI starts the
 
 Railway evaluates watch paths from the repository root even when the service's
 Root Directory is `/remote-control`. Use the absolute `/remote-control/...`
-patterns in `railway.json`, not `src/**` or `bin/**`: those patterns match the
+patterns in `.railway/railway.ts`, not `src/**` or `bin/**`: those patterns match the
 hub's root directories and miss the Remote directories. The config also watches
-its own file and `.dockerignore` so build-selection changes are not missed.
+its own directory and `.dockerignore` so build-selection changes are not missed.
 
-The Config File setting is separately repository-root-relative. Keep it at
-`/remote-control/railway.json`; setting Root Directory alone does not select it.
-Before the next approved release, reconcile the service's saved watch patterns
-with this file and check for unrelated staged changes. Do not commit all staged
-changes or redeploy merely to update the watch configuration. A source correction
+The old `railway.json` is removed so future deployments have one configuration
+source. Before a release, confirm `railway config plan` lists only intended
+changes, apply them, and check for unrelated staged changes. A source correction
 or staged service setting is not evidence of a new running deployment.
 
 `test/railway-config.test.js` uses isolated local Git fixtures to exercise the
@@ -43,7 +43,7 @@ documented gitignore-style matching. It covers Remote runtime/build inputs,
 config self-changes, and rejection of unrelated hub, sibling, documentation, and
 test-only paths. These tests are not a live Railway autodeploy test.
 
-Reference: [Railway build configuration](https://docs.railway.com/builds/build-configuration#configure-watch-paths).
+References: [Railway Infrastructure as Code](https://docs.railway.com/infrastructure-as-code) and [build configuration](https://docs.railway.com/builds/build-configuration#configure-watch-paths).
 
 ## Required production variables
 
