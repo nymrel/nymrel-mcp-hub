@@ -49,7 +49,7 @@ Properties enforced by the server and covered by `test/chatgpt-readonly-http.tes
 Device access is decided by tenant. An external identity provider may allow self-signup or dynamic client registration, so a validly signed token proves nothing about which tenant its holder belongs to. Every public entry point that accepts external OAuth tokens therefore requires an explicit operator-configured mapping:
 
 ```text
-NYMREL_REMOTE_OAUTH_SUBJECT_TENANTS={"<exact sub claim of the operator account>":"<tenant id JalenPC is paired under>"}
+NYMREL_REMOTE_OAUTH_SUBJECT_TENANTS={"<exact sub claim of the operator account>":"<dedicated tenant id ChatGPTStudio is paired under>"}
 ```
 
 - This applies to `/chatgpt/readonly/mcp`, `/chatgpt/mcp`, `/mcp`, and the `/v1/*` operator API. Restricting only the read-only route would leave the other routes open to the same self-signed-up account.
@@ -97,7 +97,7 @@ The allowed roots are per device, not per resource. Tenant isolation is what pre
 1. In ChatGPT.com, enable developer mode for connectors and add a custom MCP connector with the URL `https://<production-host>/chatgpt/readonly/mcp`. Do not use `/chatgpt/mcp`.
 2. ChatGPT receives the `401` challenge, reads the protected-resource metadata, discovers the authorization server, and runs authorization-code + PKCE for `devices:read tools:read`.
 3. The operator signs in with the mapped account and consents.
-4. Prove `list_devices`, `search_content`, and `read_file` against JalenPC, then confirm the connection still works after the first access token has expired.
+4. Prove `list_devices`, `search_content`, and `read_file` against the narrow ChatGPTStudio device, then confirm the connection still works after the first access token has expired.
 
 ## Deployment
 
@@ -130,8 +130,8 @@ Before describing this as available in regular ChatGPT:
 1. ~~Wire the profile into an isolated resource path without changing the full plugin catalog.~~ Done locally.
 2. Configure OAuth client onboarding, PKCE S256, refresh-token support, the exact read-only resource audience, and the subject-to-tenant mapping.
 3. ~~Run focused HTTP tests proving the read-only catalog is frozen and mutation/execute tools return not-found rather than reaching the broker.~~ Done locally with a test issuer; this proves wiring, not ChatGPT connectivity.
-4. Restrict the JalenPC allowed roots.
+4. Pair the separate ChatGPTStudio device under a dedicated tenant with only the selected allowed roots.
 5. Deploy and run the strict production cutover probe with `--profile=readonly`.
-6. Connect it from ChatGPT.com developer mode and prove `list_devices`, `search_content`, and `read_file` against JalenPC.
+6. Connect it from ChatGPT.com developer mode and prove `list_devices`, `search_content`, and `read_file` against ChatGPTStudio while the broad JalenPC device remains invisible.
 
 Mobile remains a separate distribution gate: do not claim iPhone support until the Nymrel app/plugin is available through a ChatGPT distribution path that supports mobile.
