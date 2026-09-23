@@ -30,7 +30,6 @@ export default defineRailway(() => {
     deploy: {
       healthcheckPath: "/readyz",
       healthcheckTimeout: 300,
-      restartPolicyType: "ALWAYS",
       drainingSeconds: 30,
     },
     replicas: { sfo: 1 },

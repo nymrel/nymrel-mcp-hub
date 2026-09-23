@@ -13,7 +13,7 @@ Volume mount: /data
 Replicas: 1
 ```
 
-Railway Infrastructure as Code uses the Dockerfile, `/readyz` as the health check, an always-restart policy, and a 30-second drain window. The Docker entrypoint starts with the minimum root privilege required to take ownership of a newly mounted `/data` volume, validates that the state path stays under `/data`, and then drops to UID/GID 1000 before importing the Nymrel Remote server.
+Railway Infrastructure as Code uses the Dockerfile, `/readyz` as the health check, and a 30-second drain window. The current Railway trial plan defaults to an on-failure restart policy with 10 retries; it does not support always-restart. The Docker entrypoint starts with the minimum root privilege required to take ownership of a newly mounted `/data` volume, validates that the state path stays under `/data`, and then drops to UID/GID 1000 before importing the Nymrel Remote server.
 
 Run `railway config plan` from `remote-control` to review the production configuration. Apply only the intended changes with `railway config apply`. Railway does not read `.railway/railway.ts` during a source deployment; applying the configuration and deploying the code are separate operations. Existing variable values use `preserve()` and stay in Railway. The service's Config File setting must remain empty.
 
