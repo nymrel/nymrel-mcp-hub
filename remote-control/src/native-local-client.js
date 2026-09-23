@@ -588,6 +588,8 @@ export class NativeLocalClient extends EventEmitter {
   async #readProcessOutput({ pid, offset = 0, length = 1000 }) {
     const session = this.#sessionFor(pid);
     const lines = session.output.split(/\r?\n/);
+    // A trailing split token is not output: consuming it skips the next line.
+    if (lines.at(-1) === '') lines.pop();
     let start;
     if (offset === 0) start = session.readCursor;
     else if (offset < 0) start = Math.max(0, lines.length + offset);

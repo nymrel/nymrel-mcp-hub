@@ -1,12 +1,26 @@
 param(
   [string]$TaskName = 'Nymrel Remote',
+  [string]$InstanceName = 'Remote',
   [switch]$Uninstall,
   [switch]$NoStart,
   [hashtable]$Environment = @{}
 )
 
 $ErrorActionPreference = 'Stop'
-$runtimeDir = Join-Path $env:LOCALAPPDATA 'Nymrel\Remote'
+if ($InstanceName -cnotmatch '^[A-Za-z][A-Za-z0-9_-]{0,31}$') {
+  throw 'InstanceName must be 1 to 32 letters, digits, underscores, or hyphens, starting with a letter.'
+}
+if ($InstanceName -ne 'Remote' -and $TaskName -eq 'Nymrel Remote') {
+  throw 'A separate instance requires a distinct TaskName.'
+}
+if ($InstanceName -ne 'Remote' -and -not $Uninstall) {
+  foreach ($requiredName in @('NYMREL_REMOTE_SERVER_URL', 'NYMREL_REMOTE_DEVICE_NAME', 'NYMREL_REMOTE_DEVICE_FILE', 'NYMREL_REMOTE_ALLOWED_DIRECTORIES', 'NYMREL_REMOTE_LOCAL_CWD', 'NYMREL_REMOTE_LOCAL_BACKEND')) {
+    if (-not $Environment.ContainsKey($requiredName) -or -not [string]$Environment[$requiredName]) {
+      throw "A separate instance requires an explicit launcher value for $requiredName."
+    }
+  }
+}
+$runtimeDir = Join-Path (Join-Path $env:LOCALAPPDATA 'Nymrel') $InstanceName
 $launcher = Join-Path $runtimeDir 'run.cmd'
 $powerShellLauncher = Join-Path $runtimeDir 'run.ps1'
 $logFile = Join-Path $runtimeDir 'supervisor.log'
@@ -58,12 +72,15 @@ $powerShell = (Get-Command powershell.exe -ErrorAction Stop).Source
 $supervisor = (Resolve-Path (Join-Path $PSScriptRoot 'nymrel-remote-supervisor.js')).Path
 $workDir = Split-Path -Parent $PSScriptRoot
 
-$serverUrl = [Environment]::GetEnvironmentVariable('NYMREL_REMOTE_SERVER_URL', 'User')
+$serverUrl = [string]$Environment['NYMREL_REMOTE_SERVER_URL']
+if (-not $serverUrl) {
+  $serverUrl = [Environment]::GetEnvironmentVariable('NYMREL_REMOTE_SERVER_URL', 'User')
+}
 if (-not $serverUrl) {
   $serverUrl = [Environment]::GetEnvironmentVariable('NYMREL_REMOTE_SERVER_URL', 'Machine')
 }
 if (-not $serverUrl) {
-  throw 'Persist NYMREL_REMOTE_SERVER_URL as a User or Machine environment variable before installing autostart.'
+  throw 'Provide NYMREL_REMOTE_SERVER_URL in the launcher environment or persist it as a User or Machine variable.'
 }
 
 $allowedEnvironmentNames = @(

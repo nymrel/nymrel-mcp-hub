@@ -2,6 +2,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { parseKey } from './crypto.js';
 import { defaultStorePath } from './store.js';
+import { OAUTH_SUBJECT_TENANTS_ENV, parseOAuthSubjectTenants } from './oauth-principal-policy.js';
 
 function intEnv(name, fallback, { min = 1, max = Number.MAX_SAFE_INTEGER } = {}) {
   const raw = process.env[name];
@@ -54,7 +55,7 @@ export function loadServerConfig() {
     try { parsedPublic = new URL(publicBaseUrl); } catch { throw new Error('NYMREL_REMOTE_PUBLIC_URL must be a valid absolute URL'); }
     if (production && parsedPublic.protocol !== 'https:') throw new Error('Production NYMREL_REMOTE_PUBLIC_URL must use https');
   }
-  const authorizationServers = listEnv('NYMREL_REMOTE_AUTHORIZATION_SERVERS').map((value) => value.replace(/\/$/, ''));
+  const authorizationServers = listEnv('NYMREL_REMOTE_AUTHORIZATION_SERVERS');
   for (const server of authorizationServers) {
     let parsed;
     try { parsed = new URL(server); } catch { throw new Error('NYMREL_REMOTE_AUTHORIZATION_SERVERS contains an invalid URL'); }
@@ -69,6 +70,17 @@ export function loadServerConfig() {
   }
   if (production && authorizationServers.length === 0 && !allowStaticAdminTokens) {
     throw new Error('Production operator authorization requires NYMREL_REMOTE_AUTHORIZATION_SERVERS or explicit NYMREL_REMOTE_ALLOW_STATIC_ADMIN_TOKENS=true');
+  }
+  const oauthIssuer = process.env.NYMREL_REMOTE_OAUTH_ISSUER || authorizationServers[0] || null;
+  const oauthSubjectTenants = parseOAuthSubjectTenants(process.env[OAUTH_SUBJECT_TENANTS_ENV]);
+  if (production && authorizationServers.length > 0) {
+    // External providers may allow self-signup, so production never accepts them without an explicit tenant mapping.
+    if (oauthSubjectTenants.size === 0) {
+      throw new Error(`Production external OAuth requires ${OAUTH_SUBJECT_TENANTS_ENV} to map each trusted subject to a tenant`);
+    }
+    if (!authorizationServers.includes(oauthIssuer)) {
+      throw new Error('Production NYMREL_REMOTE_OAUTH_ISSUER must exactly match an advertised NYMREL_REMOTE_AUTHORIZATION_SERVERS entry');
+    }
   }
   return {
     production,
@@ -96,10 +108,11 @@ export function loadServerConfig() {
     allowStaticMcpTokens,
     allowStaticAdminTokens,
     allowBootstrapHttp,
-    oauthIssuer: process.env.NYMREL_REMOTE_OAUTH_ISSUER?.replace(/\/$/, '') || authorizationServers[0] || null,
+    oauthIssuer,
     oauthJwksUrl: process.env.NYMREL_REMOTE_OAUTH_JWKS_URL || null,
     oauthAudience: process.env.NYMREL_REMOTE_OAUTH_AUDIENCE || (publicBaseUrl ? `${publicBaseUrl}/mcp` : null),
     oauthTenantClaim: process.env.NYMREL_REMOTE_OAUTH_TENANT_CLAIM || 'tenant',
+    oauthSubjectTenants,
     oauthIntrospectionUrl: process.env.NYMREL_REMOTE_OAUTH_INTROSPECTION_URL || null,
     oauthIntrospectionClientId: process.env.NYMREL_REMOTE_OAUTH_INTROSPECTION_CLIENT_ID || null,
     oauthIntrospectionClientSecret: process.env.NYMREL_REMOTE_OAUTH_INTROSPECTION_CLIENT_SECRET || null

@@ -23,6 +23,28 @@ RAILWAY_RUN_UID=0
 
 The application process itself does not remain root after startup. CI starts the production image with an anonymous volume, waits for `/readyz`, and verifies that PID 1 has dropped to UID 1000.
 
+## Repository-root watch paths
+
+Railway evaluates watch paths from the repository root even when the service's
+Root Directory is `/remote-control`. Use the absolute `/remote-control/...`
+patterns in `railway.json`, not `src/**` or `bin/**`: those patterns match the
+hub's root directories and miss the Remote directories. The config also watches
+its own file and `.dockerignore` so build-selection changes are not missed.
+
+The Config File setting is separately repository-root-relative. Keep it at
+`/remote-control/railway.json`; setting Root Directory alone does not select it.
+Before the next approved release, reconcile the service's saved watch patterns
+with this file and check for unrelated staged changes. Do not commit all staged
+changes or redeploy merely to update the watch configuration. A source correction
+or staged service setting is not evidence of a new running deployment.
+
+`test/railway-config.test.js` uses isolated local Git fixtures to exercise the
+documented gitignore-style matching. It covers Remote runtime/build inputs,
+config self-changes, and rejection of unrelated hub, sibling, documentation, and
+test-only paths. These tests are not a live Railway autodeploy test.
+
+Reference: [Railway build configuration](https://docs.railway.com/builds/build-configuration#configure-watch-paths).
+
 ## Required production variables
 
 Do not put any values from this section in Git, tickets, logs, or chat transcripts. Generate independent high-entropy values in a secret-management context.
@@ -44,7 +66,12 @@ NYMREL_REMOTE_AUTHORIZATION_SERVERS=https://<oauth-issuer>
 NYMREL_REMOTE_OAUTH_ISSUER=https://<oauth-issuer>
 NYMREL_REMOTE_OAUTH_AUDIENCE=https://<production-host>/mcp
 NYMREL_REMOTE_CHATGPT_OAUTH_AUDIENCE=https://<production-host>/chatgpt/mcp
+NYMREL_REMOTE_OAUTH_SUBJECT_TENANTS={"<operator-sub-claim>":"<tenant-id>"}
 ```
+
+`NYMREL_REMOTE_OAUTH_SUBJECT_TENANTS` is mandatory with external OAuth: production startup fails without it, and an OAuth subject that is not listed is denied on `/mcp`, `/chatgpt/mcp`, `/chatgpt/readonly/mcp`, and the `/v1/*` operator API. The tenant comes from this mapping, never from a token claim. `NYMREL_REMOTE_OAUTH_ISSUER` must be exactly one of `NYMREL_REMOTE_AUTHORIZATION_SERVERS`, including any trailing slash the provider publishes.
+
+The regular-ChatGPT read-only resource at `/chatgpt/readonly/mcp` is OAuth-only and has no audience variable; see `CHATGPT_PRO_READONLY.md` for provider requirements, restricted local roots, onboarding, the `--profile=readonly` cutover probe, and rollback.
 
 Configure either JWKS verification or OAuth introspection according to the authorization server:
 

@@ -281,7 +281,7 @@ export class RemoteBroker extends EventEmitter {
     throw new NotFoundError('Remote tool not found');
   }
 
-  async createCall(principal, projectedName, args) {
+  async createCall(principal, projectedName, args, { sourceProfile = null } = {}) {
     if (principal.typ !== 'user') throw new UnauthorizedError('User token required');
     const { device, tool } = await this.resolveProjectedTool(principal, projectedName);
     const deviceView = publicDevice(device, this.config.heartbeatTtlMs);
@@ -299,6 +299,8 @@ export class RemoteBroker extends EventEmitter {
       id: callId,
       tenantId: principal.tenant,
       principal: principal.sub,
+      // Set only by the server-side edge context, never by tool arguments or token claims.
+      sourceProfile,
       deviceId: device.id,
       projectedName,
       toolName: tool.name,
@@ -368,6 +370,31 @@ export class RemoteBroker extends EventEmitter {
     const call = state.calls[callId];
     if (!call || call.tenantId !== principal.tenant || call.principal !== principal.sub) throw new NotFoundError('Call not found');
     return this.#publicCall(call, { includeResult });
+  }
+
+  async getReadonlyCall(principal, callId) {
+    if (principal.typ !== 'user') throw new UnauthorizedError('User token required');
+    // This profile never honors wildcard scopes or grants tenant-wide calls:read.
+    for (const scope of ['devices:read', 'tools:read']) {
+      if (!principal.scopes?.includes(scope)) throw new ForbiddenError(`${scope} scope required`);
+    }
+    const state = await this.store.read();
+    const call = state.calls[callId];
+    if (!call || call.tenantId !== principal.tenant || call.principal !== principal.sub ||
+        call.sourceProfile !== 'chatgpt-readonly' || call.policy?.capability !== 'read' ||
+        call.policy?.destructive !== false || call.policy?.decision !== 'auto') {
+      throw new NotFoundError('Read call not found');
+    }
+    const device = state.devices[call.deviceId];
+    const tool = device?.tools?.find((item) => item.name === call.toolName && item.schemaHash === call.schemaHash);
+    if (!device || device.tenantId !== principal.tenant || device.revokedAt || !tool) {
+      throw new NotFoundError('Read call not found');
+    }
+    const policy = this.policy.evaluate(principal, tool, this.cipher.open(call.args, `${call.id}:args`));
+    if (policy.decision !== 'auto' || policy.capability !== 'read' || policy.destructive) {
+      throw new PolicyDeniedError('Read call is no longer authorized');
+    }
+    return this.#publicCall(call, { includeResult: true });
   }
 
   async approveOwnCall(principal, callId) {

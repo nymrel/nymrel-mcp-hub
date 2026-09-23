@@ -114,6 +114,23 @@ function requireString(args, key) {
   return value;
 }
 
+export function formatCallResult(call) {
+  if (call.status === 'completed') return normalizeToolResult(call.result);
+  if (call.status === 'failed') {
+    return textResult(`Remote call ${call.id} failed: ${call.error || 'unknown error'}`, { call }, true);
+  }
+  if (call.status === 'awaiting_approval') {
+    return textResult(
+      `Remote call ${call.id} requires operator approval before ${call.toolName} can run.`,
+      { call, approvalRequired: true }
+    );
+  }
+  if (call.status === 'expired' || call.status === 'cancelled') {
+    return textResult(`Remote call ${call.id} is ${call.status}.`, { call }, true);
+  }
+  return textResult(`Remote call ${call.id} is ${call.status}.`, { call, pending: true });
+}
+
 export class RemoteMcpEdge {
   constructor({ broker, syncWaitMs = 25000 }) {
     this.broker = broker;
@@ -242,7 +259,7 @@ export class RemoteMcpEdge {
       return this.#resumeMrtrCall(principal, name, args, context.params);
     }
 
-    const call = await this.broker.createCall(principal, name, args);
+    const call = await this.broker.createCall(principal, name, args, { sourceProfile: context.sourceProfile ?? null });
     if (call.status === 'awaiting_approval') {
       if (context.era === 'modern' && this.#supportsFormElicitation(context.params)) {
         return this.#inputRequiredForCall(principal, name, args, call);
@@ -363,19 +380,6 @@ export class RemoteMcpEdge {
   }
 
   #callStateResult(call) {
-    if (call.status === 'completed') return normalizeToolResult(call.result);
-    if (call.status === 'failed') {
-      return textResult(`Remote call ${call.id} failed: ${call.error || 'unknown error'}`, { call }, true);
-    }
-    if (call.status === 'awaiting_approval') {
-      return textResult(
-        `Remote call ${call.id} requires operator approval before ${call.toolName} can run.`,
-        { call, approvalRequired: true }
-      );
-    }
-    if (call.status === 'expired' || call.status === 'cancelled') {
-      return textResult(`Remote call ${call.id} is ${call.status}.`, { call }, true);
-    }
-    return textResult(`Remote call ${call.id} is ${call.status}.`, { call, pending: true });
+    return formatCallResult(call);
   }
 }

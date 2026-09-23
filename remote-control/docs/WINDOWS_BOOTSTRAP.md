@@ -31,6 +31,30 @@ The default allowed root is the current user's profile directory. To narrow it:
   -AllowedDirectory 'C:\Users\johns\Desktop'
 ```
 
+## Separate ChatGPT Studio device
+
+Keep the existing `Nymrel Remote` installation intact when it serves other clients. A second instance has its own runtime directory, device credential, log, task, and pinned allowed roots. Use a reviewed folder path that does not contain credentials or private browser data:
+
+```powershell
+& powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass `
+  -File $bootstrap `
+  -Ref '<reviewed-40-character-commit-sha>' `
+  -InstanceName ChatGPTStudio `
+  -TaskName 'Nymrel Remote ChatGPT Studio' `
+  -DeviceName 'JalenPC-ChatGPTStudio' `
+  -AllowedDirectory '<reviewed-studio-folder>'
+```
+
+This uses `%LOCALAPPDATA%\Nymrel\ChatGPTStudio`. It does not overwrite the first instance's User environment variables. The launcher must carry its own explicit server URL, device file, allowed directories, and working directory. Pair the new code with a token for a **separate tenant**, then map only the operator's ChatGPT OAuth subject to that tenant. Pairing under the existing broad-root device's tenant would let ChatGPT list that device too.
+
+The bootstrap refuses a `ChatGPTStudio` install when `-AllowedDirectory` is omitted, names the whole user profile or an ancestor such as `C:\Users`, or traverses a linked directory. This check runs before any source download or scheduled-task change. It still cannot decide whether a chosen subfolder contains sensitive files, so review every selected root before pairing.
+
+Add `-PreflightOnly` to the command above to validate the server URL, instance values, and selected roots without downloading source or changing the scheduled task. A successful check prints `NYMREL_REMOTE_BOOTSTRAP_PREFLIGHT=OK`; it does not pair or start a device.
+
+For a first, inspectable root, `scripts/stage-chatgpt-studio-share.mjs` can copy only exact `.md` and `.txt` files named in a private manifest into a **new** folder. For example, save a JSON manifest outside Git with `{"version":1,"files":[{"source":"C:\\path\\to\\reviewed-file.md","target":"studio/reviewed-file.md"}]}`, then run `node scripts/stage-chatgpt-studio-share.mjs --manifest <absolute-json-path> --output <new-absolute-share-directory>`. It refuses an existing destination, linked source or output parent, unsafe target names, and oversized files. The resulting `INDEX.md` lists only names, sizes, and hashes. Review every staged file before using that folder as `-AllowedDirectory`; this utility does not scan file contents for secrets, keep them in sync, pair a device, or authorize ChatGPT. Additional project roots can be considered after the first narrow roundtrip.
+
+To remove just this instance's autostart, run its installer with both `-InstanceName ChatGPTStudio` and `-TaskName 'Nymrel Remote ChatGPT Studio'`, plus `-Uninstall`. Device credentials and logs remain for review.
+
 A new device prints one machine-readable line:
 
 ```text

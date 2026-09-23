@@ -8,7 +8,7 @@ import { EnvelopeCipher, constantTimeEqual, randomId } from './crypto.js';
 import { NymrelRemoteError, UnauthorizedError } from './errors.js';
 import { RemoteMcpEdge } from './mcp-edge.js';
 import { HeaderMismatchError, isModernMcpRequest, validateModernMcpHeaders } from './mcp-http-validation.js';
-import { OAuthAccessTokenVerifier } from './oauth.js';
+import { OAuthPrincipalDeniedError, createExternalOAuthAuthenticator } from './oauth-principal-policy.js';
 import { PolicyEngine } from './policy.js';
 import { JsonFileStore } from './store.js';
 import { InstanceLease } from './instance-lease.js';
@@ -127,7 +127,7 @@ function validateAcceptForModern(req) {
   }
 }
 
-export async function createRemoteRuntime(config, { publicDir = DEFAULT_PUBLIC_DIR, logger = console } = {}) {
+export async function createRemoteRuntime(config, { publicDir = DEFAULT_PUBLIC_DIR, logger = console, oauthFetchImpl } = {}) {
   const store = await new JsonFileStore(config.storePath).init();
   const instanceLease = config.production
     ? await new InstanceLease(`${config.storePath}.server-lease`, { ttlMs: config.instanceLeaseTtlMs, logger }).acquire()
@@ -138,14 +138,8 @@ export async function createRemoteRuntime(config, { publicDir = DEFAULT_PUBLIC_D
   const policy = new PolicyEngine();
   const broker = await new RemoteBroker({ store, tokenService, cipher, audit, policy, config }).init();
   const mcp = new RemoteMcpEdge({ broker, syncWaitMs: config.syncWaitMs });
-  const oauth = new OAuthAccessTokenVerifier({
-    issuer: config.oauthIssuer,
-    jwksUrl: config.oauthJwksUrl,
-    audience: config.oauthAudience || mcpResource(config),
-    tenantClaim: config.oauthTenantClaim,
-    introspectionUrl: config.oauthIntrospectionUrl,
-    introspectionClientId: config.oauthIntrospectionClientId,
-    introspectionClientSecret: config.oauthIntrospectionClientSecret
+  const oauth = createExternalOAuthAuthenticator(config, {
+    audience: config.oauthAudience || mcpResource(config), fetchImpl: oauthFetchImpl
   });
   return { config, store, tokenService, cipher, audit, policy, broker, mcp, oauth, instanceLease, publicDir, logger };
 }
@@ -280,7 +274,11 @@ export async function createRemoteHttpServer(config, options = {}) {
         const token = bearerFromHeaders(req.headers);
         if (!token) throw new UnauthorizedError('Bearer token required');
         if (config.authorizationServers.length > 0) {
-          try { return await runtime.oauth.verify(token); } catch { /* optional internal fallback below */ }
+          try { return await runtime.oauth.verify(token); }
+          catch (externalError) {
+            // A verified but unmapped external subject is denied outright, never retried as a static token.
+            if (externalError instanceof OAuthPrincipalDeniedError) throw externalError;
+          }
         }
         if (config.allowStaticAdminTokens) {
           try { return runtime.tokenService.verify(token, { expectedType: 'user' }); } catch { /* handled below */ }
@@ -293,6 +291,7 @@ export async function createRemoteHttpServer(config, options = {}) {
         if (config.authorizationServers.length > 0) {
           try { return await runtime.oauth.verify(token); }
           catch (externalError) {
+            if (externalError instanceof OAuthPrincipalDeniedError) throw externalError;
             if (!config.allowStaticMcpTokens) throw new UnauthorizedError('Invalid or expired OAuth bearer token');
           }
         }
@@ -442,6 +441,7 @@ export async function createRemoteHttpServer(config, options = {}) {
         let principal;
         try { principal = await mcpUser(); }
         catch (error) {
+          if (error instanceof OAuthPrincipalDeniedError) throw error;
           statusForLog = 401;
           return sendJson(res, 401, errorBody(error), { 'www-authenticate': bearerChallenge(config), 'cache-control': 'no-store' });
         }
