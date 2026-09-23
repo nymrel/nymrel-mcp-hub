@@ -4,7 +4,7 @@ import { OAuthPrincipalDeniedError, createExternalOAuthAuthenticator } from './o
 import { ChatgptMcpEdge } from './chatgpt-mcp-edge.js';
 import { CHATGPT_READONLY_SCOPES, ChatgptReadonlyMcpEdge } from './chatgpt-readonly-profile.js';
 import { HeaderMismatchError, isModernMcpRequest, validateModernMcpHeaders } from './mcp-http-validation.js';
-import { NymrelRemoteError, UnauthorizedError } from './errors.js';
+import { ForbiddenError, NymrelRemoteError, UnauthorizedError } from './errors.js';
 import { bearerFromHeaders } from './token.js';
 import { createRemoteHttpServer } from './server.js';
 
@@ -25,6 +25,9 @@ function publicOrigin(config) {
 
 const CHATGPT_MCP_PATH = '/chatgpt/mcp';
 const CHATGPT_READONLY_MCP_PATH = '/chatgpt/readonly/mcp';
+const NYMREL_PLUGIN_READONLY_MCP_PATH = '/nymrel/plugin/readonly/mcp';
+const NYMREL_PLUGIN_RESOURCE = 'https://mcp.nymrel.com/mcp';
+const NYMREL_PLUGIN_RESOURCE_METADATA = 'https://mcp.nymrel.com/.well-known/oauth-protected-resource/mcp';
 
 function resourceUrl(config, resourcePath) {
   return `${publicOrigin(config)}${resourcePath}`;
@@ -38,7 +41,7 @@ function challenge(config, profile, { scope = profile.initialScopes.join(' '), i
   const parts = [];
   if (insufficient) parts.push('error="insufficient_scope"');
   if (scope) parts.push(`scope="${scope}"`);
-  parts.push(`resource_metadata="${resourceUrl(config, metadataPath(profile.path))}"`);
+  parts.push(`resource_metadata="${profile.resourceMetadataUrl || resourceUrl(config, metadataPath(profile.path))}"`);
   return `Bearer ${parts.join(', ')}`;
 }
 
@@ -139,22 +142,36 @@ export async function createChatgptRemoteHttpServer(config, options = {}) {
   if (chatgptAudience === readonlyAudience || mcpAudience === readonlyAudience) {
     throw new Error('The read-only ChatGPT resource audience must not be shared with another MCP resource');
   }
+  if (config.nymrelPluginReadonlyEnabled &&
+      (chatgptAudience === NYMREL_PLUGIN_RESOURCE || mcpAudience === NYMREL_PLUGIN_RESOURCE || readonlyAudience === NYMREL_PLUGIN_RESOURCE)) {
+    throw new Error('The Nymrel plugin resource audience must not be shared with a full-control MCP resource');
+  }
   const oauth = createExternalOAuthAuthenticator(config, {
     audience: chatgptAudience, fetchImpl: options.oauthFetchImpl
   });
   // The read-only audience is always the exact resource URL and may never be shared: a shared
   // audience would let a token issued for one ChatGPT resource be replayed against the other.
   const readonlyOauth = createExternalOAuthAuthenticator(config, { audience: readonlyAudience, fetchImpl: options.oauthFetchImpl });
+  const nymrelPluginOauth = config.nymrelPluginReadonlyEnabled
+    ? createExternalOAuthAuthenticator(config, { audience: NYMREL_PLUGIN_RESOURCE, fetchImpl: options.oauthFetchImpl })
+    : null;
   const { server, runtime } = await createRemoteHttpServer(config, options);
   const original = server.listeners('request')[0];
   if (!original) throw new Error('Nymrel Remote HTTP request handler is unavailable');
   const edge = new ChatgptMcpEdge({ broker: runtime.broker, syncWaitMs: config.syncWaitMs });
   const readonlyEdge = new ChatgptReadonlyMcpEdge({ broker: runtime.broker, syncWaitMs: config.syncWaitMs });
+  const nymrelPluginEdge = config.nymrelPluginReadonlyEnabled
+    ? new ChatgptReadonlyMcpEdge({ broker: runtime.broker, syncWaitMs: config.syncWaitMs, sourceProfile: 'nymrel-plugin-readonly' })
+    : null;
   const limiter = new FixedWindowRateLimiter();
   runtime.chatgptMcp = edge;
   runtime.chatgptOauth = oauth;
   runtime.chatgptReadonlyMcp = readonlyEdge;
   runtime.chatgptReadonlyOauth = readonlyOauth;
+  if (nymrelPluginEdge) {
+    runtime.nymrelPluginReadonlyMcp = nymrelPluginEdge;
+    runtime.nymrelPluginReadonlyOauth = nymrelPluginOauth;
+  }
 
   const profiles = [
     {
@@ -169,6 +186,17 @@ export async function createChatgptRemoteHttpServer(config, options = {}) {
       allowStatic: false, honoredScopes: new Set(CHATGPT_READONLY_SCOPES)
     }
   ];
+  if (nymrelPluginEdge) {
+    profiles.push({
+      // Backend of the existing @Nymrel MCP app. Both hops independently verify
+      // the same user's token for one logical plugin resource and only read scopes.
+      path: NYMREL_PLUGIN_READONLY_MCP_PATH, edge: nymrelPluginEdge, oauth: nymrelPluginOauth,
+      resource: NYMREL_PLUGIN_RESOURCE, resourceMetadataUrl: NYMREL_PLUGIN_RESOURCE_METADATA,
+      rateKey: 'nymrel-plugin-readonly-mcp', scopes: CHATGPT_READONLY_SCOPES,
+      initialScopes: CHATGPT_READONLY_SCOPES, allowStatic: false,
+      honoredScopes: new Set(CHATGPT_READONLY_SCOPES), requireAllScopes: true
+    });
+  }
 
   server.removeListener('request', original);
   server.on('request', async (req, res) => {
@@ -189,7 +217,7 @@ export async function createChatgptRemoteHttpServer(config, options = {}) {
     const metadataProfile = req.method === 'GET' ? profiles.find((item) => pathname === metadataPath(item.path)) : null;
     if (metadataProfile) {
       return sendJson(res, 200, {
-        resource: resourceUrl(config, metadataProfile.path),
+        resource: metadataProfile.resource || resourceUrl(config, metadataProfile.path),
         authorization_servers: config.authorizationServers,
         scopes_supported: [...metadataProfile.scopes],
         bearer_methods_supported: ['header']
@@ -253,6 +281,11 @@ export async function createChatgptRemoteHttpServer(config, options = {}) {
       if (profile.honoredScopes) {
         // Least privilege: broader scopes carried by the token are not honored on this resource.
         principal = { ...principal, scopes: (principal.scopes || []).filter((scope) => profile.honoredScopes.has(scope)) };
+      }
+      if (profile.requireAllScopes && !profile.initialScopes.every((scope) => principal.scopes?.includes(scope))) {
+        status = 403;
+        return sendJson(res, 403, errorBody(new ForbiddenError('Both read scopes are required')),
+          { 'www-authenticate': challenge(config, profile, { insufficient: true }) });
       }
 
       const body = await readJson(req, config.maxBodyBytes);

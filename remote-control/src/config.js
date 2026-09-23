@@ -62,9 +62,13 @@ export function loadServerConfig() {
     if (production && parsed.protocol !== 'https:') throw new Error('Production authorization server URLs must use https');
   }
   const allowStaticMcpTokens = boolEnv('NYMREL_REMOTE_ALLOW_STATIC_MCP_TOKENS', !production);
+  const nymrelPluginReadonlyEnabled = boolEnv('NYMREL_REMOTE_NYMREL_PLUGIN_READONLY_ENABLED', false);
   const allowStaticAdminTokens = boolEnv('NYMREL_REMOTE_ALLOW_STATIC_ADMIN_TOKENS', !production);
   const allowBootstrapHttp = boolEnv('NYMREL_REMOTE_ALLOW_BOOTSTRAP_HTTP', !production);
   if (production && !publicBaseUrl) throw new Error('Production requires NYMREL_REMOTE_PUBLIC_URL');
+  if (nymrelPluginReadonlyEnabled && authorizationServers.length === 0) {
+    throw new Error('Nymrel plugin read-only bridge requires NYMREL_REMOTE_AUTHORIZATION_SERVERS');
+  }
   if (production && authorizationServers.length === 0 && !allowStaticMcpTokens) {
     throw new Error('Production MCP authorization requires NYMREL_REMOTE_AUTHORIZATION_SERVERS or explicit NYMREL_REMOTE_ALLOW_STATIC_MCP_TOKENS=true');
   }
@@ -106,6 +110,7 @@ export function loadServerConfig() {
     allowedOrigins: listEnv('NYMREL_REMOTE_ALLOWED_ORIGINS'),
     authorizationServers,
     allowStaticMcpTokens,
+    nymrelPluginReadonlyEnabled,
     allowStaticAdminTokens,
     allowBootstrapHttp,
     oauthIssuer,

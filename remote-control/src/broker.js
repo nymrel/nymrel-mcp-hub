@@ -372,7 +372,10 @@ export class RemoteBroker extends EventEmitter {
     return this.#publicCall(call, { includeResult });
   }
 
-  async getReadonlyCall(principal, callId) {
+  async getReadonlyCall(principal, callId, { sourceProfile = 'chatgpt-readonly' } = {}) {
+    if (sourceProfile !== 'chatgpt-readonly' && sourceProfile !== 'nymrel-plugin-readonly') {
+      throw new NotFoundError('Read call not found');
+    }
     if (principal.typ !== 'user') throw new UnauthorizedError('User token required');
     // This profile never honors wildcard scopes or grants tenant-wide calls:read.
     for (const scope of ['devices:read', 'tools:read']) {
@@ -381,7 +384,7 @@ export class RemoteBroker extends EventEmitter {
     const state = await this.store.read();
     const call = state.calls[callId];
     if (!call || call.tenantId !== principal.tenant || call.principal !== principal.sub ||
-        call.sourceProfile !== 'chatgpt-readonly' || call.policy?.capability !== 'read' ||
+        call.sourceProfile !== sourceProfile || call.policy?.capability !== 'read' ||
         call.policy?.destructive !== false || call.policy?.decision !== 'auto') {
       throw new NotFoundError('Read call not found');
     }

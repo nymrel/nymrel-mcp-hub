@@ -92,7 +92,8 @@ function withEnv(values, run) {
   const names = [
     'NODE_ENV', 'NYMREL_REMOTE_SIGNING_KEY', 'NYMREL_REMOTE_DATA_KEY', 'NYMREL_REMOTE_AUDIT_KEY', 'NYMREL_REMOTE_BOOTSTRAP_TOKEN',
     'NYMREL_REMOTE_PUBLIC_URL', 'NYMREL_REMOTE_AUTHORIZATION_SERVERS', 'NYMREL_REMOTE_OAUTH_ISSUER', OAUTH_SUBJECT_TENANTS_ENV,
-    'NYMREL_REMOTE_ALLOW_STATIC_MCP_TOKENS', 'NYMREL_REMOTE_ALLOW_STATIC_ADMIN_TOKENS', 'NYMREL_REMOTE_ALLOW_BOOTSTRAP_HTTP'
+    'NYMREL_REMOTE_ALLOW_STATIC_MCP_TOKENS', 'NYMREL_REMOTE_ALLOW_STATIC_ADMIN_TOKENS', 'NYMREL_REMOTE_ALLOW_BOOTSTRAP_HTTP',
+    'NYMREL_REMOTE_NYMREL_PLUGIN_READONLY_ENABLED'
   ];
   const before = new Map(names.map((name) => [name, process.env[name]]));
   try {
@@ -151,4 +152,20 @@ test('static-only production configuration keeps loading unchanged and maps no e
   withEnv({ NODE_ENV: 'development', [OAUTH_SUBJECT_TENANTS_ENV]: '[]' }, () => {
     assert.throws(() => loadServerConfig(), /must be a JSON object/);
   });
+});
+
+test('Nymrel plugin backend flag fails closed without external OAuth and defaults off', () => {
+  withEnv(productionEnv({
+    NYMREL_REMOTE_ALLOW_STATIC_MCP_TOKENS: 'true', NYMREL_REMOTE_ALLOW_STATIC_ADMIN_TOKENS: 'true',
+    NYMREL_REMOTE_NYMREL_PLUGIN_READONLY_ENABLED: 'true'
+  }), () => assert.throws(() => loadServerConfig(), /requires NYMREL_REMOTE_AUTHORIZATION_SERVERS/));
+  withEnv(productionEnv({
+    NYMREL_REMOTE_AUTHORIZATION_SERVERS: ISSUER,
+    [OAUTH_SUBJECT_TENANTS_ENV]: '{"auth0|operator":"chatgpt-studio"}'
+  }), () => assert.equal(loadServerConfig().nymrelPluginReadonlyEnabled, false));
+  withEnv(productionEnv({
+    NYMREL_REMOTE_AUTHORIZATION_SERVERS: ISSUER,
+    [OAUTH_SUBJECT_TENANTS_ENV]: '{"auth0|operator":"chatgpt-studio"}',
+    NYMREL_REMOTE_NYMREL_PLUGIN_READONLY_ENABLED: 'true'
+  }), () => assert.equal(loadServerConfig().nymrelPluginReadonlyEnabled, true));
 });

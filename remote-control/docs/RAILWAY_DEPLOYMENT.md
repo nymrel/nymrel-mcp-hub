@@ -73,6 +73,8 @@ NYMREL_REMOTE_OAUTH_SUBJECT_TENANTS={"<operator-sub-claim>":"<tenant-id>"}
 
 The regular-ChatGPT read-only resource at `/chatgpt/readonly/mcp` is OAuth-only and has no audience variable; see `CHATGPT_PRO_READONLY.md` for provider requirements, restricted local roots, onboarding, the `--profile=readonly` cutover probe, and rollback.
 
+The separate backend for adding those read tools to the **existing** `@Nymrel` app is disabled by default. `NYMREL_REMOTE_NYMREL_PLUGIN_READONLY_ENABLED=true` exposes `/nymrel/plugin/readonly/mcp` only when an external authorization server is configured; it verifies the exact `https://mcp.nymrel.com/mcp` audience and the same subject-to-tenant map. See `NYMREL_PLUGIN_READONLY_GATEWAY.md`. It does not relax the direct read-only resource's audience or accept static tokens.
+
 Configure either JWKS verification or OAuth introspection according to the authorization server:
 
 ```text

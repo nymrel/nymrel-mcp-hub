@@ -32,8 +32,15 @@ export const CHATGPT_READONLY_TOOLS = Object.freeze([
 ]);
 
 const READONLY_BY_NAME = new Map(CHATGPT_READONLY_TOOLS.map((tool) => [tool.name, tool]));
+const READONLY_SOURCE_PROFILES = new Set(['chatgpt-readonly', 'nymrel-plugin-readonly']);
 
 export class ChatgptReadonlyMcpEdge extends ChatgptMcpEdge {
+  constructor({ sourceProfile = 'chatgpt-readonly', ...options } = {}) {
+    super(options);
+    if (!READONLY_SOURCE_PROFILES.has(sourceProfile)) throw new Error('Invalid read-only source profile');
+    this.sourceProfile = sourceProfile;
+  }
+
   async listTools(_principal) {
     return CHATGPT_READONLY_TOOLS.map((tool) => structuredClone(tool));
   }
@@ -50,9 +57,9 @@ export class ChatgptReadonlyMcpEdge extends ChatgptMcpEdge {
           Object.keys(args).some((key) => key !== 'callId')) {
         throw new NymrelRemoteError('get_read_result requires only a callId string of 1–256 characters', { code: 'INVALID_ARGUMENTS' });
       }
-      return this.#withContinuation(formatCallResult(await this.broker.getReadonlyCall(principal, args.callId)));
+      return this.#withContinuation(formatCallResult(await this.broker.getReadonlyCall(principal, args.callId, { sourceProfile: this.sourceProfile })));
     }
-    const result = await super.callTool(principal, name, args, { ...context, sourceProfile: 'chatgpt-readonly' });
+    const result = await super.callTool(principal, name, args, { ...context, sourceProfile: this.sourceProfile });
     return this.#withContinuation(result);
   }
 
