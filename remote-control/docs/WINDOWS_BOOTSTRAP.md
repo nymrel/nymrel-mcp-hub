@@ -51,6 +51,8 @@ The bootstrap refuses a `ChatGPTStudio` install when `-AllowedDirectory` is omit
 
 Add `-PreflightOnly` to the command above to validate the server URL, instance values, and selected roots without downloading source or changing the scheduled task. A successful check prints `NYMREL_REMOTE_BOOTSTRAP_PREFLIGHT=OK`; it does not pair or start a device.
 
+For a first, inspectable root, `scripts/stage-chatgpt-studio-share.mjs` can copy only exact `.md` and `.txt` files named in a private manifest into a **new** folder. For example, save a JSON manifest outside Git with `{"version":1,"files":[{"source":"C:\\path\\to\\reviewed-file.md","target":"studio/reviewed-file.md"}]}`, then run `node scripts/stage-chatgpt-studio-share.mjs --manifest <absolute-json-path> --output <new-absolute-share-directory>`. It refuses an existing destination, linked source or output parent, unsafe target names, and oversized files. The resulting `INDEX.md` lists only names, sizes, and hashes. Review every staged file before using that folder as `-AllowedDirectory`; this utility does not scan file contents for secrets, keep them in sync, pair a device, or authorize ChatGPT. Additional project roots can be considered after the first narrow roundtrip.
+
 To remove just this instance's autostart, run its installer with both `-InstanceName ChatGPTStudio` and `-TaskName 'Nymrel Remote ChatGPT Studio'`, plus `-Uninstall`. Device credentials and logs remain for review.
 
 A new device prints one machine-readable line:
