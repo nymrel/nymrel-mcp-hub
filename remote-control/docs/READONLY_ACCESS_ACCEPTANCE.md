@@ -2,13 +2,15 @@
 
 This additive operator CLI continues the PR #33 release candidate. It does not install an app, provision OAuth, change a device, or replace the existing production cutover probe.
 
+The current catalog check expects seven tools, including `get_read_result`. That continuation addition must be deployed before this CLI can pass against production. The CLI still treats a pending probe as blocked; it does not automatically poll. Interactive callers may use `get_read_result` as described in `CHATGPT_PRO_READONLY.md`. The stable receipt check name is now `readonly_tool_catalog`.
+
 ## What it proves
 
 The CLI first validates a private nonsecret test plan. It pins the expected OAuth issuer and readonly resource, then calls the existing `checkProductionCutover` in strict readonly mode. Only after those public checks succeed does it send the operator-provided access token to the exact readonly MCP endpoint.
 
 The credentialed sequence is bounded and read-only:
 
-1. Require exactly the six known readonly tools and their readonly/non-destructive annotations.
+1. Require exactly the seven known readonly tools and their readonly/non-destructive annotations.
 2. Require the exact authenticated device ID and name to be online and MCP-ready. A heartbeat or ambiguous device name is insufficient.
 3. Ask `get_file_info` about the explicitly chosen denied ancestor. Require the native allowed-directory refusal bound to that exact canonical ancestor; a generic error, missing path, authentication failure, timeout, or pending call does not pass. This reads no directory listing or file body.
 4. Read at most 100 lines of an approved nonsecret README, AGENTS, CLAUDE or presence Markdown file below the selected project root. Require the returned canonical path, line window and SHA-256 to match the operator's independently computed expectation.
@@ -61,7 +63,7 @@ During this continuation, Nymrel Remote app discovery returned no matching app. 
 
 Configure the approved issuer/client path and explicit subject-to-tenant admission, verify the local roots, deploy the reviewed candidate with rollback available, run the strict public probe and this operator test, then complete ChatGPT web sign-in/tool scan and a real ChatGPT file read. Repeat an allowed read after access-token expiration to test actual refresh. Keep the exact deployment/source and private acceptance receipts; do not relabel CLI proof as ChatGPT proof.
 
-OpenAI's current developer-mode guidance says ChatGPT Plus and Pro can use general MCP tools in regular conversations. Standard `search` and `fetch` schemas are required for company knowledge eligibility, a separate feature this CLI does not test. The operator must still add the deployed read-only MCP URL through ChatGPT Plugins, select that connection in a new conversation, and prove the six-tool scan and one permitted read. iOS distribution is separate; the CLI does not change that boundary.
+OpenAI's current developer-mode guidance says ChatGPT Plus and Pro can use general MCP tools in regular conversations. Standard `search` and `fetch` schemas are required for company knowledge eligibility, a separate feature this CLI does not test. The operator must still add the deployed read-only MCP URL through ChatGPT Plugins, select that connection in a new conversation, and prove the seven-tool scan and one permitted read. iOS distribution is separate; the CLI does not change that boundary.
 
 References:
 - Existing architecture and activation gates: `CHATGPT_PRO_READONLY.md`, `RAILWAY_DEPLOYMENT.md` and PR #33.

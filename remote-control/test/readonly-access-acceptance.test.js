@@ -7,7 +7,7 @@ const TOKEN = 'fixture-only-no-live-credential';
 const CONTENT = '# Fixture README\nNonsecret acceptance fixture.';
 const hash = (s) => createHash('sha256').update(s).digest('hex');
 const SERVER_KEY = 'io.modelcontextprotocol/serverInfo';
-const NAMES = ['list_devices', 'read_file', 'list_directory', 'get_file_info', 'search_files', 'search_content'];
+const NAMES = ['list_devices', 'read_file', 'list_directory', 'get_file_info', 'search_files', 'search_content', 'get_read_result'];
 const config = (extra = {}) => ({ schema: PLAN_SCHEMA, baseUrl: 'https://remote.example.test',
   expectedIssuer: 'https://issuer.example.test/', deviceId: 'fixture-device-1', deviceName: 'JalenPC',
   projectRoot: 'C:\\Users\\fixture\\projects\\builderwars', probeFile: 'C:\\Users\\fixture\\projects\\builderwars\\README.md',
@@ -83,7 +83,7 @@ test('POSIX projects supported without claiming platform-specific confinement', 
 test('success uses only exact-id reads, proves root refusal first, and leaks no private material', async () => {
   const f = fixture(); const report = await verifyReadonlyAccess(f);
   assert.equal(report.status, 'roundtrip_pass');
-  assert.deepEqual(report.checks.map((c) => c.name), ['plan_valid', 'expected_issuer_and_resource', 'strict_public_cutover', 'six_readonly_tools', 'exact_device_online', 'ancestor_metadata_denied', 'known_nonsecret_file_matches']);
+  assert.deepEqual(report.checks.map((c) => c.name), ['plan_valid', 'expected_issuer_and_resource', 'strict_public_cutover', 'readonly_tool_catalog', 'exact_device_online', 'ancestor_metadata_denied', 'known_nonsecret_file_matches']);
   assert.deepEqual(f.calls.filter((c) => c.body?.method === 'tools/call').map((c) => c.body.params.name), ['list_devices', 'get_file_info', 'read_file']);
   for (const c of f.calls.filter((c) => ['get_file_info', 'read_file'].includes(c.body?.params.name))) assert.equal(c.body.params.arguments.device, f.plan.deviceId);
   const output = JSON.stringify(report);
@@ -112,7 +112,7 @@ test('HTTP errors, SSE, mismatched RPC IDs and JSON-RPC errors fail closed', asy
   await expectBlocked(fixture({ mutate: (e) => ({ ...e, id: 999 }) }), 'MCP_PROTOCOL_FAILED');
   await expectBlocked(fixture({ mutate: (e) => ({ ...e, error: { message: TOKEN } }) }), 'MCP_PROTOCOL_FAILED');
 });
-test('catalog must be complete, unique, read-only, and have exactly six tools', async () => {
+test('catalog must be complete, unique, read-only, and have exactly seven tools', async () => {
   for (const edit of [
     (r) => { r.tools.push({ name: 'write_file' }); },
     (r) => { r.tools[0] = r.tools[1]; },

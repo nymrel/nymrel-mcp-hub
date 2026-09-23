@@ -11,7 +11,7 @@ import {
 export const PLAN_SCHEMA = 'nymrel.remote.readonly-acceptance.v1';
 export const ACCESS_TOKEN_ENV = 'NYMREL_REMOTE_READONLY_ACCESS_TOKEN';
 const RESOURCE_PATH = '/chatgpt/readonly/mcp';
-const READ_TOOLS = ['list_devices', 'read_file', 'list_directory', 'get_file_info', 'search_files', 'search_content'];
+const READ_TOOLS = ['list_devices', 'read_file', 'list_directory', 'get_file_info', 'search_files', 'search_content', 'get_read_result'];
 const PLAN_KEYS = ['schema', 'baseUrl', 'expectedIssuer', 'deviceId', 'deviceName', 'projectRoot', 'probeFile', 'lineCount', 'expectedLineSha256', 'deniedAncestor', 'nonsecretProbeApproved', 'hasPredefinedClient'];
 const MAX_RESPONSE_BYTES = 256 * 1024;
 const record = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
@@ -189,7 +189,7 @@ export async function verifyReadonlyAccess({ plan: input, accessToken, fetchImpl
     const names = catalog.tools.map((tool) => tool.name);
     insist(new Set(names).size === names.length && READ_TOOLS.every((name) => names.includes(name)) &&
       catalog.tools.every((tool) => tool.annotations?.readOnlyHint === true && tool.annotations?.destructiveHint === false && tool.annotations?.openWorldHint === false), 'READONLY_CATALOG_MISMATCH');
-    passed('six_readonly_tools');
+    passed('readonly_tool_catalog');
     const devices = usableResult(await rpc('tools/call', { name: 'list_devices', arguments: {} })).devices;
     insist(Array.isArray(devices), 'DEVICE_LIST_INVALID');
     const matched = devices.filter((device) => device.id === plan.deviceId);

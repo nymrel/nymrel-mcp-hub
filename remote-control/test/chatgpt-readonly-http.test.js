@@ -188,7 +188,7 @@ test('read-only ChatGPT resource stays closed when no authorization server is co
   assert.equal(out.response.status, 401);
 });
 
-test('mapped OAuth subject gets the frozen six-tool catalog and only its mapped tenant, whatever tenant the token claims', async (t) => {
+test('mapped OAuth subject gets the frozen seven-tool catalog and only its mapped tenant, whatever tenant the token claims', async (t) => {
   const f = await fixture(t);
   // The tenant claim names the foreign tenant; it must never select a tenant.
   const token = f.jwt(claims({ tenant: FOREIGN_TENANT, tid: FOREIGN_TENANT }));
@@ -361,4 +361,101 @@ test('the read-only audience cannot be shared with another MCP resource', async 
   const { server, runtime } = await createChatgptRemoteHttpServer(configFor(dir, { production: true }), { logger: { info() {}, error() {} } });
   await runtime.instanceLease.release();
   server.close();
+});
+
+test('pending read results can be polled through completion without creating or executing another call', async (t) => {
+  const f = await fixture(t);
+  const token = f.jwt(claims());
+  const route = '/chatgpt/readonly/mcp';
+  const initial = await callTool(f.base, route, token, 'read_file', { path: 'INDEX.md' });
+  const callId = initial.body.result.structuredContent.call.id;
+  assert.equal(initial.body.result.structuredContent.pending, true);
+  assert.match(initial.body.result.content.at(-1).text, /get_read_result/);
+  const before = await f.runtime.store.read();
+  assert.equal(before.calls[callId].sourceProfile, 'chatgpt-readonly');
+  const created = before.receipts.filter((item) => item.event === 'call.created').length;
+
+  const poll = () => callTool(f.base, route, token, 'get_read_result', { callId });
+  let out = await poll();
+  assert.equal(out.body.result.structuredContent.call.status, 'queued');
+  await f.runtime.broker.claimCall(f.operatorDevice, callId);
+  out = await poll();
+  assert.equal(out.body.result.structuredContent.call.status, 'executing');
+  const result = { content: [{ type: 'text', text: 'delayed-read-complete' }], structuredContent: { text: 'delayed-read-complete' } };
+  await f.runtime.broker.completeCall(f.operatorDevice, callId, result);
+  for (let retry = 0; retry < 2; retry++) {
+    out = await poll();
+    assert.equal(out.response.status, 200);
+    assert.deepEqual(out.body.result.content, result.content);
+    assert.deepEqual(out.body.result.structuredContent, result.structuredContent);
+  }
+  const after = await f.runtime.store.read();
+  assert.equal(Object.keys(after.calls).length, 1);
+  assert.equal(after.receipts.filter((item) => item.event === 'call.created').length, created);
+  assert.equal((await f.runtime.broker.listQueuedForDevice(f.operatorDevice)).length, 0);
+});
+
+test('read result retrieval rejects other subjects, tenants, profiles, legacy calls and missing scopes', async (t) => {
+  const f = await fixture(t, { configOverrides: { oauthSubjectTenants: new Map([
+    [OPERATOR_SUBJECT, OPERATOR_TENANT], ['auth0|coworker', OPERATOR_TENANT], ['auth0|foreign', FOREIGN_TENANT]
+  ]) } });
+  const route = '/chatgpt/readonly/mcp';
+  const token = f.jwt(claims());
+  const initial = await callTool(f.base, route, token, 'read_file', { path: 'INDEX.md' });
+  const callId = initial.body.result.structuredContent.call.id;
+  for (const sub of ['auth0|coworker', 'auth0|foreign']) {
+    const out = await callTool(f.base, route, f.jwt(claims({ sub })), 'get_read_result', { callId });
+    assert.equal(out.body.error.data.code, 'NOT_FOUND');
+  }
+  for (const scope of ['devices:read', 'tools:read', '* tools:* calls:read']) {
+    const out = await callTool(f.base, route, f.jwt(claims({ scope })), 'get_read_result', { callId });
+    assert.equal(out.response.status, 403);
+  }
+  const full = await callTool(f.base, '/chatgpt/mcp', f.jwt(claims({ aud: CHATGPT_AUDIENCE })),
+    'read_file', { path: 'INDEX.md', sourceProfile: 'chatgpt-readonly' });
+  const fullId = full.body.result.structuredContent.call.id;
+  let out = await callTool(f.base, route, token, 'get_read_result', { callId: fullId });
+  assert.equal(out.body.error.data.code, 'NOT_FOUND');
+  out = await callTool(f.base, '/chatgpt/mcp', f.jwt(claims({ aud: CHATGPT_AUDIENCE })), 'get_read_result', { callId });
+  assert.equal(out.body.error.data.code, 'NOT_FOUND');
+  await f.runtime.store.transaction((state) => { delete state.calls[callId].sourceProfile; });
+  out = await callTool(f.base, route, token, 'get_read_result', { callId });
+  assert.equal(out.body.error.data.code, 'NOT_FOUND');
+  assert.equal(Object.keys((await f.runtime.store.read()).calls).length, 2);
+});
+
+test('read result retrieval rechecks policy and device revocation and reports terminal failures', async (t) => {
+  const f = await fixture(t);
+  const route = '/chatgpt/readonly/mcp';
+  const token = f.jwt(claims());
+  const initial = await callTool(f.base, route, token, 'read_file', { path: 'INDEX.md' });
+  const callId = initial.body.result.structuredContent.call.id;
+  const poll = () => callTool(f.base, route, token, 'get_read_result', { callId });
+  await f.runtime.broker.claimCall(f.operatorDevice, callId);
+  await f.runtime.broker.failCall(f.operatorDevice, callId, 'fixture read failed');
+  let out = await poll();
+  assert.equal(out.body.result.isError, true);
+  assert.match(out.body.result.content[0].text, /fixture read failed/);
+  for (const status of ['expired', 'cancelled']) {
+    await f.runtime.store.transaction((state) => { state.calls[callId].status = status; });
+    out = await poll();
+    assert.equal(out.body.result.isError, true);
+    assert.equal(out.body.result.structuredContent.call.status, status);
+  }
+  f.runtime.broker.policy.rules.read = 'deny';
+  out = await poll();
+  assert.equal(out.body.error.data.code, 'POLICY_DENIED');
+  f.runtime.broker.policy.rules.read = 'auto';
+  // A changed or removed device schema must not disclose a retained result.
+  const originalState = await f.runtime.store.read();
+  const deviceId = originalState.calls[callId].deviceId;
+  await f.runtime.store.transaction((state) => { state.devices[deviceId].tools = []; });
+  out = await poll();
+  assert.equal(out.body.error.data.code, 'NOT_FOUND');
+  await f.runtime.store.transaction((state) => { state.devices[deviceId].tools = originalState.devices[deviceId].tools; });
+  await f.runtime.broker.revokeDevice({ typ: 'user', sub: OPERATOR_SUBJECT, tenant: OPERATOR_TENANT,
+    scopes: ['devices:revoke'] }, deviceId);
+  out = await poll();
+  assert.equal(out.body.error.data.code, 'NOT_FOUND');
+  assert.equal(Object.keys((await f.runtime.store.read()).calls).length, 1);
 });

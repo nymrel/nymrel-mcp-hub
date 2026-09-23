@@ -4,9 +4,11 @@
 
 Give ordinary ChatGPT conversations on the web a narrow Nymrel Remote surface for inspecting JalenPC files without depending on ChatGPT Work or Codex.
 
-This profile is intentionally separate from the full public/plugin catalog and must not widen local permissions. OpenAI's current developer-mode guidance says ChatGPT Plus and Pro support general MCP tools, so the six read-only tools below are suitable for a regular conversation connection. Company knowledge eligibility is a separate feature that requires standard `search` and `fetch` schemas; this profile does not claim that eligibility. See [ChatGPT developer mode](https://developers.openai.com/chatgpt) and [company knowledge compatibility](https://developers.openai.com/plugins/build/mcp-server#company-knowledge-compatibility).
+This profile is intentionally separate from the full public/plugin catalog and must not widen local permissions. OpenAI's current developer-mode guidance says ChatGPT Plus and Pro support general MCP tools, so the seven read-only tools below are suitable for a regular conversation connection. Company knowledge eligibility is a separate feature that requires standard `search` and `fetch` schemas; this profile does not claim that eligibility. See [ChatGPT developer mode](https://developers.openai.com/chatgpt) and [company knowledge compatibility](https://developers.openai.com/plugins/build/mcp-server#company-knowledge-compatibility).
 
 ## Status
+
+The source now adds a seventh tool, `get_read_result`, for reads that outlast the synchronous HTTP wait. This addition is a local candidate until separately deployed and scanned in ChatGPT; the deployment receipt below describes the previous six-tool version.
 
 The profile is wired, tested, and deployed to `https://nymrel-remote-production.up.railway.app` as of 2026-09-22. Live probes returned `200` for `/healthz`, `/readyz`, and the read-only protected-resource metadata, and `401` for an unauthenticated MCP request. On September 22, a separate `JalenPC-ChatGPTStudio` agent was installed from reviewed commit `23d478a555eb2c32acaa3fbf3a83b9bdf471566d`, paired to dedicated tenant `chatgpt-studio-20260922`, and verified online as that tenant's only device. Its allowed root is a staged share containing three reviewed Markdown documents and an index. A short-lived, read-scoped internal token reached the staged index through the full compatibility MCP path; attempts to read the parent project and list the credential directory were denied. This is a device and filesystem-boundary check, **not** an OAuth or regular-ChatGPT acceptance test. Nymrel Remote contains no OAuth authorization server: it only verifies tokens from an external one. Until the operator provisions a provider (see [Provider requirements](#provider-requirements)) the read-only resource answers every request with `401`, by design.
 
@@ -20,8 +22,17 @@ The profile exposes only:
 - `get_file_info`
 - `search_files`
 - `search_content`
+- `get_read_result`
 
 The requested OAuth scopes are only `devices:read` and `tools:read`.
+
+### Reads that are still running
+
+A file inspection may return `pending: true` and a call ID after the synchronous wait (25 seconds by default). Call `get_read_result` with `{ "callId": "<returned id>" }` to inspect that same durable call. It returns immediately with its current state or completed result; if still pending, wait briefly before checking again. Repeating result retrieval does not start another device operation. Resubmitting the original file inspection starts a new read and should be avoided while its first call is pending.
+
+Retrieval requires both existing read scopes, the same OAuth subject and tenant, and a call created through this read-only profile. Generic/full-profile calls and historical calls without the profile marker are refused. The original operation must have been an automatically allowed, non-destructive read; current policy, device revocation and the registered tool schema are checked again. The tool cannot approve, cancel, retry or execute a call and does not grant `calls:read`. A completed result is the retained snapshot from the original read, not a new filesystem access. Failed, cancelled and expired calls return an error result. Normal call retention applies.
+
+After deployment, refresh the connection's catalog and confirm all seven tools. Existing devices need no agent update for this server-side continuation change. To roll back, restore the prior server revision and refresh the connection; the extra durable-call marker is additive and ignored by earlier code.
 
 It does not expose writes, edits, shell/process execution, process output, process enumeration, or termination. Any other tool name returns a not-found JSON-RPC error before the broker is reached, so no call record or audit `call.created` event exists for it. The device agent's existing allowed-directory boundary remains authoritative.
 
@@ -99,7 +110,7 @@ The allowed roots are per device, not per resource. Tenant isolation is what pre
 1. In ChatGPT, open **Settings → Security and login** and turn on **Developer mode**. Go to **ChatGPT Plugins**, select the plus button, and create a connection with the public MCP URL `https://<production-host>/chatgpt/readonly/mcp`. Do not use `/chatgpt/mcp`. Developer-mode availability can depend on account or workspace policy.
 2. ChatGPT receives the `401` challenge, reads the protected-resource metadata, discovers the authorization server, and runs authorization-code + PKCE for `devices:read tools:read`.
 3. The operator signs in with the mapped account and consents.
-4. Review the six discovered tools, start a new regular conversation, add the connection from the tools menu, and prove `list_devices`, `search_content`, and `read_file` against the narrow ChatGPTStudio device. Confirm the connection still works after the first access token has expired. If tool metadata changes later, refresh the connection and repeat the checks. See [OpenAI's connection and test flow](https://developers.openai.com/plugins/deploy/connect-chatgpt#add-the-mcp-server).
+4. Review the seven discovered tools, start a new regular conversation, add the connection from the tools menu, and prove `list_devices`, `search_content`, and `read_file` against the narrow ChatGPTStudio device. Confirm the connection still works after the first access token has expired. If tool metadata changes later, refresh the connection and repeat the checks. See [OpenAI's connection and test flow](https://developers.openai.com/plugins/deploy/connect-chatgpt#add-the-mcp-server).
 
 ## Deployment
 

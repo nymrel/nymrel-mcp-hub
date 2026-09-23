@@ -15,7 +15,8 @@ test('regular ChatGPT read-only profile exposes only local discovery and file-in
     'list_directory',
     'get_file_info',
     'search_files',
-    'search_content'
+    'search_content',
+    'get_read_result'
   ]);
   assert.deepEqual(CHATGPT_READONLY_TOOLS.map((tool) => tool.name), CHATGPT_READONLY_TOOL_NAMES);
 
