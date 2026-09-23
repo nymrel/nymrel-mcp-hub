@@ -204,7 +204,8 @@ test('Nymrel plugin backend is absent by default and accepts only mapped, plugin
 
   out = await listTools(f.base, NYMREL_PLUGIN_ROUTE, null);
   assert.equal(out.response.status, 401);
-  assert.match(out.response.headers.get('www-authenticate') || '', /https:\/\/mcp\.nymrel\.com\/\.well-known\/oauth-protected-resource\/mcp/);
+  assert.ok((out.response.headers.get('www-authenticate') || '').includes(
+    'resource_metadata="https://mcp.nymrel.com/.well-known/oauth-protected-resource/mcp"'));
 
   const staticToken = f.runtime.tokenService.mint({
     subject: 'static-operator', tenantId: OPERATOR_TENANT, type: 'user',
