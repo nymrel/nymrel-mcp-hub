@@ -8,7 +8,7 @@ This profile is intentionally separate from the full public/plugin catalog and m
 
 ## Status
 
-The profile is wired, tested, and deployed to `https://nymrel-remote-production.up.railway.app` as of 2026-09-22. Live probes returned `200` for `/healthz`, `/readyz`, and the read-only protected-resource metadata, and `401` for an unauthenticated MCP request. It is **not yet connected to ChatGPT or authorized to read local files**. Nymrel Remote contains no OAuth authorization server: it only verifies tokens from an external one. Until the operator provisions a provider (see [Provider requirements](#provider-requirements)) the read-only resource answers every request with `401`, by design.
+The profile is wired, tested, and deployed to `https://nymrel-remote-production.up.railway.app` as of 2026-09-22. Live probes returned `200` for `/healthz`, `/readyz`, and the read-only protected-resource metadata, and `401` for an unauthenticated MCP request. On September 22, a separate `JalenPC-ChatGPTStudio` agent was installed from reviewed commit `23d478a555eb2c32acaa3fbf3a83b9bdf471566d`, paired to dedicated tenant `chatgpt-studio-20260922`, and verified online as that tenant's only device. Its allowed root is a staged share containing three reviewed Markdown documents and an index. It is **not yet connected to ChatGPT or authorized to read local files through the read-only MCP resource**. Nymrel Remote contains no OAuth authorization server: it only verifies tokens from an external one. Until the operator provisions a provider (see [Provider requirements](#provider-requirements)) the read-only resource answers every request with `401`, by design.
 
 ## Tool surface
 
@@ -88,9 +88,9 @@ The `ChatGPTStudio` bootstrap now requires an explicit allowed root and rejects 
 
 Before ChatGPT is connected:
 
-1. The operator chooses the narrowest project directories that regular ChatGPT actually needs.
-2. Install the separate instance described in `docs/WINDOWS_BOOTSTRAP.md` with only those roots, and pair it under a dedicated tenant. Map the operator's OAuth subject to that tenant. Alternatively, narrow the existing JalenPC agent with `-AllowedDirectory` and restart it if every current client should lose access outside the chosen roots.
-3. The operator confirms from ChatGPT that only the narrow device is listed and that `list_directory` on `C:\Users\johns` and on the credential directory is refused.
+1. The first narrow root is staged and paired: three explicit Markdown files plus an index. The separate instance described in `docs/WINDOWS_BOOTSTRAP.md` is online in tenant `chatgpt-studio-20260922`; the existing broad JalenPC device remains in its original tenant. Additional project roots require their own content review.
+2. Map the operator's exact OAuth subject to `chatgpt-studio-20260922` after the provider is configured.
+3. From ChatGPT, confirm that only the narrow device is listed and that `list_directory` on `C:\Users\johns` and on the credential directory is refused.
 
 The allowed roots are per device, not per resource. Tenant isolation is what prevents the regular ChatGPT profile from discovering a different, broader device.
 
@@ -106,7 +106,7 @@ The allowed roots are per device, not per resource. Tenant isolation is what pre
 Production runs this profile, but has no authorization server configured. Deployment `d32760f9-aa83-44c6-8bc9-b36d1ac744f3` succeeded on 2026-09-22. The remaining steps below require an authorization provider, a narrow device pairing, and an operator identity decision.
 
 1. Provision the provider and record the operator `sub`. Create a dedicated tenant for the read-only ChatGPT device; do not map that subject to the tenant containing the existing whole-profile JalenPC device.
-2. Pair the separate `ChatGPTStudio` Windows instance with only the operator-selected roots under that tenant, as described above.
+2. The separate `ChatGPTStudio` Windows instance is paired and online in the dedicated tenant with only the staged share. Keep that tenant isolated when mapping the OAuth subject.
 3. Set the service variables: `NYMREL_REMOTE_AUTHORIZATION_SERVERS`, `NYMREL_REMOTE_OAUTH_ISSUER`, `NYMREL_REMOTE_OAUTH_SUBJECT_TENANTS`, and either `NYMREL_REMOTE_OAUTH_JWKS_URL` (optional when discovery publishes `jwks_uri`) or the introspection variables. Leave `NYMREL_REMOTE_OAUTH_AUDIENCE` and `NYMREL_REMOTE_CHATGPT_OAUTH_AUDIENCE` at their own resource URLs.
 4. Redeploy after the configuration changes. A rejected configuration stops the process at startup instead of serving with open tenancy.
 5. Run the strict probe; it prints check names and pass/fail only:
@@ -132,7 +132,7 @@ Before describing this as available in regular ChatGPT:
 1. ~~Wire the profile into an isolated resource path without changing the full plugin catalog.~~ Done locally.
 2. Configure OAuth client onboarding, PKCE S256, refresh-token support, the exact read-only resource audience, and the subject-to-tenant mapping.
 3. ~~Run focused HTTP tests proving the read-only catalog is frozen and mutation/execute tools return not-found rather than reaching the broker.~~ Done locally with a test issuer; this proves wiring, not ChatGPT connectivity.
-4. Pair the separate ChatGPTStudio device under a dedicated tenant with only the selected allowed roots.
+4. ~~Pair the separate ChatGPTStudio device under a dedicated tenant with only the selected allowed roots.~~ Done for the staged share; production listed one online device in that tenant.
 5. Deploy and run the strict production cutover probe with `--profile=readonly`.
 6. Connect it from ChatGPT.com developer mode and prove `list_devices`, `search_content`, and `read_file` against ChatGPTStudio while the broad JalenPC device remains invisible.
 
