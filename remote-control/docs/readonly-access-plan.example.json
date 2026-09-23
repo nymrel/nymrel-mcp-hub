@@ -3,12 +3,12 @@
   "baseUrl": "https://nymrel-remote-production.up.railway.app",
   "expectedIssuer": "https://replace-with-approved-issuer.example.invalid/",
   "deviceId": "REPLACE_WITH_AUTHENTICATED_DEVICE_ID",
-  "deviceName": "JalenPC",
-  "projectRoot": "C:\\REPLACE_WITH_APPROVED_ANCESTOR\\projects\\builderwars",
-  "probeFile": "C:\\REPLACE_WITH_APPROVED_ANCESTOR\\projects\\builderwars\\README.md",
-  "lineCount": 40,
+  "deviceName": "JalenPC-ChatGPTStudio",
+  "projectRoot": "C:\\Users\\REPLACE_WITH_USER\\AppData\\Local\\Nymrel\\ChatGPTStudioShare-20260922",
+  "probeFile": "C:\\Users\\REPLACE_WITH_USER\\AppData\\Local\\Nymrel\\ChatGPTStudioShare-20260922\\INDEX.md",
+  "lineCount": 9,
   "expectedLineSha256": "REPLACE_WITH_SHA256_OF_INDEPENDENTLY_VERIFIED_LINE_WINDOW",
-  "deniedAncestor": "C:\\REPLACE_WITH_APPROVED_ANCESTOR",
+  "deniedAncestor": "C:\\Users\\REPLACE_WITH_USER\\AppData\\Local\\Nymrel",
   "nonsecretProbeApproved": false,
   "hasPredefinedClient": false
 }

@@ -13,7 +13,7 @@ The credentialed sequence is bounded and read-only:
 1. Require exactly the seven known readonly tools and their readonly/non-destructive annotations.
 2. Require the exact authenticated device ID and name to be online and MCP-ready. A heartbeat or ambiguous device name is insufficient.
 3. Ask `get_file_info` about the explicitly chosen denied ancestor. Require the native allowed-directory refusal bound to that exact canonical ancestor; a generic error, missing path, authentication failure, timeout, or pending call does not pass. This reads no directory listing or file body.
-4. Read at most 100 lines of an approved nonsecret README, AGENTS, CLAUDE or presence Markdown file below the selected project root. Require the returned canonical path, line window and SHA-256 to match the operator's independently computed expectation.
+4. Read at most 100 lines of an approved nonsecret README, AGENTS, CLAUDE or presence Markdown file below the selected project root, or the exact staged ChatGPTStudio INDEX described below. Require the returned canonical path, line window and SHA-256 to match the operator's independently computed expectation.
 
 The output contains only fixed check names, booleans, timestamp and fixed failure codes. It omits the token, issuer, device identity, paths, file contents and file digest. No real credential is used in the fixture tests.
 
@@ -42,6 +42,12 @@ node scripts/verify-readonly-access.mjs --plan /private/readonly-access-plan.jso
 ```
 
 Exit status: 0 for the narrow roundtrip pass, 1 for blocked acceptance, 2 for invalid invocation/unreadable plan. There are no retries, scheduled tasks or automatic durable-call resubmissions. A queued/approval-required read stays blocked; no hidden polling or privilege escalation is attempted.
+
+## Staged ChatGPTStudio share
+
+The existing ChatGPTStudio acceptance plan may probe only INDEX.md directly inside a root shaped like C:\Users\<user>\AppData\Local\Nymrel\ChatGPTStudioShare-YYYYMMDD. The denied ancestor must be the immediate Nymrel parent. This narrow exception lets the verifier test the approved staged share; every other AppData probe remains invalid. Review the staged index and every file in the allowed share before setting nonsecretProbeApproved to true. The device agent's allowed-directory setting remains the filesystem boundary.
+
+Use a line window ending on a substantive index line, before the empty entry after its final newline. The expected digest is still the SHA-256 of the selected normalized line window, not the raw file digest.
 
 ## Resource and privacy bounds
 

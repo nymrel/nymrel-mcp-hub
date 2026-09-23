@@ -80,6 +80,31 @@ test('invalid file plans, traversal, UNC, ADS, credentials and non-markdown prob
 test('POSIX projects supported without claiming platform-specific confinement', () => {
   assert.ok(validatePlan(config({ projectRoot: '/srv/projects/demo', probeFile: '/srv/projects/demo/README.md', deniedAncestor: '/srv' })));
 });
+test('the staged ChatGPTStudio share permits only its INDEX probe under AppData', () => {
+  const share = 'C:\\Users\\fixture\\AppData\\Local\\Nymrel\\ChatGPTStudioShare-20260922';
+  const parent = 'C:\\Users\\fixture\\AppData\\Local\\Nymrel';
+  const plan = config({ projectRoot: share, probeFile: `${share}\\INDEX.md`, deniedAncestor: parent,
+    deviceName: 'JalenPC-ChatGPTStudio' });
+  assert.deepEqual(validatePlan(plan), plan);
+  for (const extra of [
+    { projectRoot: parent, probeFile: `${parent}\\INDEX.md` },
+    { projectRoot: `${parent}\\OtherShare-20260922`, probeFile: `${parent}\\OtherShare-20260922\\INDEX.md` },
+    { projectRoot: `${parent}\\ChatGPTStudioShare-today`, probeFile: `${parent}\\ChatGPTStudioShare-today\\INDEX.md` },
+    { probeFile: `${share}\\README.md` },
+    { probeFile: `${share}\\secrets\\INDEX.md` },
+    { deniedAncestor: 'C:\\Users\\fixture\\AppData\\Local' }
+  ]) assert.throws(() => validatePlan({ ...plan, ...extra }));
+});
+test('the staged ChatGPTStudio INDEX plan completes the bounded read-only fixture', async () => {
+  const share = 'C:\\Users\\fixture\\AppData\\Local\\Nymrel\\ChatGPTStudioShare-20260922';
+  const plan = config({ projectRoot: share, probeFile: `${share}\\INDEX.md`,
+    deniedAncestor: 'C:\\Users\\fixture\\AppData\\Local\\Nymrel', deviceName: 'JalenPC-ChatGPTStudio' });
+  const f = fixture({ plan });
+  const report = await verifyReadonlyAccess(f);
+  assert.equal(report.status, 'roundtrip_pass');
+  assert.deepEqual(f.calls.filter((call) => call.body?.method === 'tools/call').map((call) => call.body.params.name),
+    ['list_devices', 'get_file_info', 'read_file']);
+});
 test('success uses only exact-id reads, proves root refusal first, and leaks no private material', async () => {
   const f = fixture(); const report = await verifyReadonlyAccess(f);
   assert.equal(report.status, 'roundtrip_pass');
