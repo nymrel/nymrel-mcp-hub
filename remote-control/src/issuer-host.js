@@ -30,6 +30,15 @@ function unavailable(res) {
   res.end('{"status":"unavailable"}');
 }
 
+export async function listenOwnedIssuer(server, app, owner, port) {
+  try {
+    await new Promise((resolve, reject) => {
+      server.once('error', reject);
+      server.listen(port, '127.0.0.1', () => { server.off('error', reject); resolve(); });
+    });
+  } catch (error) { app.close(); await owner.release(); throw error; }
+}
+
 // Called before listen. Disabled mode performs no imports, file reads or network I/O.
 export async function installIssuerHost(server, remoteConfig, { env = process.env, createApp } = {}) {
   const enabled = env.NYMREL_REMOTE_OIDC_ISSUER_ENABLED;

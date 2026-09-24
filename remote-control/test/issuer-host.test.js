@@ -5,7 +5,7 @@ import { mkdtemp, mkdir, writeFile, rm, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { acquireIssuerOwner, installIssuerHost } from '../src/issuer-host.js';
+import { acquireIssuerOwner, installIssuerHost, listenOwnedIssuer } from '../src/issuer-host.js';
 
 async function fixture(t) {
   const root = await mkdtemp(join(tmpdir(), 'issuer-host-'));
@@ -77,4 +77,12 @@ test('clean host restart restores readiness and ownership loss cannot delete ano
   await writeFile(marker, '{"owner":"replacement"}');
   await assert.rejects(second.ready()); await assert.rejects(second.close());
   assert.equal(JSON.parse(await readFile(marker, 'utf8')).owner, 'replacement');
+});
+
+test('standalone bind failure closes the issuer and releases storage for a retry', async t => {
+  const f = await fixture(t); const occupied = remote(); await listen(t, occupied);
+  const owner = await acquireIssuerOwner(f.databasePath); let closed = false;
+  await assert.rejects(listenOwnedIssuer(remote(), { close() { closed = true; } }, owner, occupied.address().port), { code: 'EADDRINUSE' });
+  assert.equal(closed, true);
+  const retryOwner = await acquireIssuerOwner(f.databasePath); await retryOwner.release();
 });

@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { createIssuerHttp } from '../src/http.js';
-import { acquireIssuerOwner } from '../../src/issuer-host.js';
+import { acquireIssuerOwner, listenOwnedIssuer } from '../../src/issuer-host.js';
 
 // No defaults for identity, signing material, Google credentials or callback.
 const path = process.env.NYMREL_OIDC_CONFIG_FILE;
@@ -18,10 +18,5 @@ catch (error) { await owner.release(); throw error; }
 const server = createServer(app.handler);
 server.requestTimeout = 15000;
 server.headersTimeout = 10000;
-try {
-  await new Promise((resolve, reject) => {
-    server.once('error', reject);
-    server.listen(port, '127.0.0.1', () => { server.off('error', reject); resolve(); });
-  });
-} catch (error) { app.close(); await owner.release(); throw error; }
+await listenOwnedIssuer(server, app, owner, port);
 for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => server.close(() => { app.close(); void owner.release(); }));
