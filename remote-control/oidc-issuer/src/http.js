@@ -54,8 +54,9 @@ export async function createIssuerHttp(config, { googleFetch, rateLimitClock } =
   }
   const redirect = (res, location) => { res.writeHead(303, { location }); res.end(); };
   const html = (res, title, action, csrf) => {
+    const cancel = action.replace(/\/(start|consent)$/, '/deny');
     res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-    res.end(`<!doctype html><html lang="en"><meta charset="utf-8"><title>${escape(title)}</title><h1>${escape(title)}</h1><p>Access is limited to device discovery and the approved read-only tools.</p><form method="post" action="${escape(action)}"><input type="hidden" name="csrf" value="${escape(csrf)}"><button>${escape(title)}</button></form></html>`);
+    res.end(`<!doctype html><html lang="en"><meta charset="utf-8"><title>${escape(title)}</title><h1>${escape(title)}</h1><p>Access is limited to device discovery and the approved read-only tools.</p><form method="post" action="${escape(action)}"><input type="hidden" name="csrf" value="${escape(csrf)}"><button>${escape(title)}</button><button formaction="${escape(cancel)}">Cancel</button></form></html>`);
   };
   async function newBinding(req, res, uid, stage) {
     const old = cookie(req); if (old) await bindings.destroy(old);
@@ -101,7 +102,7 @@ export async function createIssuerHttp(config, { googleFetch, rateLimitClock } =
           await bindings.upsert(sid, { uid: binding.uid, stage: 'verified', verified }, 60);
           redirect(res, `/interaction/${binding.uid}/finish`); return;
         }
-        const match = /^\/interaction\/([A-Za-z0-9_-]+)(?:\/(start|finish|consent))?$/.exec(url.pathname);
+        const match = /^\/interaction\/([A-Za-z0-9_-]+)(?:\/(start|finish|consent|deny))?$/.exec(url.pathname);
         if (!match) { if (url.pathname.startsWith('/interaction/')) throw new Denied(); callback(req, res); return; }
         const [, uid, action] = match;
         let details;
@@ -120,13 +121,15 @@ export async function createIssuerHttp(config, { googleFetch, rateLimitClock } =
           const binding = await bindings.take(sid, 'verified'); if (!binding) throw new Denied();
           await app.completeLogin(req, res, binding.verified); return;
         }
-        if (req.method !== 'POST' || !['start', 'consent'].includes(action) || req.headers.origin !== origin) throw new Denied();
-        const stage = action === 'start' ? 'login' : 'consent';
+        if (req.method !== 'POST' || !['start', 'consent', 'deny'].includes(action) || req.headers.origin !== origin) throw new Denied();
+        const stage = action === 'deny' ? details.prompt.name : action === 'start' ? 'login' : 'consent';
+        if (!['login', 'consent'].includes(stage)) throw new Denied();
         if (details.prompt.name !== stage) throw new Denied();
         const { sid, binding } = await load(req, uid, stage);
         const body = await form(req);
         if (!equal(body.get('csrf'), binding.csrf)) throw new Denied();
         if (!await bindings.take(sid, stage)) throw new Denied();
+        if (action === 'deny') { await app.denyAuthorization(req, res); return; }
         if (action === 'consent') { await app.approveConsent(req, res); return; }
         const request = await google.begin();
         await bindings.upsert(sid, { uid, stage: 'google', ...request }, 300);

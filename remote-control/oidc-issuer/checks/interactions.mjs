@@ -256,3 +256,60 @@ test('unsolicited wrong or duplicate state callbacks do not consume pending legi
   assert.equal((await b.page(callbackResult.location)).status, 200);
   assert.equal(f.google.stats().tokenRequests, 1);
 });
+
+function cancelPage(page) {
+  const target = page.body.match(/formaction="([^"]+)"/)[1];
+  return { ...page, body: page.body.replace(/action="[^"]+"/, `action="${target}"`) };
+}
+
+test('user cancellation at login or consent returns only OAuth access_denied with exact state and issuer', async t => {
+  for (const stage of ['login', 'consent']) {
+    await t.test(stage, async t => {
+      const f = await fixture(t), b = f.browser();
+      const page = stage === 'login' ? await b.loginPage() : await b.reachConsent();
+      assert.match(page.body, />Cancel<\/button>/);
+      const denied = await b.post(cancelPage(page)); assert.equal(denied.status, 303, denied.body);
+      const resumed = await b.request(denied.location); assert.equal(resumed.status, 303, resumed.body);
+      const result = new URL(resumed.location);
+      assert.equal(result.origin + result.pathname, callback);
+      assert.equal(result.searchParams.get('error'), 'access_denied');
+      assert.equal(result.searchParams.get('state'), 'chatgpt-state');
+      assert.equal(result.searchParams.get('iss'), f.issuer);
+      assert.equal(result.searchParams.has('code'), false);
+      assert.equal(result.searchParams.has('access_token'), false);
+      assert.equal((await b.post(page)).status, 403, 'Cancelled form cannot approve afterward');
+      assert.equal((await b.post(cancelPage(page))).status, 403, 'Cancellation is one use');
+      assert.equal(f.google.stats().tokenRequests, stage === 'login' ? 0 : 1);
+    });
+  }
+});
+
+test('cancellation requires original browser, Origin, CSRF and interaction; invalid attempts preserve valid login', async t => {
+  const f = await fixture(t), b = f.browser(), other = f.browser();
+  const page = await b.loginPage(), cancel = cancelPage(page);
+  assert.equal((await b.request(cancel.body.match(/action="([^"]+)"/)[1])).status, 403, 'GET cannot cancel');
+  assert.equal((await b.post(cancel, { body: { csrf: 'wrong' } })).status, 403);
+  assert.equal((await b.post(cancel, { headers: { origin: 'https://attacker.example' } })).status, 403);
+  assert.equal((await b.post(cancel, { body: { subject: 'allowed-google-sub' } })).status, 403);
+  assert.equal((await other.post(cancel)).status, 403);
+  const latest = await b.loginPage();
+  assert.equal((await b.post(cancel)).status, 403, 'Old interaction cannot cancel new interaction');
+  assert.equal((await b.post(latest)).status, 303, 'Invalid cancellations must preserve valid login');
+  assert.equal(f.google.stats().tokenRequests, 0);
+});
+
+test('concurrent cancellation and approval consume the same consent binding once', async t => {
+  const f = await fixture(t), b = f.browser(), page = await b.reachConsent();
+  const results = await Promise.all([b.post(cancelPage(page)), b.post(page)]);
+  assert.deepEqual(results.map(r => r.status).sort(), [303, 403]);
+  const winner = results.findIndex(r => r.status === 303);
+  const resumed = await b.request(results[winner].location); assert.equal(resumed.status, 303);
+  const result = new URL(resumed.location);
+  assert.equal(result.searchParams.get('iss'), f.issuer);
+  assert.equal(result.searchParams.get('state'), 'chatgpt-state');
+  if (winner === 0) {
+    assert.equal(result.searchParams.get('error'), 'access_denied'); assert.equal(result.searchParams.has('code'), false);
+  } else {
+    assert.ok(result.searchParams.get('code')); assert.equal(result.searchParams.has('error'), false);
+  }
+});
