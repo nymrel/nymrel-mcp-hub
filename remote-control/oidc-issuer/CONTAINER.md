@@ -33,18 +33,22 @@ existing authentication. There is no second externally exposed port.
 
 ## Ownership, restart and rollback
 
-One persistent SQLite file has one exclusive `.owner` marker. Both production
-entrypoints acquire it before opening SQLite. No age/PID heuristic steals it.
-Graceful server close closes SQLite before releasing the marker. Another process
-or a stale crash marker blocks startup. Canonical parent paths and rejection of
-database symlinks prevent ordinary path aliases from bypassing the marker.
+One persistent SQLite file has one dedicated `.owner.sqlite` ownership database.
+Both production entrypoints hold an exclusive transaction in that database before
+opening token storage. SQLite's OS file lock rejects a second live owner and is
+released automatically when the process dies. No age/PID heuristic steals it.
+Graceful server close closes token storage before releasing the ownership lock.
+Canonical parent paths and rejection of database symlinks prevent ordinary path
+aliases from bypassing ownership. Never unlink the ownership database while running.
 The dedicated directory must remain private: hardlinks and hostile filesystem
-mutation by another same-UID process are outside this marker's security boundary.
+mutation by another same-UID process are outside this lock's security boundary.
 
-After an ungraceful crash, stop all old issuer containers/processes, verify no
-writer remains, retain the SQLite/WAL/SHM files, and separately approve/review
-removing only the stale owner marker before restarting. This intentionally trades
-automatic crash recovery for exclusive ownership. Never restore an old token
+After an ungraceful crash, restart with the same persistent SQLite/WAL/SHM files
+and the same private keys. SQLite recovers its journals and the next process can
+acquire ownership only when the former OS lock is gone. A contending live process
+fails startup immediately; the platform restart policy must retry after teardown.
+Offline tests exercise a real second process and forced termination/reacquisition.
+Linux/container volume restart proof remains an activation gate. Never restore an old token
 database while serving traffic; spent tokens could be resurrected. Until a tested
 recovery design exists, invalidate prior sessions after restore.
 
@@ -54,6 +58,6 @@ read adapter separately if they were later enabled. Existing access JWTs can rem
 valid until expiry; revoke verifier subject mapping for immediate fail-closed
 access. No live bridge or gateway flag is changed by this slice.
 
-Limits: one process/replica, shared failure and key-access boundary with Remote,
-manual crash-marker recovery, no automatic secret generation, no deployment or
+Limits: one process/replica, local filesystem SQLite locks (no network shares),
+shared failure and key-access boundary with Remote, no automatic secret generation, no deployment or
 provider registration. Existing standalone issuer command remains loopback-only.

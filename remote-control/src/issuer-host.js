@@ -1,28 +1,38 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { randomUUID } from 'node:crypto';
 
 const endpoints = new Set(['/.well-known/openid-configuration', '/.well-known/oauth-authorization-server', '/auth', '/token', '/token/revocation', '/jwks', '/me', '/session/end', '/session/end/confirm', '/session/end/success', '/google/callback']);
 export const isIssuerPath = pathname => endpoints.has(pathname) || pathname.startsWith('/interaction/') || pathname.startsWith('/auth/');
 
-// No timeout-based stealing: a crashed owner requires verified offline recovery.
-// Canonicalizing the directory prevents two spelling/symlink aliases owning one DB.
+// SQLite holds an OS file lock for the lifetime of this exclusive transaction.
+// Process death releases it without a PID/timeout heuristic or deleting lock files.
 export async function acquireIssuerOwner(databasePath) {
   const directory = await fs.realpath(path.dirname(databasePath));
   const database = path.join(directory, path.basename(databasePath));
   try { if ((await fs.lstat(database)).isSymbolicLink()) throw new Error('Issuer database must not be a symlink'); }
   catch (error) { if (error.code !== 'ENOENT') throw error; }
-  const lockPath = `${database}.owner`;
-  const owner = randomUUID();
-  const handle = await fs.open(lockPath, 'wx', 0o600);
-  try { await handle.writeFile(JSON.stringify({ owner, pid: process.pid })); await handle.sync(); }
-  catch (error) { await handle.close(); throw error; }
-  await handle.close();
+  const lockPath = `${database}.owner.sqlite`;
+  try { if ((await fs.lstat(lockPath)).isSymbolicLink()) throw new Error('Issuer ownership database must not be a symlink'); }
+  catch (error) { if (error.code !== 'ENOENT') throw error; }
+  const { DatabaseSync } = await import('node:sqlite');
+  const lock = new DatabaseSync(lockPath);
+  let identity;
+  try {
+    lock.exec('PRAGMA busy_timeout=0; PRAGMA journal_mode=DELETE; BEGIN EXCLUSIVE; CREATE TABLE IF NOT EXISTS owner (id INTEGER);');
+    identity = await fs.stat(lockPath);
+  } catch (error) { lock.close(); throw error; }
   let released = false;
   const check = async () => {
-    if (released || JSON.parse(await fs.readFile(lockPath, 'utf8')).owner !== owner) throw new Error('Issuer storage ownership lost');
+    if (released) throw new Error('Issuer storage ownership released');
+    const current = await fs.lstat(lockPath);
+    if (current.isSymbolicLink() || current.dev !== identity.dev || current.ino !== identity.ino) throw new Error('Issuer storage ownership file replaced');
+    lock.prepare('SELECT count(*) FROM owner').get();
   };
-  return { databasePath: database, check, async release() { await check(); await fs.unlink(lockPath); released = true; } };
+  return { databasePath: database, check, async release() {
+    if (released) return;
+    released = true;
+    try { lock.exec('ROLLBACK'); } finally { lock.close(); }
+  } };
 }
 
 function unavailable(res) {
@@ -86,7 +96,7 @@ export async function installIssuerHost(server, remoteConfig, { env = process.en
     if (closed) return;
     closed = true;
     app.close();
-    // A lost marker must not remove another owner's lock.
+    // Never unlink an ownership database (even when its identity changed).
     await owner.release();
   };
   server.once('close', () => { void close().catch(() => {}); });

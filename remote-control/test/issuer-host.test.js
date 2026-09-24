@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
-import { mkdtemp, mkdir, writeFile, rm, readFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { spawnSync, spawn } from 'node:child_process';
 import { acquireIssuerOwner, installIssuerHost, listenOwnedIssuer } from '../src/issuer-host.js';
 
 async function fixture(t) {
@@ -55,28 +55,30 @@ test('issuer routing is exact, forwarding is sanitized, and lost storage fails r
   await host.close();
 });
 
-test('second process cannot own storage; clean release permits restart; crash marker stays closed', async t => {
+test('second process cannot own storage; clean release and process death allow safe restart', async t => {
   const f = await fixture(t); const owner = await acquireIssuerOwner(f.databasePath);
   const moduleUrl = new URL('../src/issuer-host.js', import.meta.url).href;
   const attempt = () => spawnSync(process.execPath, ['--input-type=module', '-e', `import { acquireIssuerOwner } from ${JSON.stringify(moduleUrl)}; await acquireIssuerOwner(${JSON.stringify(f.databasePath)});`]);
   assert.notEqual(attempt().status, 0);
   await owner.release();
-  assert.equal(attempt().status, 0); // process exits without release, simulating stale ownership
-  assert.notEqual(attempt().status, 0, 'stale ownership must not be silently stolen');
-  await assert.rejects(acquireIssuerOwner(f.databasePath), { code: 'EEXIST' });
+  assert.equal(attempt().status, 0);
+  const child = spawn(process.execPath, ['--input-type=module', '-e', `import { acquireIssuerOwner } from ${JSON.stringify(moduleUrl)}; await acquireIssuerOwner(${JSON.stringify(f.databasePath)}); console.log('owned'); setInterval(()=>{},1000);`], { stdio: ['ignore', 'pipe', 'pipe'] });
+  t.after(() => { if (child.exitCode === null) child.kill(); });
+  await new Promise((resolve, reject) => { child.stdout.once('data', resolve); child.once('error', reject); child.once('exit', code => reject(new Error('Child exited before ownership: ' + code))); });
+  await assert.rejects(acquireIssuerOwner(f.databasePath));
+  const exited = new Promise(resolve => child.once('exit', resolve)); child.kill('SIGKILL'); await exited;
+  const recovered = await acquireIssuerOwner(f.databasePath); await recovered.check(); await recovered.release();
 });
 
-test('clean host restart restores readiness and ownership loss cannot delete another marker', async t => {
+test('clean host restart restores readiness; closed ownership fails readiness', async t => {
   const f = await fixture(t);
   const options = { env: f.env, createApp: async () => ({ health() {}, close() {}, handler(_req, res) { res.end('issuer'); } }) };
   const first = await installIssuerHost(remote(), { publicBaseUrl: 'https://issuer.example' }, options);
   await first.ready(); await first.close();
   const second = await installIssuerHost(remote(), { publicBaseUrl: 'https://issuer.example' }, options);
   await second.ready();
-  const marker = `${f.databasePath}.owner`;
-  await writeFile(marker, '{"owner":"replacement"}');
-  await assert.rejects(second.ready()); await assert.rejects(second.close());
-  assert.equal(JSON.parse(await readFile(marker, 'utf8')).owner, 'replacement');
+  await second.close();
+  await assert.rejects(second.ready());
 });
 
 test('standalone bind failure closes the issuer and releases storage for a retry', async t => {

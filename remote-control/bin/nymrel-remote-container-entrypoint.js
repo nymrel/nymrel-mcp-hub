@@ -2,7 +2,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-// New issuer SQLite/WAL/SHM files and owner markers are private to this UID.
+// New issuer SQLite/WAL/SHM files and ownership database are private to this UID.
 process.umask(0o077);
 
 const writableRoot = path.resolve(process.env.NYMREL_REMOTE_CONTAINER_WRITABLE_ROOT || '/data');
