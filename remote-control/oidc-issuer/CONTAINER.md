@@ -27,9 +27,13 @@ existing authentication. There is no second externally exposed port.
    issuer host/protocol forwarding headers with the configured HTTPS origin. Do not
    expose its HTTP port directly to untrusted networks or bypass TLS termination.
 6. Complete the README's token concurrency, live callback/refresh, backup recovery,
-   key rotation, verified-email (if needed), rate limiting and operational gates
-   before calling this production-ready. Issuer routes do not yet have a dedicated
-   rate limiter; the readiness query proves reads, not disk capacity or writes.
+   key rotation, verified-email (if needed), ingress and operational gates before
+   calling this production-ready. Issuer routes have process-wide request budgets.
+   Automatic expiry cleanup deletes at most 1,000 rows on startup and every 30
+   seconds. A cleanup failure makes issuer health and container readiness fail
+   until restart; between cleanup runs readiness probes storage reads. Neither
+   check establishes free disk capacity. Monitor volume/WAL usage; deleted pages
+   can be reused but the SQLite file does not automatically shrink.
 
 ## Ownership, restart and rollback
 

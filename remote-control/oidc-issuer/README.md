@@ -58,6 +58,11 @@ suite does not unexpectedly acquire this optional package's dependency.
 - SQLite storage for codes, sessions, grants and refresh tokens, with expiration,
   consumption, indexed lookups and grant-wide revocation. A single issuer process
   and local durable disk are required. This is not a multi-host storage adapter.
+- Each HTTP app removes up to 1,000 expired records on startup and every 30 seconds,
+  using an expiry index. This includes abandoned browser bindings and provider
+  interactions. Live and non-expiring records are retained. Cleanup stops before
+  storage closes; a startup cleanup failure aborts creation, and a later failure
+  makes issuer health fail and HTTP requests return a generic 503 until restart.
 - Five-minute access tokens, one-minute codes and one-day refresh/session/grant
   lifetimes. Refresh rotation and reuse-family revocation are enabled.
 
@@ -142,17 +147,22 @@ mocked full login/consent/token flow continues to pass with the limiter enabled.
    handling separately from the MCP resource token.
 5. Protect the SQLite database, WAL files, backups and key store with host access
    controls; they contain live authorization material. Establish backups, restore
-   tests, pruning, a process ownership lock, monitoring, ingress rate controls, dependency
+   tests, monitoring, ingress rate controls, dependency
    updates, HTTPS/reverse-proxy settings and key rotation. Node's SQLite API/runtime
    compatibility and crash recovery need deployment-environment validation.
-6. Test concurrent code/refresh replay and crash recovery under the chosen process
-   model. This suite tests sequential reuse; do not run several issuer processes
-   against this adapter. The provider performs read/consume as separate operations.
-   Additional protocol acceptance still required: wrong client/callback at token
-   exchange, refresh scope/resource escalation and actual downstream token expiration.
-   (The HTTP tests now cover altered binding cookies and interaction substitution.)
-   Current tests must not
-   be represented as covering those cases.
+   HTTP expiry cleanup is automatic and both production entrypoints acquire a
+   process ownership lock. A large existing backlog drains over multiple intervals;
+   deletion makes SQLite pages reusable but does not shrink the database file or
+   securely erase prior content. Monitor disk/WAL usage and cleanup failure, and
+   plan offline compaction if required. Cleanup does not replace capacity checks,
+   backup retention, or recovery testing.
+6. Validate crash recovery under the chosen deployment process and volume model.
+   Offline protocol tests cover sequential and simultaneous code/refresh replay in
+   one process, wrong client/callback at exchange, refresh scope/resource escalation,
+   and downstream rejection at signed access-token expiration. HTTP tests cover
+   altered binding cookies and interaction substitution. These checks do not prove
+   multi-process safety or live ChatGPT compatibility; do not run several issuer
+   processes against this adapter. The provider reads and consumes separately.
 7. Publish matching protected-resource metadata at the existing gateway and configure
    both gateway and Remote to verify the exact new issuer, audience and mapped
    subject. Keep the four anonymous public tools working. Prove seven read tools,

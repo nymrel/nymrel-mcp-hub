@@ -1,5 +1,7 @@
 import { DatabaseSync } from 'node:sqlite';
 
+export const PRUNE_BATCH_SIZE = 1000;
+
 // One local database, one issuer process. Do not put this file on a network share.
 export function createSqliteStore(filename) {
   if (!filename || filename === ':memory:') throw new Error('A persistent database path is required');
@@ -11,7 +13,8 @@ export function createSqliteStore(filename) {
       PRIMARY KEY(model, id));
     CREATE INDEX IF NOT EXISTS oidc_grant ON oidc(grant_id);
     CREATE INDEX IF NOT EXISTS oidc_uid ON oidc(model, uid);
-    CREATE INDEX IF NOT EXISTS oidc_user_code ON oidc(model, user_code);`);
+    CREATE INDEX IF NOT EXISTS oidc_user_code ON oidc(model, user_code);
+    CREATE INDEX IF NOT EXISTS oidc_expires ON oidc(expires) WHERE expires IS NOT NULL;`);
   const now = () => Math.floor(Date.now() / 1000);
   const select = (model, column, value) => {
     const row = db.prepare(`SELECT payload FROM oidc WHERE model=? AND ${column}=? AND (expires IS NULL OR expires>?)`).get(model, value, now());
@@ -44,5 +47,14 @@ export function createSqliteStore(filename) {
     }
     async revokeByGrantId(id) { db.prepare('DELETE FROM oidc WHERE grant_id=?').run(id); }
   }
-  return { Adapter, health: () => { db.prepare('SELECT count(*) FROM oidc').get(); }, close: () => db.close(), prune: () => db.prepare('DELETE FROM oidc WHERE expires IS NOT NULL AND expires<=?').run(now()) };
+  return {
+    Adapter,
+    health: () => { db.prepare('SELECT 1 FROM oidc LIMIT 1').get(); },
+    close: () => db.close(),
+    // Bound synchronous SQLite work even when starting with a large expired backlog.
+    prune: () => db.prepare(`DELETE FROM oidc WHERE rowid IN (
+      SELECT rowid FROM oidc WHERE expires IS NOT NULL AND expires<=?
+      ORDER BY expires LIMIT ?
+    )`).run(now(), PRUNE_BATCH_SIZE)
+  };
 }
