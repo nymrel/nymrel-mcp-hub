@@ -7,6 +7,7 @@ import { HeaderMismatchError, isModernMcpRequest, validateModernMcpHeaders } fro
 import { ForbiddenError, NymrelRemoteError, UnauthorizedError } from './errors.js';
 import { bearerFromHeaders } from './token.js';
 import { createRemoteHttpServer } from './server.js';
+import { installIssuerHost } from './issuer-host.js';
 
 const CHATGPT_MCP_SCOPES = [
   'devices:read', 'tools:read', 'tools:write', 'tools:execute', 'tools:network'
@@ -341,7 +342,10 @@ export async function createChatgptRemoteHttpServer(config, options = {}) {
 
 export async function listenChatgptRemoteServer(config, options = {}) {
   const { server, runtime } = await createChatgptRemoteHttpServer(config, options);
+  let issuerHost;
   try {
+    issuerHost = await installIssuerHost(server, config, { env: options.issuerEnv || process.env });
+    runtime.issuerHost = issuerHost;
     await new Promise((resolve, reject) => {
       server.once('error', reject);
       server.listen(config.port, config.host, () => {
@@ -351,6 +355,8 @@ export async function listenChatgptRemoteServer(config, options = {}) {
     });
     return { server, runtime };
   } catch (error) {
+    await issuerHost?.close();
+    server.emit('close');
     await runtime.instanceLease?.release();
     throw error;
   }

@@ -70,7 +70,7 @@ export function createIssuer({ issuer, clientId, callback, identity, jwks, cooki
   } catch (error) { store.close(); throw error; }
 
   return {
-    provider, close: store.close,
+    provider, health: store.health, close: store.close,
     // Call only after upstream identity verification AND interaction CSRF checks.
     async completeLogin(req, res, verifiedIdentity) {
       const details = await provider.interactionDetails(req, res);

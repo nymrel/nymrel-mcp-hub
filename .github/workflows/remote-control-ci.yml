@@ -53,6 +53,13 @@ jobs:
       - name: Run remote-control contract suite
         run: corepack npm@12.0.2 run check
 
+      - name: Verify issuer on its supported Node24 runtime
+        if: matrix.node == '24.20.0'
+        run: |
+          corepack npm@12.0.2 ci --prefix oidc-issuer --ignore-scripts
+          corepack npm@12.0.2 test --prefix oidc-issuer
+          corepack npm@12.0.2 audit --prefix oidc-issuer --omit=dev --audit-level=high
+
       - name: Audit production dependency graph
         run: corepack npm@12.0.2 audit --omit=dev --audit-level=high
 
@@ -140,3 +147,4 @@ jobs:
           pid_uid="$(docker exec nymrel-remote-ci sh -c "awk '/^Uid:/ {print \$2; exit}' /proc/1/status")"
           test "$pid_uid" = 1000
           docker exec nymrel-remote-ci node -e "fetch('http://127.0.0.1:8787/readyz').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
+          docker exec nymrel-remote-ci node -e "Promise.all(['/auth','/.well-known/openid-configuration','/nymrel/plugin/readonly/mcp'].map(p=>fetch('http://127.0.0.1:8787'+p).then(r=>{if(r.status!==404)throw Error(p)}))).catch(()=>process.exit(1))"

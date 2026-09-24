@@ -2,6 +2,9 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
+// New issuer SQLite/WAL/SHM files and owner markers are private to this UID.
+process.umask(0o077);
+
 const writableRoot = path.resolve(process.env.NYMREL_REMOTE_CONTAINER_WRITABLE_ROOT || '/data');
 const storePath = path.resolve(process.env.NYMREL_REMOTE_STORE || path.join(writableRoot, 'state.json'));
 const uid = Number.parseInt(process.env.NYMREL_REMOTE_CONTAINER_UID || '1000', 10);

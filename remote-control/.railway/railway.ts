@@ -25,6 +25,7 @@ export default defineRailway(() => {
         "/remote-control/Dockerfile",
         "/remote-control/.dockerignore",
         "/remote-control/.railway/**",
+        "/remote-control/oidc-issuer/**",
       ],
     },
     deploy: {
@@ -36,6 +37,8 @@ export default defineRailway(() => {
     volumeMounts: { "/data": data },
     env: {
       NODE_ENV: preserve(),
+      // Packaging only. Activation requires a separately reviewed live grant.
+      NYMREL_REMOTE_OIDC_ISSUER_ENABLED: "false",
       NYMREL_REMOTE_ALLOWED_ORIGINS: preserve(),
       NYMREL_REMOTE_ALLOW_BOOTSTRAP_HTTP: preserve(),
       NYMREL_REMOTE_ALLOW_STATIC_ADMIN_TOKENS: preserve(),
