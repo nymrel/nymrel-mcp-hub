@@ -52,7 +52,8 @@ and the same private keys. SQLite recovers its journals and the next process can
 acquire ownership only when the former OS lock is gone. A contending live process
 fails startup immediately; the platform restart policy must retry after teardown.
 Offline tests exercise a real second process and forced termination/reacquisition.
-Linux/container volume restart proof remains an activation gate. Never restore an old token
+The enabled-issuer container fixture below checks Linux volume restart in CI.
+The actual deployment's volume and recovery configuration remain an activation gate. Never restore an old token
 database while serving traffic; spent tokens could be resurrected. Until a tested
 recovery design exists, invalidate prior sessions after restore.
 
@@ -65,3 +66,35 @@ access. No live bridge or gateway flag is changed by this slice.
 Limits: one process/replica, local filesystem SQLite locks (no network shares),
 shared failure and key-access boundary with Remote, no automatic secret generation, no deployment or
 provider registration. Existing standalone issuer command remains loopback-only.
+
+## Isolated Linux container recovery fixture
+
+After building the production image, run from `remote-control`:
+
+```sh
+node scripts/check-issuer-container-recovery.mjs nymrel-remote:ci
+```
+
+The existing container CI job retains its disabled-default smoke, then runs this
+fixture against the same image. It uses a disposable named volume, freshly
+generated signing/cookie/runtime keys, invented client and identity values, and
+the real container entrypoint with the issuer enabled. It publishes no ports and
+uses `--network=none` for every container. A separately mounted test-only Node
+preload supplies exactly Google's public discovery response and rejects other
+external fetches; the preload and fixture are excluded from the production image.
+No login is completed and no provider account or production setting is touched.
+
+The fixture verifies UID 1000, private config/database permissions, issuer discovery,
+public JWKS and health, and that the read bridge remains disabled. It creates a
+real pre-login interaction and browser binding over the issuer HTTP routes, then
+checks their logical database digest and signing keys after a clean stop followed
+by removing/replacing the container on the same named volume, then SIGKILL recovery.
+A second container uses a different Remote store but the same
+issuer database so rejection specifically proves the SQLite ownership boundary.
+Cleanup removes only this run's generated container names and named volume.
+
+This proves fixture image startup and storage recovery when the CI check passes.
+It does not prove Google login, token issuance/refresh, backup restoration, key
+rotation, the live Railway volume or an ordinary ChatGPT file read. The script
+requires an already-running Linux Docker daemon and an already-built local image;
+it does not start Docker, pull images, register accounts or deploy anything.
