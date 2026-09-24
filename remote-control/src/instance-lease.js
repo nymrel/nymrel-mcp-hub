@@ -5,9 +5,10 @@ import { randomId } from './crypto.js';
 function sleep(ms) { return new Promise((resolve) => setTimeout(resolve, ms)); }
 
 export class InstanceLease {
-  constructor(filePath, { ttlMs = 30_000, logger = console } = {}) {
+  constructor(filePath, { ttlMs = 30_000, waitMs = Math.min(240_000, ttlMs * 2 + 5_000), logger = console } = {}) {
     this.filePath = filePath;
     this.ttlMs = ttlMs;
+    this.waitMs = waitMs;
     this.logger = logger;
     this.owner = randomId('instance_');
     this.timer = null;
@@ -16,7 +17,9 @@ export class InstanceLease {
   }
 
   async acquire() {
-    for (let attempt = 0; attempt < 4; attempt += 1) {
+    const deadline = Date.now() + this.waitMs;
+    let staleAttempts = 0;
+    while (true) {
       try {
         const handle = await fs.open(this.filePath, 'wx', 0o600);
         try { await handle.writeFile(JSON.stringify(this.#record())); }
@@ -26,20 +29,35 @@ export class InstanceLease {
         return this;
       } catch (error) {
         if (error?.code !== 'EEXIST') throw error;
-        let stale = false;
+        let stat;
         try {
-          const stat = await fs.stat(this.filePath);
-          stale = Date.now() - stat.mtimeMs > this.ttlMs;
+          stat = await fs.stat(this.filePath);
         } catch (statError) {
           if (statError?.code === 'ENOENT') { await sleep(10); continue; }
           throw statError;
         }
-        if (!stale) throw new Error('Another active Nymrel Remote server holds the production instance lease');
-        await fs.unlink(this.filePath).catch(() => {});
+        if (Date.now() - stat.mtimeMs <= this.ttlMs) {
+          if (Date.now() >= deadline) {
+            throw new Error('Another active Nymrel Remote server holds the production instance lease');
+          }
+          await sleep(Math.min(250, Math.max(10, deadline - Date.now())));
+          continue;
+        }
+        // A terminated container can leave a fresh marker. Recheck before reclaiming it,
+        // since a live owner may have renewed between the first stat and this point.
+        try {
+          const latest = await fs.stat(this.filePath);
+          if (latest.mtimeMs !== stat.mtimeMs) continue;
+          await fs.unlink(this.filePath);
+        } catch (reclaimError) {
+          if (reclaimError?.code !== 'ENOENT') throw reclaimError;
+        }
+        if (++staleAttempts > 8 && Date.now() >= deadline) {
+          throw new Error('Could not acquire production instance lease');
+        }
         await sleep(10 + Math.floor(Math.random() * 20));
       }
     }
-    throw new Error('Could not acquire production instance lease');
   }
 
   async release() {

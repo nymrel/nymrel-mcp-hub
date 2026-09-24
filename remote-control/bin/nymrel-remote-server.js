@@ -21,6 +21,7 @@ async function shutdown(signal) {
   if (shuttingDown) return;
   shuttingDown = true;
   console.log(`${signal}: shutting down Nymrel Remote`);
+  runtime.closeDeviceStreams?.();
   await new Promise((resolve) => server.close(resolve));
 }
 process.on('SIGINT', () => { void shutdown('SIGINT'); });
