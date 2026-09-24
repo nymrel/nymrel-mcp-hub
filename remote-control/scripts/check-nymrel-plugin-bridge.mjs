@@ -40,7 +40,7 @@ function validIssuer(value) {
   try {
     const url = new URL(value);
     return url.protocol === 'https:' && Boolean(url.hostname) && !url.username && !url.password &&
-      !url.search && !url.hash && value === url.href;
+      !url.search && !url.hash && (value === url.href || value === url.origin);
   } catch { return false; }
 }
 
