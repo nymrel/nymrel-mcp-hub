@@ -157,6 +157,60 @@ test('deny identity, client/callback drift, invalid resource/scope, weak PKCE an
   assert.equal((await f.authorize()).status, 403);
 });
 
+test('token endpoint rejects a different client and callback without consuming the valid code', async t => {
+  const f = await fixture(t);
+  const auth = await f.authorize();
+  const wrongClient = await f.exchange(auth, { client_id: 'unknown' });
+  assert.equal(wrongClient.status, 401);
+  assert.equal(wrongClient.body.access_token, undefined);
+  const wrongCallback = await f.exchange(auth, { redirect_uri: `${callback}/other` });
+  assert.equal(wrongCallback.status, 400);
+  assert.equal(wrongCallback.body.access_token, undefined);
+  assert.equal((await f.exchange(auth)).status, 200);
+});
+
+test('simultaneous code and refresh replay cannot produce two valid grants', async t => {
+  const f = await fixture(t);
+  const auth = await f.authorize();
+  const codeResults = await Promise.all([f.exchange(auth), f.exchange(auth)]);
+  assert.deepEqual(codeResults.map(result => result.status).sort(), [200, 400]);
+
+  const fresh = await f.exchange(await f.authorize());
+  assert.equal(fresh.status, 200);
+  const refreshFields = { grant_type: 'refresh_token', client_id: clientId,
+    refresh_token: fresh.body.refresh_token, resource: RESOURCE };
+  const refreshResults = await Promise.all([
+    f.post('/token', refreshFields), f.post('/token', refreshFields)
+  ]);
+  assert.deepEqual(refreshResults.map(result => result.status).sort(), [200, 400]);
+  const replacement = refreshResults.find(result => result.status === 200).body.refresh_token;
+  assert.equal((await f.post('/token', { ...refreshFields, refresh_token: replacement })).status, 400,
+    'Replay must revoke the refresh family, including the rotated token');
+});
+
+test('refresh cannot escalate scope or change resource, and signed access tokens expire', async t => {
+  const f = await fixture(t);
+  const refreshFields = async () => {
+    const issued = await f.exchange(await f.authorize());
+    assert.equal(issued.status, 200);
+    return { grant_type: 'refresh_token', client_id: clientId,
+      refresh_token: issued.body.refresh_token, resource: RESOURCE };
+  };
+  const badScope = await f.post('/token', { ...(await refreshFields()), scope: `${READ_SCOPES} tools:write` });
+  assert.equal(badScope.status, 400);
+  assert.equal(badScope.body.access_token, undefined);
+  const badResource = await f.post('/token', { ...(await refreshFields()), resource: 'https://other.example/mcp' });
+  assert.equal(badResource.status, 400);
+  assert.equal(badResource.body.access_token, undefined);
+  const valid = await f.post('/token', await refreshFields());
+  assert.equal(valid.status, 200, JSON.stringify(valid));
+  const verifier = new OAuthAccessTokenVerifier({ issuer: f.issuer, audience: RESOURCE, clockSkewSec: 0 });
+  const claims = await verifier.verify(valid.body.access_token);
+  const now = Math.floor(Date.now() / 1000);
+  assert.ok(claims.exp > now && claims.exp <= now + 300, 'Access token TTL must be at most five minutes');
+  await assert.rejects(verifier.verify(valid.body.access_token, (claims.exp + 1) * 1000), /expired/);
+});
+
 test('SQLite adapter persists indexes, consumption and grant revocation across restart', async t => {
   const dir = await mkdtemp(join(tmpdir(), 'nymrel-adapter-'));
   t.after(() => rm(dir, { recursive: true, force: true }));
