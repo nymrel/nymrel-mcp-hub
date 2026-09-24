@@ -132,22 +132,38 @@ export async function createRemoteRuntime(config, { publicDir = DEFAULT_PUBLIC_D
   const instanceLease = config.production
     ? await new InstanceLease(`${config.storePath}.server-lease`, { ttlMs: config.instanceLeaseTtlMs, logger }).acquire()
     : null;
-  const tokenService = new TokenService(config.signingKey);
-  const cipher = new EnvelopeCipher(config.dataKey);
-  const audit = new AuditLedger(config.auditKey);
-  const policy = new PolicyEngine();
-  const broker = await new RemoteBroker({ store, tokenService, cipher, audit, policy, config }).init();
-  const mcp = new RemoteMcpEdge({ broker, syncWaitMs: config.syncWaitMs });
-  const oauth = createExternalOAuthAuthenticator(config, {
-    audience: config.oauthAudience || mcpResource(config), fetchImpl: oauthFetchImpl
-  });
-  return { config, store, tokenService, cipher, audit, policy, broker, mcp, oauth, instanceLease, publicDir, logger };
+  try {
+    const tokenService = new TokenService(config.signingKey);
+    const cipher = new EnvelopeCipher(config.dataKey);
+    const audit = new AuditLedger(config.auditKey);
+    const policy = new PolicyEngine();
+    const broker = await new RemoteBroker({ store, tokenService, cipher, audit, policy, config }).init();
+    const mcp = new RemoteMcpEdge({ broker, syncWaitMs: config.syncWaitMs });
+    const oauth = createExternalOAuthAuthenticator(config, {
+      audience: config.oauthAudience || mcpResource(config), fetchImpl: oauthFetchImpl
+    });
+    return { config, store, tokenService, cipher, audit, policy, broker, mcp, oauth, instanceLease, publicDir, logger };
+  } catch (error) {
+    await instanceLease?.release();
+    throw error;
+  }
 }
 
 export async function createRemoteHttpServer(config, options = {}) {
   const runtime = options.runtime || await createRemoteRuntime(config, options);
   const limiter = new FixedWindowRateLimiter();
   const deviceStreams = new Map();
+  let draining = false;
+  const closeDeviceStreams = () => {
+    draining = true;
+    for (const clients of deviceStreams.values()) {
+      for (const res of clients) {
+        try { res.end(); } catch { /* already closed */ }
+      }
+    }
+    deviceStreams.clear();
+  };
+  runtime.closeDeviceStreams = closeDeviceStreams;
 
   const sendDoorbell = ({ deviceId, callId }) => {
     const clients = deviceStreams.get(deviceId);
@@ -413,6 +429,10 @@ export async function createRemoteHttpServer(config, options = {}) {
       if (pathname === '/v1/device/events' && req.method === 'GET') {
         const principal = await deviceUser();
         const device = await runtime.broker.assertDevicePrincipal(principal);
+        if (draining) {
+          statusForLog = 503;
+          return sendJson(res, 503, { error: { code: 'SERVER_DRAINING', message: 'Nymrel Remote is shutting down' } }, { connection: 'close' });
+        }
         statusForLog = 200;
         res.writeHead(200, {
           'content-type': 'text/event-stream', 'cache-control': 'no-cache, no-store', connection: 'keep-alive',
@@ -507,6 +527,7 @@ export async function createRemoteHttpServer(config, options = {}) {
 
   if (runtime.instanceLease) {
     runtime.instanceLease.onLost = () => {
+      closeDeviceStreams();
       try { server.close(); } catch { /* already closing */ }
     };
   }
@@ -514,8 +535,7 @@ export async function createRemoteHttpServer(config, options = {}) {
   server.on('close', () => {
     clearInterval(cleanup);
     runtime.broker.off('call', sendDoorbell);
-    for (const clients of deviceStreams.values()) for (const res of clients) try { res.end(); } catch { /* no-op */ }
-    deviceStreams.clear();
+    closeDeviceStreams();
     void runtime.instanceLease?.release();
   });
 

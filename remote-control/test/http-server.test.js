@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { createRemoteHttpServer } from '../src/server.js';
+import { createRemoteHttpServer, createRemoteRuntime } from '../src/server.js';
 import { CLIENT_CAPABILITIES_META_KEY, MODERN_PROTOCOL_VERSION, PROTOCOL_VERSION_META_KEY } from '../src/mcp-protocol.js';
 
 const key = Buffer.alloc(32, 19);
@@ -70,6 +70,103 @@ test('HTTP boundary exposes readiness/resource metadata, rejects hostile Origin,
     assert.equal(out.response.status, 401);
     assert.match(out.response.headers.get('www-authenticate'), /resource_metadata=/);
   } finally { await stopServer(f); }
+});
+
+test('failed production runtime initialization releases its acquired instance lease', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'nymrel-runtime-init-'));
+  try {
+    const config = { ...configFor(dir), production: true, dataKey: null, instanceLeaseTtlMs: 100 };
+    await assert.rejects(createRemoteRuntime(config), /EnvelopeCipher requires a 32-byte key/);
+    await assert.rejects(fs.stat(`${config.storePath}.server-lease`), { code: 'ENOENT' });
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('closing device streams lets shutdown complete with an SSE client connected', async () => {
+  const f = await startServer();
+  let closed = false;
+  const controller = new AbortController();
+  try {
+    const operator = { typ: 'user', sub: 'operator', tenant: 't1', scopes: ['devices:pair'] };
+    const pairing = await f.runtime.broker.startPairing({ deviceName: 'JalenPC', platform: 'win32' });
+    await f.runtime.broker.approvePairing(operator, pairing.user_code);
+    const paired = await f.runtime.broker.pollPairing(pairing.device_code);
+    const device = f.runtime.tokenService.verify(paired.device_token, { expectedType: 'device' });
+    await f.runtime.broker.registerDevice(device, { deviceName: 'JalenPC', platform: 'win32', mcpReady: true, tools: [] });
+    const response = await fetch(`${f.base}/v1/device/events`, {
+      headers: { authorization: `Bearer ${paired.device_token}` }, signal: controller.signal
+    });
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get('content-type'), /text\/event-stream/);
+    const reader = response.body.getReader();
+    const firstEvent = await reader.read();
+    assert.match(new TextDecoder().decode(firstEvent.value), /event: ready/);
+
+    f.runtime.closeDeviceStreams();
+    assert.equal((await reader.read()).done, true);
+    const close = new Promise((resolve) => f.server.close(resolve));
+    await Promise.race([
+      close,
+      new Promise((_, reject) => setTimeout(() => reject(new Error('SSE blocked server shutdown')), 2000))
+    ]);
+    closed = true;
+  } finally {
+    controller.abort();
+    if (!closed) {
+      f.runtime.closeDeviceStreams();
+      f.server.closeAllConnections();
+      await new Promise((resolve) => f.server.close(resolve));
+    }
+    await fs.rm(f.dir, { recursive: true, force: true });
+  }
+});
+
+test('an SSE request delayed during authentication cannot reopen a stream after shutdown begins', async () => {
+  const f = await startServer();
+  let closed = false;
+  let resume;
+  try {
+    const operator = { typ: 'user', sub: 'operator', tenant: 't1', scopes: ['devices:pair'] };
+    const pairing = await f.runtime.broker.startPairing({ deviceName: 'JalenPC', platform: 'win32' });
+    await f.runtime.broker.approvePairing(operator, pairing.user_code);
+    const paired = await f.runtime.broker.pollPairing(pairing.device_code);
+    const device = f.runtime.tokenService.verify(paired.device_token, { expectedType: 'device' });
+    await f.runtime.broker.registerDevice(device, { deviceName: 'JalenPC', platform: 'win32', mcpReady: true, tools: [] });
+    const original = f.runtime.broker.assertDevicePrincipal.bind(f.runtime.broker);
+    let entered;
+    const enteredAuth = new Promise((resolve) => { entered = resolve; });
+    const authGate = new Promise((resolve) => { resume = resolve; });
+    f.runtime.broker.assertDevicePrincipal = async (...args) => {
+      entered();
+      await authGate;
+      return original(...args);
+    };
+    const responsePromise = fetch(`${f.base}/v1/device/events`, {
+      headers: { authorization: `Bearer ${paired.device_token}` }
+    });
+    await enteredAuth;
+    f.runtime.closeDeviceStreams();
+    const close = new Promise((resolve) => f.server.close(resolve));
+    resume();
+    const response = await responsePromise;
+    assert.equal(response.status, 503);
+    const body = await response.json();
+    assert.equal(body.error.code, 'SERVER_DRAINING');
+    await Promise.race([
+      close,
+      new Promise((_, reject) => setTimeout(() => reject(new Error('late SSE blocked server shutdown')), 2000))
+    ]);
+    closed = true;
+  } finally {
+    resume?.();
+    if (!closed) {
+      f.runtime.closeDeviceStreams();
+      f.server.closeAllConnections();
+      await new Promise((resolve) => f.server.close(resolve));
+    }
+    await fs.rm(f.dir, { recursive: true, force: true });
+  }
 });
 
 test('HTTP pairing/register flow and modern tools/list preserve device schema exactly', async () => {
