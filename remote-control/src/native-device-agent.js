@@ -20,7 +20,8 @@ export function loadNativeLocalOptions() {
   const cwd = path.resolve(process.env.NYMREL_REMOTE_LOCAL_CWD || allowedDirectories[0]);
   const shell = process.env.NYMREL_REMOTE_LOCAL_SHELL || (process.platform === 'win32' ? 'powershell.exe' : '/bin/sh');
   const blockedCommands = jsonArrayEnv('NYMREL_REMOTE_BLOCKED_COMMANDS', []);
-  return { allowedDirectories, cwd, shell, blockedCommands };
+  const deniedReadPaths = jsonArrayEnv('NYMREL_REMOTE_DENIED_READ_PATHS', []);
+  return { allowedDirectories, cwd, shell, blockedCommands, deniedReadPaths };
 }
 
 export class NativeDeviceAgent extends DeviceAgent {

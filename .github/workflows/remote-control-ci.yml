@@ -106,7 +106,7 @@ jobs:
           }
 
       - name: Run native backend contracts on Windows
-        run: node --test test/native-local-client.test.js
+        run: node --test test/native-local-client.test.js test/native-read-policy.test.js
 
   container-contract:
     name: Container production smoke

@@ -123,7 +123,30 @@ NYMREL_REMOTE_ALLOWED_DIRECTORIES=["C:\\Users\\johns"]
 NYMREL_REMOTE_LOCAL_CWD=C:\Users\johns
 NYMREL_REMOTE_LOCAL_SHELL=powershell.exe
 NYMREL_REMOTE_BLOCKED_COMMANDS=[]
+NYMREL_REMOTE_DENIED_READ_PATHS=[]
 ```
+
+Native file reads, file metadata, listings, and filename/content searches exclude
+routine credential paths, even inside an allowed directory. This includes `.env*`
+and `*.env*` files; credential, secret, auth/device/token JSON files; private-key,
+certificate and keystore files; SSH key names; `.git`, `.ssh`, `.aws`, `.azure`,
+`.gnupg`, and `.studio-secrets`; and `.npmrc`, `.pypirc`, and netrc files. Names
+are matched without case sensitivity. Requested and canonical paths are checked;
+Windows alternate data streams and device-namespace paths are refused. Recursive
+reads omit excluded entries. File aliases to excluded destinations are denied;
+recursive searches do not follow symbolic links or junctions.
+
+`NYMREL_REMOTE_DENIED_READ_PATHS` adds exact file or directory exclusions as a JSON
+array, relative to the configured working directory or absolute. Existing paths
+are canonicalized at startup, alongside their lexical exclusions. Restart the
+agent after changing these exclusions or their filesystem aliases. These rules
+only narrow read access; they do not grant roots or change write/process policy.
+
+This is a path policy, not secret-content detection or an OS filesystem sandbox.
+It cannot identify credentials embedded in ordinary documents or relabeled hard
+links, and does not claim protection against concurrent hostile filesystem changes.
+Keep approved roots narrow and screen their contents before exposing them. The
+ChatGPT read-only facade remains responsible for excluding write and process tools.
 
 Then run:
 
