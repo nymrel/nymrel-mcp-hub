@@ -190,3 +190,18 @@ test('verified Google callback stays bound to original provider interaction; con
   const approvals = await Promise.all([original.post(consent), original.post(consent)]);
   assert.deepEqual(approvals.map(r => r.status).sort(), [303, 403]);
 });
+
+test('unsolicited wrong or duplicate state callbacks do not consume pending legitimate Google login', async t => {
+  const f = await fixture(t), b = f.browser();
+  const start = await b.post(await b.loginPage());
+  const valid = new URL(f.google.issue(start.location));
+  const wrong = new URL(valid); wrong.searchParams.set('state', 'unsolicited');
+  assert.equal((await b.request(wrong)).status, 403);
+  const duplicate = new URL(valid); duplicate.searchParams.append('state', valid.searchParams.get('state'));
+  assert.equal((await b.request(duplicate)).status, 403);
+  assert.equal(f.google.stats().tokenRequests, 0);
+  const callbackResult = await b.request(valid);
+  assert.equal(callbackResult.status, 303, 'Legitimate pending callback must still succeed');
+  assert.equal((await b.page(callbackResult.location)).status, 200);
+  assert.equal(f.google.stats().tokenRequests, 1);
+});

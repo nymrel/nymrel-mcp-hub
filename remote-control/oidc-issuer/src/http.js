@@ -68,8 +68,10 @@ export async function createIssuerHttp(config, { googleFetch } = {}) {
         if (url.origin !== origin) throw new Denied();
         if (url.pathname === '/google/callback') {
           if (req.method !== 'GET') throw new Denied();
-          const sid = cookie(req), binding = sid && await bindings.take(sid, 'google');
-          if (!binding || binding.stage !== 'google') throw new Denied();
+          const sid = cookie(req), pending = sid && await bindings.find(sid);
+          if (!pending || pending.stage !== 'google' || url.searchParams.getAll('state').length !== 1 || !equal(url.searchParams.get('state'), pending.state)) throw new Denied();
+          const binding = await bindings.take(sid, 'google', pending.state);
+          if (!binding) throw new Denied();
           let verified;
           try { verified = await google.finish(url, binding); } catch { throw new Denied(); }
           if (verified.subject !== config.identity.subject) throw new Denied();

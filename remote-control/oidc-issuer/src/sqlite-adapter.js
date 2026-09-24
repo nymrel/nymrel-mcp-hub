@@ -31,8 +31,10 @@ export function createSqliteStore(filename) {
     async findByUserCode(code) { return select(this.model, 'user_code', code); }
     async destroy(id) { db.prepare('DELETE FROM oidc WHERE model=? AND id=?').run(this.model, id); }
     // Single-statement consumption for HTTP interaction bindings, before network I/O.
-    async take(id, expectedStage) {
-      const row = expectedStage
+    async take(id, expectedStage, expectedState) {
+      const row = expectedState
+        ? db.prepare("DELETE FROM oidc WHERE model=? AND id=? AND json_extract(payload,'$.stage')=? AND json_extract(payload,'$.state')=? RETURNING payload,expires").get(this.model, id, expectedStage, expectedState)
+        : expectedStage
         ? db.prepare("DELETE FROM oidc WHERE model=? AND id=? AND json_extract(payload,'$.stage')=? RETURNING payload,expires").get(this.model, id, expectedStage)
         : db.prepare('DELETE FROM oidc WHERE model=? AND id=? RETURNING payload,expires').get(this.model, id);
       return row && (row.expires === null || row.expires > now()) ? JSON.parse(row.payload) : undefined;
