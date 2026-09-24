@@ -37,8 +37,15 @@ export default defineRailway(() => {
     volumeMounts: { "/data": data },
     env: {
       NODE_ENV: preserve(),
-      // Packaging only. Activation requires a separately reviewed live grant.
-      NYMREL_REMOTE_OIDC_ISSUER_ENABLED: "false",
+      // Activation values stay provider/operator supplied. The image and runtime
+      // remain fail-closed when these variables are absent or false.
+      NYMREL_REMOTE_OIDC_ISSUER_ENABLED: preserve(),
+      NYMREL_OIDC_CONFIG_FILE: preserve(),
+      NYMREL_REMOTE_AUTHORIZATION_SERVERS: preserve(),
+      NYMREL_REMOTE_OAUTH_ISSUER: preserve(),
+      NYMREL_REMOTE_OAUTH_JWKS_URL: preserve(),
+      NYMREL_REMOTE_OAUTH_SUBJECT_TENANTS: preserve(),
+      NYMREL_REMOTE_NYMREL_PLUGIN_READONLY_ENABLED: preserve(),
       NYMREL_REMOTE_ALLOWED_ORIGINS: preserve(),
       NYMREL_REMOTE_ALLOW_BOOTSTRAP_HTTP: preserve(),
       NYMREL_REMOTE_ALLOW_STATIC_ADMIN_TOKENS: preserve(),

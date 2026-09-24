@@ -77,6 +77,22 @@ test('service build inputs and Railway configuration changes are watched', () =>
   assert.deepEqual(matchedPaths(changed), changed);
 });
 
+test('OAuth cutover variables are preserved without embedding production values', () => {
+  const keys = [
+    'NYMREL_REMOTE_OIDC_ISSUER_ENABLED',
+    'NYMREL_OIDC_CONFIG_FILE',
+    'NYMREL_REMOTE_AUTHORIZATION_SERVERS',
+    'NYMREL_REMOTE_OAUTH_ISSUER',
+    'NYMREL_REMOTE_OAUTH_JWKS_URL',
+    'NYMREL_REMOTE_OAUTH_SUBJECT_TENANTS',
+    'NYMREL_REMOTE_NYMREL_PLUGIN_READONLY_ENABLED'
+  ];
+  for (const key of keys) {
+    assert.match(infrastructure, new RegExp(`\\b${key}: preserve\\(\\),`), `${key} must remain operator-supplied`);
+    assert.doesNotMatch(infrastructure, new RegExp(`\\b${key}: ["']`), `${key} must not be hard-coded`);
+  }
+});
+
 test('unrelated hub and sibling service changes do not trigger this service', () => {
   assert.deepEqual(matchedPaths([
     'src/server.ts', 'bin/mcp-server.js', 'public/index.html',
