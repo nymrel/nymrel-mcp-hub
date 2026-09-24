@@ -73,9 +73,10 @@ foreach ($boundary in @((Join-Path $env:LOCALAPPDATA 'Nymrel'), $runtimeDir, $de
 }
 # A separate instance must never inherit exclusions from the default Remote instance.
 # Preserve each instance's saved list when an update omits -DeniedReadPath.
+$hasSavedDenied = $InstanceName -ne 'Remote' -and (Test-Path -LiteralPath $deniedConfigFile -PathType Leaf)
 $deniedJson = if ($InstanceName -eq 'Remote') {
   [Environment]::GetEnvironmentVariable('NYMREL_REMOTE_DENIED_READ_PATHS', 'User')
-} elseif (Test-Path -LiteralPath $deniedConfigFile -PathType Leaf) {
+} elseif ($hasSavedDenied) {
   Get-Content -LiteralPath $deniedConfigFile -Raw
 } else {
   '[]'
@@ -83,6 +84,8 @@ $deniedJson = if ($InstanceName -eq 'Remote') {
 if ($PSBoundParameters.ContainsKey('DeniedReadPath')) {
   $resolvedDenied = @(Resolve-DeniedReadPaths -Paths $DeniedReadPath)
   $deniedJson = ConvertTo-Json -InputObject @($resolvedDenied) -Compress
+} elseif ($hasSavedDenied -and [string]::IsNullOrWhiteSpace($deniedJson)) {
+  throw 'Existing NYMREL_REMOTE_DENIED_READ_PATHS must be a JSON string array.'
 } elseif ($deniedJson) {
   try {
     $parsedDenied = ConvertFrom-Json -InputObject $deniedJson -ErrorAction Stop

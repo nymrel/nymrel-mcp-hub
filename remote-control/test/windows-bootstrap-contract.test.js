@@ -103,6 +103,12 @@ test('ChatGPTStudio exclusion preflight accepts saved absolute paths and rejects
 
     await fs.writeFile(configFile, '[]');
     assert.match(run().stdout, /NYMREL_REMOTE_BOOTSTRAP_PREFLIGHT=OK/);
+
+    await fs.writeFile(configFile, '');
+    const emptySaved = run();
+    assert.equal(emptySaved.status, 1);
+    assert.match(emptySaved.stderr, /must be a JSON string array/);
+    assert.match(run('-DeniedReadPath', path.join(root, 'private')).stdout, /NYMREL_REMOTE_BOOTSTRAP_PREFLIGHT=OK/);
   } finally {
     await fs.rm(localAppData, { recursive: true, force: true });
   }
