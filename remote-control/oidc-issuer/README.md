@@ -50,7 +50,12 @@ code exchange, backend signature/audience verification, code replay rejection,
 identity denial, client/callback/resource/scope/PKCE denial, persisted refresh after
 issuer reconstruction, refresh rotation/reuse rejection and explicit revocation.
 They separately exercise SQLite restart, indexes, consumption, expiry and grant
-revocation. No live ChatGPT, Google or production acceptance is claimed.
+revocation. Authorization denial cases require their exact protocol status/error;
+valid-client PKCE errors must redirect with matching state and issuer. Every
+observed authorization callback is checked for RFC9207 issuer identification.
+Regression checks show that an injected HTTP 500 and an error redirect missing
+`iss` cannot pass these assertions. No live ChatGPT, Google or production acceptance
+is claimed.
 
 ## Required before deployment
 
@@ -80,6 +85,10 @@ revocation. No live ChatGPT, Google or production acceptance is claimed.
 6. Test concurrent code/refresh replay and crash recovery under the chosen process
    model. This suite tests sequential reuse; do not run several issuer processes
    against this adapter. The provider performs read/consume as separate operations.
+   Additional protocol acceptance still required: wrong client/callback at token
+   exchange, refresh scope/resource escalation, actual token expiration, altered
+   interaction cookies and cross-interaction substitution. Current tests must not
+   be represented as covering those cases.
 7. Publish matching protected-resource metadata at the existing gateway and configure
    both gateway and Remote to verify the exact new issuer, audience and mapped
    subject. Keep the four anonymous public tools working. Prove seven read tools,

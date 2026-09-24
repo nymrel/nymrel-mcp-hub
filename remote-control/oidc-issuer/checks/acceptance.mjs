@@ -13,21 +13,47 @@ const callback = 'https://chatgpt.com/connector/oauth/offline-fixture';
 const identity = { issuer: 'https://accounts.google.com', subject: 'fixture-google-sub', accountId: 'fixture-operator' };
 const clientId = 'nymrel-offline-chatgpt';
 
+function assertAuthorizationRedirect(url, issuer) {
+  assert.equal(`${url.origin}${url.pathname}`, callback);
+  assert.equal(url.searchParams.get('state'), 'fixture-state');
+  assert.equal(url.searchParams.get('iss'), issuer, 'Every advertised RFC9207 redirect must identify the issuer');
+  assert.notEqual(url.searchParams.has('code'), url.searchParams.has('error'), 'Redirect must carry exactly one code or error');
+}
+
+function assertProtocolDenial(result, expected, issuer) {
+  assert.ok(!result.url?.searchParams.has('code'));
+  if (expected.redirect) {
+    assert.ok(result.url, 'Expected an OAuth error redirect, not an HTTP error page');
+    assertAuthorizationRedirect(result.url, issuer);
+    assert.equal(result.url.searchParams.get('error'), expected.error);
+  } else {
+    assert.equal(result.url, undefined, 'Unsafe requests must not redirect');
+    assert.equal(result.status, 400, 'Protocol rejection must be 400, never a server failure');
+    assert.match(result.body, new RegExp(`(?:error</strong>: |^)${expected.error}(?:</pre>|$)`));
+  }
+}
+
 async function fixture(t) {
   const dir = await mkdtemp(join(tmpdir(), 'nymrel-oidc-'));
   const privateKey = generateKeyPairSync('rsa', { modulusLength: 2048 }).privateKey;
   const key = { ...privateKey.export({ format: 'jwk' }), kid: 'fixture-signing', alg: 'RS256', use: 'sig' };
   let app;
   let loginIdentity = identity;
+  let failAuthorization = false;
   const server = createServer(async (req, res) => {
     try {
+      if (failAuthorization && req.url.startsWith('/auth?')) {
+        failAuthorization = false; res.writeHead(500); res.end('invalid_target'); return;
+      }
       // TEST ONLY. Production must implement real identity verification, consent UI and CSRF.
       if (req.url.startsWith('/interaction/')) {
         const details = await app.provider.interactionDetails(req, res);
         if (details.prompt.name === 'login') await app.completeLogin(req, res, loginIdentity);
         else await app.approveConsent(req, res);
       } else app.provider.callback()(req, res);
-    } catch { res.writeHead(403); res.end('denied'); }
+    } catch (error) {
+      res.writeHead(error.message === 'Identity denied' ? 403 : 500); res.end('denied');
+    }
   });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const issuer = `http://127.0.0.1:${server.address().port}`;
@@ -43,7 +69,11 @@ async function fixture(t) {
     let url = `${issuer}/auth?${params}`;
     const cookies = new Map();
     for (let i = 0; i < 12; i++) {
-      if (url.startsWith(callback)) return { url: new URL(url), verifier };
+      if (url.startsWith(callback)) {
+        const redirect = new URL(url);
+        assertAuthorizationRedirect(redirect, issuer);
+        return { url: redirect, verifier };
+      }
       const response = await fetch(url, { redirect: 'manual', headers: { cookie: [...cookies].map(([k,v]) => `${k}=${v}`).join('; ') } });
       for (const cookie of response.headers.getSetCookie()) { const [pair] = cookie.split(';'); const at = pair.indexOf('='); cookies.set(pair.slice(0,at), pair.slice(at+1)); }
       if (!response.headers.has('location')) return { status: response.status, body: await response.text(), verifier };
@@ -59,6 +89,7 @@ async function fixture(t) {
   const exchange = (auth, overrides = {}) => post('/token', { grant_type: 'authorization_code', client_id: clientId,
     code: auth.url?.searchParams.get('code') || '', redirect_uri: callback, code_verifier: auth.verifier, resource: RESOURCE, ...overrides });
   return { issuer, authorize, exchange, post, denyIdentity: () => { loginIdentity = { ...identity, subject: 'other' }; },
+    failNextAuthorization: () => { failAuthorization = true; },
     restart: () => { app.close(); app = createIssuer(config); } };
 }
 
@@ -99,16 +130,25 @@ test('discovery, real code exchange, audience and durable refresh/revocation', a
 
 test('deny identity, client/callback drift, invalid resource/scope, weak PKCE and token replay', async t => {
   const f = await fixture(t);
-  for (const overrides of [
-    { client_id: 'unknown' }, { redirect_uri: `${callback}/other` },
-    { resource: 'https://other.example/mcp' }, { resource: null },
-    { scope: `${READ_SCOPES} tools:write` }, { code_challenge_method: 'plain' }, { code_challenge: null }
+  for (const [overrides, expected] of [
+    [{ client_id: 'unknown' }, { error: 'invalid_client' }],
+    [{ redirect_uri: `${callback}/other` }, { error: 'invalid_redirect_uri' }],
+    [{ resource: 'https://other.example/mcp' }, { error: 'invalid_target' }],
+    [{ resource: null }, { error: 'invalid_target' }],
+    [{ scope: `${READ_SCOPES} tools:write` }, { error: 'invalid_scope' }],
+    [{ code_challenge_method: 'plain' }, { redirect: true, error: 'invalid_request' }],
+    [{ code_challenge: null }, { redirect: true, error: 'invalid_request' }]
   ]) {
     const result = await f.authorize(overrides);
-    assert.ok(!result.url?.searchParams.has('code'), JSON.stringify(overrides));
-    assert.ok(result.status >= 400 || result.url?.searchParams.has('error'), JSON.stringify(result));
-    if (result.url) assert.equal(result.url.searchParams.get('iss'), f.issuer);
+    assertProtocolDenial(result, expected, f.issuer);
   }
+  // A real HTTP 500 with a plausible OAuth error body must not satisfy denial acceptance.
+  f.failNextAuthorization();
+  const serverFailure = await f.authorize({ resource: 'https://other.example/mcp' });
+  assert.equal(serverFailure.status, 500);
+  assert.throws(() => assertProtocolDenial(serverFailure, { error: 'invalid_target' }, f.issuer), assert.AssertionError);
+  // An error redirect with valid state but omitted issuer must also fail acceptance.
+  assert.throws(() => assertAuthorizationRedirect(new URL(`${callback}?error=invalid_request&state=fixture-state`), f.issuer), assert.AssertionError);
   const auth = await f.authorize();
   assert.equal((await f.exchange(auth, { code_verifier: 'wrong'.repeat(12) })).status, 400);
   const otherResource = await f.authorize();
