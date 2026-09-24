@@ -12,7 +12,7 @@ function New-FakeProcess([int]$processId, [int]$parentId, [string]$path) {
 $supervisor = New-FakeProcess 100 90 $supervisorScript
 $agent = New-FakeProcess 200 100 $agentScript
 $foreignParent = New-FakeProcess 201 999 $agentScript
-$otherInstall = New-FakeProcess 202 100 ($agentScript.Replace('ChatGPTStudio', 'Remote'))
+$otherInstall = New-FakeProcess 202 100 ($agentScript.Replace('app\bin', 'another-app\bin'))
 $suffix = New-FakeProcess 203 100 ($agentScript + '.bak')
 Assert-Equal (Get-RemoteProcessSnapshot @($supervisor, $agent)).child_count 1 'Exact parent and script'
 Assert-Equal (Get-RemoteProcessSnapshot @($supervisor, $foreignParent, $otherInstall, $suffix)).child_count 0 'Reject foreign parent, installation and suffix'

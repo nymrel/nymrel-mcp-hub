@@ -1,11 +1,11 @@
-# Source for the existing JalenPC ChatGPTStudio watchdog task. This script does
-# not register a task or manage credentials; deploy to its existing action path.
+# Source for the existing ChatGPTStudio watchdog task. Deploy this file as
+# watchdog.ps1 in the installed runtime root; it does not register a task.
 $ErrorActionPreference = 'Stop'
 
 $taskName = 'Nymrel Remote ChatGPT Studio'
-$supervisorScript = 'C:\Users\johns\AppData\Local\Nymrel\ChatGPTStudio\app\bin\nymrel-remote-supervisor.js'
-$agentScript = 'C:\Users\johns\AppData\Local\Nymrel\ChatGPTStudio\app\bin\nymrel-remote-agent.js'
-$statusPath = 'C:\Users\johns\AppData\Local\Nymrel\ChatGPTStudio\watchdog-status.json'
+$supervisorScript = Join-Path $PSScriptRoot 'app\bin\nymrel-remote-supervisor.js'
+$agentScript = Join-Path $PSScriptRoot 'app\bin\nymrel-remote-agent.js'
+$statusPath = Join-Path $PSScriptRoot 'watchdog-status.json'
 
 function Test-ExactScriptArgument([string]$commandLine, [string]$scriptPath) {
     # Delimit the whole argument: another installation or a .bak suffix is not
