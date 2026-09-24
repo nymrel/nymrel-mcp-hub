@@ -34,6 +34,14 @@ test('an open bridge is only ready for a real login and file-read test', async (
   assert.equal(result.authenticatedChatgptRead, 'not_validated');
 });
 
+test('the bundled issuer origin is accepted without a trailing slash', async () => {
+  const issuerValue = 'https://nymrel-remote-production.up.railway.app';
+  const result = await checkNymrelPluginBridge({ fetchImpl: fixture({ issuerValue }) });
+  assert.equal(result.status, 'ready_for_login_test');
+  assert.deepEqual(result.failures, []);
+  assert.equal(result.authenticatedChatgptRead, 'not_validated');
+});
+
 test('extra scopes or a private metadata challenge cannot pass the public resource boundary', async () => {
   const wide = await checkNymrelPluginBridge({ fetchImpl: fixture({ backendScopes: ['devices:read', 'tools:read', 'tools:execute'] }) });
   assert.ok(wide.failures.includes('backend_resource_metadata'));
