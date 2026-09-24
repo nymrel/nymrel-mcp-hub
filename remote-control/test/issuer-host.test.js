@@ -42,7 +42,7 @@ test('issuer routing is exact, forwarding is sanitized, and lost storage fails r
   for (const route of ['/mcp', '/chatgpt/mcp', '/nymrel/plugin/readonly/mcp', '/.well-known/oauth-protected-resource/mcp', '/', '/authentic', '/token/extra']) {
     assert.equal(await (await fetch(url + route)).text(), 'remote', route);
   }
-  for (const route of ['/auth', '/auth/resume', '/interaction/example', '/google/callback', '/jwks', '/.well-known/openid-configuration']) {
+  for (const route of ['/auth', '/auth/resume', '/interaction/example', '/google/callback', '/jwks', '/.well-known/openid-configuration', '/session/end', '/session/end/confirm', '/session/end/success']) {
     const headers = await (await fetch(url + route, { headers: { 'x-forwarded-proto': 'http', 'x-forwarded-host': 'evil.example', forwarded: 'host=evil.example' } })).json();
     assert.equal(headers.host, 'issuer.example'); assert.equal(headers['x-forwarded-proto'], 'https'); assert.equal(headers.forwarded, undefined);
   }

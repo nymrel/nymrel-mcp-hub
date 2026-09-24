@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 
-const endpoints = new Set(['/.well-known/openid-configuration', '/.well-known/oauth-authorization-server', '/auth', '/token', '/token/revocation', '/jwks', '/me', '/session/end', '/google/callback']);
+const endpoints = new Set(['/.well-known/openid-configuration', '/.well-known/oauth-authorization-server', '/auth', '/token', '/token/revocation', '/jwks', '/me', '/session/end', '/session/end/confirm', '/session/end/success', '/google/callback']);
 export const isIssuerPath = pathname => endpoints.has(pathname) || pathname.startsWith('/interaction/') || pathname.startsWith('/auth/');
 
 // No timeout-based stealing: a crashed owner requires verified offline recovery.

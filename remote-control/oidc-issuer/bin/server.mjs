@@ -18,5 +18,10 @@ catch (error) { await owner.release(); throw error; }
 const server = createServer(app.handler);
 server.requestTimeout = 15000;
 server.headersTimeout = 10000;
-server.listen(port, '127.0.0.1');
+try {
+  await new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(port, '127.0.0.1', () => { server.off('error', reject); resolve(); });
+  });
+} catch (error) { app.close(); await owner.release(); throw error; }
 for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => server.close(() => { app.close(); void owner.release(); }));
