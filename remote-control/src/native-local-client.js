@@ -4,6 +4,7 @@ import os from 'node:os';
 import { spawn, execFile } from 'node:child_process';
 import { EventEmitter } from 'node:events';
 import { randomUUID } from 'node:crypto';
+import { NativeReadPolicy } from './native-read-policy.js';
 
 const MAX_TEXT_BYTES = 4 * 1024 * 1024;
 const MAX_PROCESS_OUTPUT_BYTES = 2 * 1024 * 1024;
@@ -195,11 +196,13 @@ export class NativeLocalClient extends EventEmitter {
     cwd = os.homedir(),
     shell,
     blockedCommands = [],
+    deniedReadPaths = [],
     maxTextBytes = MAX_TEXT_BYTES
   } = {}) {
     super();
     this.allowedDirectories = [...allowedDirectories];
     this.cwd = path.resolve(cwd);
+    this.readPolicy = new NativeReadPolicy({ cwd: this.cwd, deniedPaths: deniedReadPaths });
     this.shell = shell || (process.platform === 'win32' ? 'powershell.exe' : '/bin/sh');
     this.blockedCommands = blockedCommands.map((value) => new RegExp(value, process.platform === 'win32' ? 'i' : ''));
     this.maxTextBytes = maxTextBytes;
@@ -218,6 +221,13 @@ export class NativeLocalClient extends EventEmitter {
       roots.push(path.normalize(real));
     }
     this.allowedRoots = roots;
+    // Keep lexical exclusions and resolve their existing ancestors too: an
+    // excluded child may be created later beneath a junction or short-name path.
+    const canonicalDenials = await Promise.all(this.readPolicy.deniedPaths.map(async (item) => {
+      const ancestor = await this.#nearestExistingAncestor(item);
+      return path.resolve(ancestor.realPath, path.relative(ancestor.requestedPath, item));
+    }));
+    this.readPolicy.deniedPaths = [...new Set([...this.readPolicy.deniedPaths, ...canonicalDenials])];
     this.cwd = await this.#resolveExisting(this.cwd);
     this.ready = true;
     this.emit('ready');
@@ -345,8 +355,16 @@ export class NativeLocalClient extends EventEmitter {
     return canonicalTarget;
   }
 
+  async #resolveReadable(input) {
+    this.readPolicy.assertReadable(input);
+    this.readPolicy.assertReadable(path.resolve(this.cwd, input));
+    const target = await this.#resolveExisting(input);
+    this.readPolicy.assertReadable(target);
+    return target;
+  }
+
   async #readFile({ path: file, offset = 0, length = 1000 }) {
-    const target = await this.#resolveExisting(file);
+    const target = await this.#resolveReadable(file);
     const handle = await fs.open(target, 'r');
     try {
       const stat = await handle.stat();
@@ -407,16 +425,18 @@ export class NativeLocalClient extends EventEmitter {
   }
 
   async #listDirectory({ path: dir, depth = 2 }) {
-    const root = await this.#resolveExisting(dir);
+    const root = await this.#resolveReadable(dir);
     const entries = [];
     const walk = async (current, level) => {
       if (entries.length >= 2000 || level > depth) return;
       for (const entry of await fs.readdir(current, { withFileTypes: true })) {
         if (entries.length >= 2000) break;
         const full = path.join(current, entry.name);
+        let readable;
+        try { readable = await this.#resolveReadable(full); } catch { continue; }
         const relative = path.relative(root, full) || '.';
         entries.push({ path: relative, type: entry.isDirectory() ? 'directory' : entry.isFile() ? 'file' : entry.isSymbolicLink() ? 'symlink' : 'other' });
-        if (entry.isDirectory() && level < depth) await walk(full, level + 1);
+        if (entry.isDirectory() && level < depth) await walk(readable, level + 1);
       }
     };
     await walk(root, 1);
@@ -441,7 +461,7 @@ export class NativeLocalClient extends EventEmitter {
   }
 
   async #fileInfo({ path: targetPath }) {
-    const target = await this.#resolveExisting(targetPath);
+    const target = await this.#resolveReadable(targetPath);
     let stat;
     let lineCount = null;
     let handle;
@@ -469,7 +489,7 @@ export class NativeLocalClient extends EventEmitter {
   }
 
   async #searchFiles({ path: rootPath, pattern, ignoreCase = true, maxResults = 100, maxDepth = 10 }) {
-    const root = await this.#resolveExisting(rootPath);
+    const root = await this.#resolveReadable(rootPath);
     const matcher = globToRegExp(pattern.includes('*') || pattern.includes('?') ? pattern : `*${pattern}*`, ignoreCase);
     const results = [];
     await this.#walkSearch(root, maxDepth, async (full, entry) => {
@@ -480,7 +500,7 @@ export class NativeLocalClient extends EventEmitter {
   }
 
   async #searchContent({ path: rootPath, pattern, filePattern, literalSearch = true, ignoreCase = true, maxResults = 100, maxDepth = 10 }) {
-    const root = await this.#resolveExisting(rootPath);
+    const root = await this.#resolveReadable(rootPath);
     const fileMatcher = filePattern ? globToRegExp(filePattern, ignoreCase) : null;
     const flags = ignoreCase ? 'i' : '';
     const matcher = literalSearch ? null : new RegExp(pattern, flags);
@@ -518,7 +538,8 @@ export class NativeLocalClient extends EventEmitter {
       try { entries = await fs.readdir(current, { withFileTypes: true }); } catch { return true; }
       for (const entry of entries) {
         if (entry.isSymbolicLink()) continue;
-        const full = path.join(current, entry.name);
+        let full;
+        try { full = await this.#resolveReadable(path.join(current, entry.name)); } catch { continue; }
         const keepGoing = await visitor(full, entry);
         if (!keepGoing) return false;
         if (entry.isDirectory()) {
