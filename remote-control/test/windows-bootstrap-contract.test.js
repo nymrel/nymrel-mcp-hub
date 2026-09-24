@@ -61,6 +61,59 @@ test('Windows bootstrap preserves a single allowed directory as a JSON array', (
   assert.doesNotMatch(bootstrap, /@\(\$resolvedAllowed\) \| ConvertTo-Json/);
 });
 
+test('Windows bootstrap carries explicit read exclusions and retains them across updates', () => {
+  assert.match(installer, /'NYMREL_REMOTE_DENIED_READ_PATHS'/);
+  assert.match(bootstrap, /\[string\[\]\]\$DeniedReadPath/);
+  assert.match(bootstrap, /\$PSBoundParameters\.ContainsKey\('DeniedReadPath'\)/);
+  assert.match(bootstrap, /GetEnvironmentVariable\('NYMREL_REMOTE_DENIED_READ_PATHS', 'User'\)/);
+  assert.match(bootstrap, /ConvertTo-Json -InputObject @\(\$resolvedDenied\) -Compress/);
+  assert.match(bootstrap, /\$agentEnvironment\.NYMREL_REMOTE_DENIED_READ_PATHS = \$deniedJson/);
+  assert.match(bootstrap, /Set-UserEnvironmentVariable 'NYMREL_REMOTE_DENIED_READ_PATHS' \$deniedJson/);
+  assert.match(bootstrap, /Set-Content appends CRLF; the launcher rejects line breaks/);
+  assert.equal([...bootstrap.matchAll(/\$deniedJson = ConvertTo-Json -InputObject @\(\$resolvedDenied\) -Compress/g)].length, 2);
+  assert.match(guide, /retains that instance's saved exclusions/);
+});
+
+test('ChatGPTStudio exclusion preflight accepts saved absolute paths and rejects unsafe entries', { skip: process.platform !== 'win32' }, async () => {
+  const localAppData = await fs.mkdtemp(path.join(os.tmpdir(), 'nymrel-deny-preflight-'));
+  const configDirectory = path.join(localAppData, 'Nymrel', 'ChatGPTStudio');
+  const configFile = path.join(configDirectory, 'denied-read-paths.json');
+  const root = path.dirname(fileURLToPath(bootstrapPath));
+  const baseArgs = [
+    '-NoLogo', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', fileURLToPath(bootstrapPath),
+    '-InstanceName', 'ChatGPTStudio', '-TaskName', 'Nymrel Remote ChatGPT Studio',
+    '-AllowedDirectory', root, '-PreflightOnly'
+  ];
+  const run = (...args) => spawnSync('powershell.exe', [...baseArgs, ...args], {
+    encoding: 'utf8', timeout: 10_000, env: { ...process.env, LOCALAPPDATA: localAppData }
+  });
+  try {
+    await fs.mkdir(configDirectory, { recursive: true });
+    await fs.writeFile(configFile, `\uFEFF${JSON.stringify([path.join(root, 'private')])}\r\n`);
+    assert.match(run().stdout, /NYMREL_REMOTE_BOOTSTRAP_PREFLIGHT=OK/);
+
+    await fs.writeFile(configFile, JSON.stringify(['relative\\private']));
+    const relativeSaved = run();
+    assert.equal(relativeSaved.status, 1);
+    assert.match(relativeSaved.stderr, /absolute, ordinary filesystem paths/);
+
+    const relativeGiven = run('-DeniedReadPath', 'C:relative\\private');
+    assert.equal(relativeGiven.status, 1);
+    assert.match(relativeGiven.stderr, /absolute, ordinary filesystem paths/);
+
+    await fs.writeFile(configFile, '[]');
+    assert.match(run().stdout, /NYMREL_REMOTE_BOOTSTRAP_PREFLIGHT=OK/);
+
+    await fs.writeFile(configFile, '');
+    const emptySaved = run();
+    assert.equal(emptySaved.status, 1);
+    assert.match(emptySaved.stderr, /must be a JSON string array/);
+    assert.match(run('-DeniedReadPath', path.join(root, 'private')).stdout, /NYMREL_REMOTE_BOOTSTRAP_PREFLIGHT=OK/);
+  } finally {
+    await fs.rm(localAppData, { recursive: true, force: true });
+  }
+});
+
 test('Windows installer verifies the scheduled supervisor remains running', () => {
   assert.match(installer, /function Wait-ScheduledTaskRunning/);
   assert.match(installer, /Get-ScheduledTaskInfo -TaskPath/);

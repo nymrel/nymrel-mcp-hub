@@ -31,6 +31,15 @@ The default allowed root is the current user's profile directory. To narrow it:
   -AllowedDirectory 'C:\Users\johns\Desktop'
 ```
 
+To exclude a private path inside an allowed root, pass one or more absolute paths. The native agent also blocks common credential filenames and directories. A later bootstrap run without `-DeniedReadPath` retains that instance's saved exclusions. To clear them, invoke the script directly from PowerShell with `& $bootstrap -DeniedReadPath @()` and the same instance options.
+
+```powershell
+& powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass `
+  -File $bootstrap `
+  -AllowedDirectory 'C:\Users\johns\Desktop' `
+  -DeniedReadPath 'C:\Users\johns\Desktop\private'
+```
+
 ## Separate ChatGPT Studio device
 
 Keep the existing `Nymrel Remote` installation intact when it serves other clients. A second instance has its own runtime directory, device credential, log, task, and pinned allowed roots. Use a reviewed folder path that does not contain credentials or private browser data:

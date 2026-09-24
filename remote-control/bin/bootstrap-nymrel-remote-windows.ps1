@@ -3,6 +3,7 @@ param(
   [string]$ServerUrl = 'https://nymrel-remote-production.up.railway.app',
   [string]$DeviceName = $env:COMPUTERNAME,
   [string[]]$AllowedDirectory = @($env:USERPROFILE),
+  [string[]]$DeniedReadPath,
   [string]$TaskName = 'Nymrel Remote',
   [string]$InstanceName = 'Remote',
   [string]$Ref = 'main',
@@ -17,6 +18,19 @@ function Set-UserEnvironmentVariable {
   param([string]$Name, [string]$Value)
   [Environment]::SetEnvironmentVariable($Name, $Value, 'User')
   Set-Item -LiteralPath "Env:$Name" -Value $Value
+}
+
+function Resolve-DeniedReadPaths {
+  param([AllowEmptyCollection()][string[]]$Paths)
+  @(
+    foreach ($item in $Paths) {
+      $isOrdinaryAbsolute = $item -match '^[A-Za-z]:[\\/]' -or $item -match '^\\\\[^\\]+\\[^\\]+(?:\\|$)'
+      if (-not $item -or -not $isOrdinaryAbsolute -or $item -match '^[\\/]{2}[?.][\\/]') {
+        throw 'DeniedReadPath entries must be absolute, ordinary filesystem paths.'
+      }
+      [IO.Path]::GetFullPath($item)
+    }
+  )
 }
 
 $server = [Uri]$ServerUrl
@@ -46,6 +60,53 @@ $resolvedAllowed = @(
     (Resolve-Path -LiteralPath $item).Path
   }
 )
+
+$runtimeDir = Join-Path (Join-Path $env:LOCALAPPDATA 'Nymrel') $InstanceName
+$deniedConfigFile = Join-Path $runtimeDir 'denied-read-paths.json'
+foreach ($boundary in @((Join-Path $env:LOCALAPPDATA 'Nymrel'), $runtimeDir, $deniedConfigFile)) {
+  if (Test-Path -LiteralPath $boundary) {
+    $boundaryItem = Get-Item -LiteralPath $boundary -Force
+    if ($boundaryItem.Attributes -band [IO.FileAttributes]::ReparsePoint) {
+      throw "Refusing to install through a linked runtime path: $boundary"
+    }
+  }
+}
+# A separate instance must never inherit exclusions from the default Remote instance.
+# Preserve each instance's saved list when an update omits -DeniedReadPath.
+$hasSavedDenied = $InstanceName -ne 'Remote' -and (Test-Path -LiteralPath $deniedConfigFile -PathType Leaf)
+$deniedJson = if ($InstanceName -eq 'Remote') {
+  [Environment]::GetEnvironmentVariable('NYMREL_REMOTE_DENIED_READ_PATHS', 'User')
+} elseif ($hasSavedDenied) {
+  Get-Content -LiteralPath $deniedConfigFile -Raw
+} else {
+  '[]'
+}
+if ($PSBoundParameters.ContainsKey('DeniedReadPath')) {
+  $resolvedDenied = @(Resolve-DeniedReadPaths -Paths $DeniedReadPath)
+  $deniedJson = ConvertTo-Json -InputObject @($resolvedDenied) -Compress
+} elseif ($hasSavedDenied -and [string]::IsNullOrWhiteSpace($deniedJson)) {
+  throw 'Existing NYMREL_REMOTE_DENIED_READ_PATHS must be a JSON string array.'
+} elseif ($deniedJson) {
+  try {
+    $parsedDenied = ConvertFrom-Json -InputObject $deniedJson -ErrorAction Stop
+  } catch {
+    throw 'Existing NYMREL_REMOTE_DENIED_READ_PATHS must be a JSON string array.'
+  }
+  if (-not $deniedJson.TrimStart().StartsWith('[') -or @($parsedDenied | Where-Object { $_ -isnot [string] -or -not $_ }).Count -gt 0) {
+    throw 'Existing NYMREL_REMOTE_DENIED_READ_PATHS must be a JSON string array.'
+  }
+  $resolvedDenied = if ($deniedJson.Trim() -eq '[]') {
+    @()
+  } else {
+    @(Resolve-DeniedReadPaths -Paths @($parsedDenied))
+  }
+  # Set-Content appends CRLF; the launcher rejects line breaks. Serialize the
+  # validated array again instead of forwarding raw saved file text.
+  $deniedJson = ConvertTo-Json -InputObject @($resolvedDenied) -Compress
+}
+if ($deniedJson -match "[\r\n]") {
+  throw 'Denied read paths could not be serialized as a single launcher value.'
+}
 if ($InstanceName -ieq 'ChatGPTStudio') {
   if (-not $env:USERPROFILE) {
     throw 'ChatGPTStudio cannot validate allowed roots without USERPROFILE.'
@@ -78,7 +139,6 @@ if ($nodeVersion.Major -lt 22) {
   throw "Nymrel Remote requires Node.js 22 or newer; found $nodeVersionText."
 }
 
-$runtimeDir = Join-Path (Join-Path $env:LOCALAPPDATA 'Nymrel') $InstanceName
 $appDir = Join-Path $runtimeDir 'app'
 $stagingDir = Join-Path $runtimeDir ("app.staging.{0}" -f [Guid]::NewGuid().ToString('N'))
 $backupDir = Join-Path $runtimeDir 'app.previous'
@@ -87,15 +147,6 @@ $logFile = Join-Path $runtimeDir 'supervisor.log'
 $tempRoot = Join-Path ([IO.Path]::GetTempPath()) ("nymrel-remote-{0}" -f [Guid]::NewGuid().ToString('N'))
 $archive = Join-Path $tempRoot 'source.zip'
 $extract = Join-Path $tempRoot 'source'
-
-foreach ($boundary in @((Join-Path $env:LOCALAPPDATA 'Nymrel'), $runtimeDir)) {
-  if (Test-Path -LiteralPath $boundary) {
-    $boundaryItem = Get-Item -LiteralPath $boundary -Force
-    if ($boundaryItem.Attributes -band [IO.FileAttributes]::ReparsePoint) {
-      throw "Refusing to install through a linked runtime directory: $boundary"
-    }
-  }
-}
 
 function Assert-InstancePath {
   param([string]$Path)
@@ -170,6 +221,9 @@ try {
     Set-UserEnvironmentVariable 'NYMREL_REMOTE_DEVICE_NAME' $DeviceName
     Set-UserEnvironmentVariable 'NYMREL_REMOTE_DEVICE_FILE' $deviceFile
     Set-UserEnvironmentVariable 'NYMREL_REMOTE_ALLOWED_DIRECTORIES' $allowedJson
+    if ($deniedJson) {
+      Set-UserEnvironmentVariable 'NYMREL_REMOTE_DENIED_READ_PATHS' $deniedJson
+    }
     Set-UserEnvironmentVariable 'NYMREL_REMOTE_LOCAL_CWD' $resolvedAllowed[0]
     Set-UserEnvironmentVariable 'NYMREL_REMOTE_LOCAL_SHELL' 'powershell.exe'
     Set-UserEnvironmentVariable 'NYMREL_REMOTE_LOCAL_BACKEND' 'native'
@@ -184,9 +238,15 @@ try {
     NYMREL_REMOTE_LOCAL_SHELL = 'powershell.exe'
     NYMREL_REMOTE_LOCAL_BACKEND = 'native'
   }
+  if ($deniedJson) {
+    $agentEnvironment.NYMREL_REMOTE_DENIED_READ_PATHS = $deniedJson
+  }
   $installer = Join-Path $appDir 'bin\install-nymrel-remote-windows.ps1'
   Remove-Item -LiteralPath $logFile -Force -ErrorAction SilentlyContinue
   & $installer -TaskName $TaskName -InstanceName $InstanceName -Environment $agentEnvironment
+  if ($InstanceName -ne 'Remote' -and $deniedJson) {
+    Set-Content -LiteralPath $deniedConfigFile -Value $deniedJson -Encoding UTF8
+  }
 
   $deadline = (Get-Date).AddSeconds(60)
   do {
