@@ -1,6 +1,6 @@
 # Existing @Nymrel app: restricted JalenPC reads
 
-The existing personal ChatGPT `@Nymrel` app is bound to `https://mcp.nymrel.com/mcp`. Its current hosted server exposes public studio utilities only. Refreshing that app cannot discover Remote tools until the hosted Nymrel MCP server adds them. This document describes the Remote backend half of that addition.
+The existing personal ChatGPT `@Nymrel` app is bound to `https://mcp.nymrel.com/mcp`. The hosted server now advertises four public studio utilities and seven OAuth-scoped Remote read tools. In the existing ChatGPT connection, the seven tool schemas are visible after Refresh, but Information still reports `Authorization supported: None` and `Authorization used: None`. A regular conversation reached a "ChatGPT needs more Nymrel access" prompt; it has not completed OAuth or read a local file. The backend plugin route remains disabled in production until the provider and exact subject map are validated.
 
 ## Logical resource and boundary
 
@@ -20,10 +20,10 @@ Do not forward a `mcp.nymrel.com` audience token to `/chatgpt/readonly/mcp`. Tha
 ## Activation sequence
 
 1. Keep the dedicated `JalenPC-ChatGPTStudio` agent paired to `chatgpt-studio-20260922` and its reviewed staged root. Do not pair the original whole-profile JalenPC device to this tenant.
-2. Configure a provider client for ChatGPT authorization code + PKCE S256, refresh tokens, and an access token whose `aud` is exactly `https://mcp.nymrel.com/mcp`. The currently staged Auth0 API identifier for the Railway read-only URL is **not** this audience. Provider/client creation, user signup, and production identity settings follow the studio's protected-action grants.
+2. First resolve OAuth configuration on the **existing** ChatGPT connection. Its current management panel shows no editable callback or client and retains `None` after Refresh. A separate new-app form offers the stable callback `https://chatgpt.com/connector_platform_oauth_redirect` for this URL and allows OIDC to be turned off; that does not prove the existing connection uses it. Configure a legitimate third-party provider client for authorization code + PKCE S256, refresh, and an access token whose `aud` is exactly `https://mcp.nymrel.com/mcp`. An Auth0 API with that plugin audience and only `devices:read tools:read` now exists. Auth0's strict third-party restrictions and Google-connection domain-level requirement must be resolved without widening access outside the grant. Provider/client creation, user signup, and production identity settings follow the studio's protected-action grants.
 3. Set Remote's existing `NYMREL_REMOTE_AUTHORIZATION_SERVERS`, exact `NYMREL_REMOTE_OAUTH_ISSUER`, and `NYMREL_REMOTE_OAUTH_SUBJECT_TENANTS` so the operator's actual application-user `sub` maps only to `chatgpt-studio-20260922`. Enable the backend flag after validating the provider. Keep the direct read-only profile's audience unchanged.
-4. Activate the hosted `@Nymrel` read-tool adapter with the same issuer, exact plugin audience and per-tool OAuth challenges. Keep the four public studio tools anonymous.
-5. Inspect the live hosted `tools/list` and its protected-resource metadata, refresh the **existing** ChatGPT Nymrel app, then test from a new ordinary conversation: discover the narrow device; read the staged index; search; retrieve a pending result; deny an outside path; and verify the public utilities still work without linking. Repeat after token refresh.
+4. The hosted `@Nymrel` adapter, exact plugin audience, and per-tool OAuth challenges are deployed. Keep the four public studio tools anonymous; revalidate the hosted metadata after any provider change.
+5. Refresh the **existing** ChatGPT Nymrel app after its OAuth client is usable, then test from a new ordinary conversation: discover the narrow device; read the staged index; search; retrieve a pending result; deny an outside path; and verify the public utilities still work without linking. Repeat after token refresh. If the existing connection cannot adopt OAuth, assess a new connection explicitly rather than assuming Refresh migrated its authorization state.
 
 ## Rollback
 
