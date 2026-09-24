@@ -112,8 +112,34 @@ test('explicit denied directories include children whose names start with two do
     await denied(client, 'get_file_info', { path: candidate });
   }
   await denied(client, 'search_content', { path: directory, pattern: 'SYNTHETIC' });
-  const output = JSON.stringify(await client.callTool('search_content', { path: '.', pattern: 'SYNTHETIC' }));
-  assert.ok(!output.includes(SECRET));
+  const result = await client.callTool('search_content', { path: '.', pattern: 'SYNTHETIC' });
+  assert.ok(!JSON.stringify(result).includes(SECRET), `Unexpected result paths: ${JSON.stringify(result.structuredContent.results.map((item) => item.path))}`);
+  assert.equal((await client.callTool('read_file', { path: 'docs/ordinary.md' })).structuredContent.text, ORDINARY);
+});
+
+test('not-yet-created exclusions canonicalize their existing ancestor through a directory alias', async (t) => {
+  const { root } = await fixture(t);
+  const alias = path.join(path.dirname(root), 'workspace-alias');
+  await fs.symlink(root, alias, process.platform === 'win32' ? 'junction' : 'dir');
+  const client = new NativeLocalClient({ allowedDirectories: [root], cwd: alias, deniedReadPaths: ['private-notes', 'private'] });
+  await client.start();
+  t.after(() => client.stop());
+  await fs.mkdir(path.join(root, 'private', '..notes'), { recursive: true });
+  const file = path.join(root, 'private', '..notes', 'ordinary.md');
+  await fs.writeFile(file, SECRET);
+  await denied(client, 'read_file', { path: file });
+  await denied(client, 'get_file_info', { path: file });
+  await denied(client, 'search_content', { path: path.dirname(file), pattern: 'SYNTHETIC' });
+  for (const [tool, args] of [
+    ['list_directory', { path: '.', depth: 8 }],
+    ['search_files', { path: '.', pattern: '*' }],
+    ['search_content', { path: '.', pattern: 'SYNTHETIC' }]
+  ]) {
+    const result = await client.callTool(tool, args);
+    const entries = result.structuredContent.results || result.structuredContent.entries;
+    assert.ok(!JSON.stringify(result).includes(SECRET), `${tool}: ${JSON.stringify(entries.map((item) => item.path))}`);
+    assert.ok(!entries.some((item) => /(?:^|[\\/])private(?:[\\/]|$)/.test(item.path)), tool);
+  }
   assert.equal((await client.callTool('read_file', { path: 'docs/ordinary.md' })).structuredContent.text, ORDINARY);
 });
 

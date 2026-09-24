@@ -221,13 +221,12 @@ export class NativeLocalClient extends EventEmitter {
       roots.push(path.normalize(real));
     }
     this.allowedRoots = roots;
-    // Keep lexical exclusions and canonicalize existing exclusions so aliases
-    // to an explicitly excluded directory receive the same policy.
-    const canonicalDenials = await Promise.all(this.readPolicy.deniedPaths.map((item) =>
-      fs.realpath(item).catch((error) => {
-        if (error.code === 'ENOENT') return item;
-        throw error;
-      })));
+    // Keep lexical exclusions and resolve their existing ancestors too: an
+    // excluded child may be created later beneath a junction or short-name path.
+    const canonicalDenials = await Promise.all(this.readPolicy.deniedPaths.map(async (item) => {
+      const ancestor = await this.#nearestExistingAncestor(item);
+      return path.resolve(ancestor.realPath, path.relative(ancestor.requestedPath, item));
+    }));
     this.readPolicy.deniedPaths = [...new Set([...this.readPolicy.deniedPaths, ...canonicalDenials])];
     this.cwd = await this.#resolveExisting(this.cwd);
     this.ready = true;

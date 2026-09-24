@@ -137,8 +137,9 @@ reads omit excluded entries. File aliases to excluded destinations are denied;
 recursive searches do not follow symbolic links or junctions.
 
 `NYMREL_REMOTE_DENIED_READ_PATHS` adds exact file or directory exclusions as a JSON
-array, relative to the configured working directory or absolute. Existing paths
-are canonicalized at startup, alongside their lexical exclusions. Restart the
+array, relative to the configured working directory or absolute. Paths are
+canonicalized through their nearest existing ancestor at startup, alongside
+their lexical exclusions, including exclusions for files created later. Restart the
 agent after changing these exclusions or their filesystem aliases. These rules
 only narrow read access; they do not grant roots or change write/process policy.
 
