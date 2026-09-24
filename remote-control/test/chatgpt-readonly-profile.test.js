@@ -24,6 +24,9 @@ test('regular ChatGPT read-only profile exposes only local discovery and file-in
     assert.equal(tool.annotations.readOnlyHint, true, `${tool.name} must remain read-only`);
     assert.equal(tool.annotations.openWorldHint, false, `${tool.name} must remain closed-world`);
     assert.equal(tool.annotations.destructiveHint, false, `${tool.name} must remain non-destructive`);
+    assert.deepEqual(tool.securitySchemes, [
+      { type: 'oauth2', scopes: ['devices:read', 'tools:read'] }
+    ], `${tool.name} must advertise only the two read OAuth scopes`);
   }
 });
 test('read-only profile preserves native schemas and rejects mutation or execution tools before dispatch', async () => {

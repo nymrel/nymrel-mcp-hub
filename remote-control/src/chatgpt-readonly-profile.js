@@ -16,10 +16,18 @@ export const CHATGPT_READONLY_TOOL_NAMES = Object.freeze([
 
 const READONLY_NAME_SET = new Set(CHATGPT_READONLY_TOOL_NAMES);
 
+function readonlyOAuthSecuritySchemes() {
+  return [{ type: 'oauth2', scopes: [...CHATGPT_READONLY_SCOPES] }];
+}
+
+function withReadonlyOAuth(tool) {
+  return { ...structuredClone(tool), securitySchemes: readonlyOAuthSecuritySchemes() };
+}
+
 export const CHATGPT_READONLY_TOOLS = Object.freeze([
   ...CHATGPT_REMOTE_TOOLS
     .filter((tool) => READONLY_NAME_SET.has(tool.name))
-    .map((tool) => structuredClone(tool)),
+    .map(withReadonlyOAuth),
   {
     name: 'get_read_result',
     description: 'Retrieve the result of your pending Nymrel Remote read using its callId. If a file inspection returns pending, use this tool instead of submitting that inspection again. It never starts a new device operation. If still pending, wait briefly before checking again.',
@@ -27,7 +35,8 @@ export const CHATGPT_READONLY_TOOLS = Object.freeze([
       type: 'object', additionalProperties: false, required: ['callId'],
       properties: { callId: { type: 'string', minLength: 1, maxLength: 256 } }
     },
-    annotations: { title: 'Get remote read result', readOnlyHint: true, openWorldHint: false, destructiveHint: false }
+    annotations: { title: 'Get remote read result', readOnlyHint: true, openWorldHint: false, destructiveHint: false },
+    securitySchemes: readonlyOAuthSecuritySchemes()
   }
 ]);
 
