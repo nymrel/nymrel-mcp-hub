@@ -1,0 +1,9 @@
+{
+  "name": "@nymrel/offline-oidc-issuer",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=24 <25" },
+  "scripts": { "test": "node --test checks/acceptance.mjs" },
+  "dependencies": { "oidc-provider": "9.12.2" }
+}
