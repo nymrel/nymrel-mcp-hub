@@ -11,7 +11,8 @@ const SECRET = 'SYNTHETIC_CREDENTIAL_MARKER_91d843';
 const ORDINARY = 'ordinary studio reference';
 const PRIVATE_FILES = [
   '.env', '.env.example', 'config/studio-social.local.env', 'config/service.env.backup',
-  'AUTH.JSON', 'device.json', 'credentials.json.backup', 'keys/service.PEM',
+  'AUTH.JSON', 'device.json', 'credentials.json.backup', 'keys/service.PEM', 'keys/AuthKey_fixture.p8',
+  'application_default_credentials.json', 'service-account.json', 'client_secret_fixture.json', '.npmrc',
   '.git/config', '.studio-secrets/provider.key', '.ssh/id_ed25519',
   'private-notes/note.md'
 ];

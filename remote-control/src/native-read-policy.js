@@ -7,8 +7,8 @@ const PRIVATE_COMPONENTS = new Set([
   '.npmrc', '.pypirc', '.netrc', '_netrc',
   'id_rsa', 'id_dsa', 'id_ecdsa', 'id_ed25519'
 ]);
-const CREDENTIAL_FILE = /^(?:credentials?|secrets?)(?:\..*)?$|^(?:auth|device|tokens?)\.json(?:\..*)?$/i;
-const PRIVATE_EXTENSION = /\.(?:key|pem|p12|pfx|jks|keystore|kdbx)(?:\..*)?$/i;
+const CREDENTIAL_FILE = /^(?:credentials?|secrets?)(?:\..*)?$|^(?:auth|device|tokens?|application_default_credentials|service[-_]account)\.json(?:\..*)?$|^client_secret.*\.json(?:\..*)?$/i;
+const PRIVATE_EXTENSION = /\.(?:key|pem|p8|p12|pfx|jks|keystore|kdbx)(?:\..*)?$/i;
 
 export class NativeReadPolicy {
   constructor({ cwd, deniedPaths = [], platform = process.platform } = {}) {
