@@ -2,11 +2,27 @@
 
 This isolated, private package evaluates a self-hosted issuer for the **existing**
 Nymrel MCP resource, `https://mcp.nymrel.com/mcp`. It uses maintained
-`oidc-provider` 9.12.2 for protocol handling. It does not start with Remote,
-change its dependencies, or configure any account. The prerequisite protocol and
-storage slice came from PR #52. This follow-up adds an HTTP entrypoint and Google
-interaction layer, with mocked upstream acceptance. It remains undeployed and
-requires the operational and live acceptance gates below.
+`oidc-provider` 9.12.2 for protocol handling. Remote can optionally host this
+package through the disabled-by-default integration described in CONTAINER.md.
+The protocol/storage slice came from PR #52 and the Google interaction layer
+from PR #53. Offline acceptance uses an injected Google transport and fixture
+credentials. Enabling live authentication still requires the operational and
+live acceptance gates below; these tests do not configure any provider account.
+
+## User cancellation
+
+Login and consent pages each offer Cancel. Cancellation is a POST bound to the
+original provider interaction, browser cookie, exact Origin and server-generated
+CSRF value. It consumes the same one-use stage as approval and asks oidc-provider
+to return `access_denied` to the exact registered callback with state and issuer
+identification. No client-supplied identity or redirect is accepted. Cancelling
+before Google login performs no Google token exchange; cancelling consent creates
+no new authorization code or grant. It does not revoke a previous authorization.
+
+This slice adds the application's explicit Cancel action. Google-originated
+errors, closed browser tabs and expired interactions retain their existing
+fail-closed behavior; polished recovery UX and real-browser callback proof remain
+separate acceptance work.
 
 ## Run
 

@@ -77,6 +77,16 @@ export function createIssuer({ issuer, clientId, callback, identity, jwks, cooki
       if (details.prompt.name !== 'login' || verifiedIdentity?.issuer !== identity.issuer || verifiedIdentity?.subject !== identity.subject) throw new Error('Identity denied');
       await provider.interactionFinished(req, res, { login: { accountId: identity.accountId } }, { mergeWithLastSubmission: false });
     },
+    // A user cancellation finishes only this interaction, without creating a grant.
+    // HTTP caller must validate Origin, CSRF and consume the bound browser stage.
+    async denyAuthorization(req, res) {
+      const details = await provider.interactionDetails(req, res);
+      if (details.params.client_id !== clientId || !['login', 'consent'].includes(details.prompt.name)
+        || (details.prompt.name === 'consent' && details.session?.accountId !== identity.accountId)) throw new Error('Denial unavailable');
+      await provider.interactionFinished(req, res, {
+        error: 'access_denied', error_description: 'The user cancelled authorization'
+      }, { mergeWithLastSubmission: false });
+    },
     // A separate explicit consent action. Never expose this method as an unauthenticated route.
     async approveConsent(req, res) {
       const details = await provider.interactionDetails(req, res);
