@@ -8,8 +8,8 @@ function exactHttps(value) {
   try { const u = new URL(value); return u.protocol === 'https:' && !u.username && !u.password && !u.hash && !value.includes('*'); } catch { return false; }
 }
 
-// Library only: there is deliberately no runnable production entry point or login UI.
-// The integration must supply authenticated, CSRF-protected interaction handlers.
+// Protocol core. HTTP interaction handlers are in http.js; never expose these
+// completion helpers directly to client-supplied identity or consent assertions.
 export function createIssuer({ issuer, clientId, callback, identity, jwks, cookieKeys, databasePath, offline = false }) {
   const url = new URL(issuer);
   const loopback = url.protocol === 'http:' && url.hostname === '127.0.0.1';

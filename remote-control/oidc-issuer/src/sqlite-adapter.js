@@ -30,6 +30,13 @@ export function createSqliteStore(filename) {
     async findByUid(uid) { return select(this.model, 'uid', uid); }
     async findByUserCode(code) { return select(this.model, 'user_code', code); }
     async destroy(id) { db.prepare('DELETE FROM oidc WHERE model=? AND id=?').run(this.model, id); }
+    // Single-statement consumption for HTTP interaction bindings, before network I/O.
+    async take(id, expectedStage) {
+      const row = expectedStage
+        ? db.prepare("DELETE FROM oidc WHERE model=? AND id=? AND json_extract(payload,'$.stage')=? RETURNING payload,expires").get(this.model, id, expectedStage)
+        : db.prepare('DELETE FROM oidc WHERE model=? AND id=? RETURNING payload,expires').get(this.model, id);
+      return row && (row.expires === null || row.expires > now()) ? JSON.parse(row.payload) : undefined;
+    }
     async consume(id) {
       db.prepare("UPDATE oidc SET payload=json_set(payload,'$.consumed',?) WHERE model=? AND id=?").run(now(), this.model, id);
     }
