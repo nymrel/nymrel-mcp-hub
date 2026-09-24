@@ -1,10 +1,12 @@
-# Offline OIDC issuer acceptance slice
+# OIDC issuer and Google interaction acceptance slice
 
 This isolated, private package evaluates a self-hosted issuer for the **existing**
 Nymrel MCP resource, `https://mcp.nymrel.com/mcp`. It uses maintained
 `oidc-provider` 9.12.2 for protocol handling. It does not start with Remote,
-change its dependencies, expose a production executable, or configure any account.
-The local acceptance server exists only inside the test suite.
+change its dependencies, or configure any account. The prerequisite protocol and
+storage slice came from PR #52. This follow-up adds an HTTP entrypoint and Google
+interaction layer, with mocked upstream acceptance. It remains undeployed and
+requires the operational and live acceptance gates below.
 
 ## Run
 
@@ -17,8 +19,10 @@ npm test
 
 Tests bind only an ephemeral `127.0.0.1` port and use generated fixture keys,
 invented identity/client values and a temporary SQLite database. They never
-contact Google, Auth0, ChatGPT or production Remote. Test interaction routes
-deliberately supply a fixture identity; **do not copy those routes into a service**.
+contact Google, Auth0, ChatGPT or production Remote. The protocol-only fixture in
+`checks/acceptance.mjs` directly supplies identity; **do not copy its routes into a
+service**. The HTTP suite uses the real handlers and mocked Google discovery,
+token endpoint and JWKS, verifying signed ID tokens and upstream PKCE.
 Acceptance is named outside Node's automatic test discovery so the main Remote
 suite does not unexpectedly acquire this optional package's dependency.
 
@@ -34,9 +38,21 @@ suite does not unexpectedly acquire this optional package's dependency.
 - One explicitly allowed upstream issuer/subject maps to a stable internal subject.
   Remote must independently map that internal subject to the existing restricted
   `chatgpt-studio-20260922` tenant.
-- Separate server-side login completion and consent approval helpers; no web route
-  exposes them. Their caller must verify upstream authentication, bind the result
-  to this interaction and perform CSRF checks before invoking them.
+- Google login uses maintained `openid-client` 6.8.8 with signature verification
+  explicitly enabled, exact Google issuer and client audience, nonce, state and
+  S256 PKCE. Only the configured Google subject can finish login. HTTP forms never
+  accept a subject, account ID or identity assertion.
+- Login start and consent are same-origin POST forms with one-use CSRF values in
+  server-side SQLite bindings. Google callback state is bound to the browser cookie
+  and provider interaction. Atomic, stage-specific binding consumption prevents
+  concurrent completion of the same HTTP interaction step. Altered cookies and
+  cross-browser/interaction substitutions are denied.
+- The stable upstream callback is `<issuer>/google/callback`. After verification,
+  the browser returns to the original interaction path, where the provider's signed
+  interaction cookie must match before login completes. Consent is a separate
+  authenticated action. Binding cookies are HttpOnly, SameSite=Lax and Secure with
+  a `__Host-` prefix outside offline fixtures. A browser supports one active binding;
+  starting another interaction invalidates its preceding binding.
 - Caller-provided private RS256 keys and cookie keys; no generated/default keys in
   the library. Persist these outside source control before any future deployment.
 - SQLite storage for codes, sessions, grants and refresh tokens, with expiration,
@@ -55,15 +71,36 @@ valid-client PKCE errors must redirect with matching state and issuer. Every
 observed authorization callback is checked for RFC9207 issuer identification.
 Regression checks show that an injected HTTP 500 and an error redirect missing
 `iss` cannot pass these assertions. No live ChatGPT, Google or production acceptance
-is claimed.
+is claimed. The HTTP suite additionally proves a complete mocked Google login and
+explicit consent through downstream code exchange, and rejects wrong Google state,
+nonce, signature, audience, issuer, expiry and subject, plus CSRF/origin failure,
+identity injection, altered cookies, callback replay and interaction substitution.
+
+## Entrypoint configuration
+
+`node bin/server.mjs` requires `NYMREL_OIDC_CONFIG_FILE` naming a private JSON file.
+Its fields are the `createIssuer` configuration (`issuer`, `clientId`, `callback`,
+`identity` with Google `issuer`, allowed `subject` and stable internal `accountId`,
+private `jwks`, `cookieKeys`, and `databasePath`) plus `google.clientId`,
+`google.clientSecret`, and optional `trustProxy`. No credentials or safe defaults
+are supplied. The entrypoint rejects offline mode and requires an HTTPS issuer
+origin with no trailing slash/path. The Google redirect registered upstream must
+be exactly `<issuer>/google/callback`; it is distinct from ChatGPT's callback.
+
+It listens only on `127.0.0.1` (`PORT`, default 3100). A locally trusted TLS proxy
+is required. If `trustProxy` is enabled, that proxy must replace forwarding headers
+and prevent untrusted direct ingress. Do not deploy behind an unreviewed proxy or
+change binding to a public interface without reviewing this trust boundary.
+Request/header timeouts are set; capacity limits, rate limiting and operational
+monitoring remain required. The HTTP factory's custom Google transport is accepted
+only in offline mode, for tests.
 
 ## Required before deployment
 
-1. Implement Google OIDC login using a maintained client, validating signature,
-   issuer, audience, nonce and state. Allow only the approved Google subject. Bind
-   it to the original interaction with an authenticated server-side session; do not
-   accept identity assertions from request JSON or trust email alone. Add real
-   consent views, CSRF checks and tests for cross-interaction substitution.
+1. Register and validate the actual Google client under a separate approved action.
+   Verify the allowlisted subject through that client and retain its stable internal
+   mapping. Test Google error/cancel handling and cookie behavior in real browsers.
+   Mocked cryptographic verification does not establish live Google compatibility.
 2. Copy the callback from the **existing Nymrel connector** management page. The
    callback used in tests is invented. OpenAI permits the stable
    `https://chatgpt.com/connector_platform_oauth_redirect` when discovery advertises
@@ -86,8 +123,9 @@ is claimed.
    model. This suite tests sequential reuse; do not run several issuer processes
    against this adapter. The provider performs read/consume as separate operations.
    Additional protocol acceptance still required: wrong client/callback at token
-   exchange, refresh scope/resource escalation, actual token expiration, altered
-   interaction cookies and cross-interaction substitution. Current tests must not
+   exchange, refresh scope/resource escalation and actual downstream token expiration.
+   (The HTTP tests now cover altered binding cookies and interaction substitution.)
+   Current tests must not
    be represented as covering those cases.
 7. Publish matching protected-resource metadata at the existing gateway and configure
    both gateway and Remote to verify the exact new issuer, audience and mapped
@@ -116,4 +154,4 @@ not authorize them. No production settings or credentials are included here.
 
 The library avoids Auth0's domain-level connection promotion and supports the
 resource-indicator protocol. It also transfers identity-service operations to us.
-This slice is intentionally insufficient for unattended production deployment.
+This slice remains insufficient for unattended production deployment.
