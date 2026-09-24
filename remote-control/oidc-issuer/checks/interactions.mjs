@@ -142,6 +142,11 @@ test('Google code verification, server-bound login and explicit consent produce 
     assert.notEqual((await b.request('/token', { method: 'POST' })).status, 429);
   }
   assert.equal((await exchange()).status, 429, 'Throttled token exchange must not consume the code');
+  for (const path of ['/TOKEN', '/ToKeN', '/token/revocation', '/TOKEN/REVOCATION', '/ToKeN/ReVoCaTiOn']) {
+    const blocked = await b.request(path, { method: 'POST' });
+    assert.equal(blocked.status, 429, `${path} must share the exhausted token budget`);
+    assert.equal(blocked.headers.get('retry-after'), '1');
+  }
   f.advance(1000);
   const token = await exchange();
   assert.equal(token.status, 200, token.body);

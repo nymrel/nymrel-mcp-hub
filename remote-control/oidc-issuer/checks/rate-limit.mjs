@@ -2,6 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createIssuerRateLimiter, ISSUER_RATE_LIMITS } from '../src/rate-limit.js';
 
+test('case-insensitive token and revocation routes share one budget', () => {
+  const limit = createIssuerRateLimiter(() => 0);
+  for (let i = 0; i < ISSUER_RATE_LIMITS.token; i++) assert.equal(limit('/token', 'POST'), 0);
+  for (const path of ['/TOKEN', '/ToKeN', '/token/revocation', '/TOKEN/REVOCATION', '/ToKeN/ReVoCaTiOn']) {
+    assert.equal(limit(path, 'POST'), 1, path);
+  }
+  assert.equal(limit('/auth', 'GET'), 0, 'Interaction budget is independent');
+});
+
 test('fixed buckets bound bursts, refill gradually, and remain independent', () => {
   let clock = 0;
   const limit = createIssuerRateLimiter(() => clock);

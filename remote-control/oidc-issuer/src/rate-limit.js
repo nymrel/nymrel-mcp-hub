@@ -10,8 +10,10 @@ export function createIssuerRateLimiter(now = () => performance.now()) {
     [name, { capacity, credit: capacity * 60000, updated: now() }]));
   return (pathname, method) => {
     if (method === 'GET' && publicPaths.has(pathname)) return 0;
-    const name = pathname.startsWith('/google/callback') ? 'google'
-      : pathname.startsWith('/token') ? 'token' : 'interaction';
+    // The provider router is case-insensitive; aliases must use the same budget.
+    const route = pathname.toLowerCase();
+    const name = route.startsWith('/google/callback') ? 'google'
+      : route.startsWith('/token') ? 'token' : 'interaction';
     const bucket = buckets.get(name);
     const current = Math.max(bucket.updated, now());
     bucket.credit = Math.min(bucket.capacity * 60000, bucket.credit + (current - bucket.updated) * bucket.capacity);
