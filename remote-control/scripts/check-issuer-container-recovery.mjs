@@ -13,7 +13,7 @@ const volume = `${prefix}-data`;
 const primary = `${prefix}-primary`;
 const contender = `${prefix}-contender`;
 const fixtureDirectory = fileURLToPath(new URL('../fixtures/', import.meta.url));
-const containers = [];
+const containers = new Set();
 let volumeCreated = false;
 
 function docker(args, { allowFailure = false, timeout = 20_000 } = {}) {
@@ -30,7 +30,7 @@ const mounts = () => ['--mount', `type=volume,source=${volume},target=/data`,
 const fixture = (name, command, ...args) => docker(['exec', '--user', '1000:1000', name,
   'node', '/fixture/issuer-container.mjs', command, ...args]);
 function run(name, extraEnv = []) {
-  containers.push(name);
+  containers.add(name);
   docker(['run', '--detach', '--pull=never', '--name', name, '--network=none', ...mounts(),
     '-e', 'NYMREL_REMOTE_PUBLIC_URL=https://issuer.example.test',
     '-e', 'NYMREL_REMOTE_AUTHORIZATION_SERVERS=https://issuer.example.test',
@@ -76,9 +76,11 @@ try {
 
   docker(['stop', '--time', '10', primary]);
   assert.equal(docker(['inspect', '--format', '{{.State.ExitCode}}', primary]).stdout.trim(), '0', 'Clean stop must exit normally');
-  docker(['start', primary]);
-  assert.deepEqual(await ready(primary), before, 'Clean restart must retain interaction, keys and ownership file');
-  console.log('ok clean restart retains private storage and public signing keys');
+  docker(['rm', primary]);
+  containers.delete(primary);
+  run(primary);
+  assert.deepEqual(await ready(primary), before, 'Replacement container must recover interaction, keys and ownership file from the named volume');
+  console.log('ok replacement container recovers private storage and public signing keys from the same named volume');
 
   docker(['kill', '--signal=KILL', primary]);
   assert.equal(docker(['wait', primary]).stdout.trim(), '137', 'Forced termination must be observed');
@@ -88,7 +90,7 @@ try {
   console.log('PASS fixture container recovery; Google login, issued tokens and ChatGPT reads remain unvalidated');
 } finally {
   const failures = [];
-  for (const name of containers.reverse()) {
+  for (const name of [...containers].reverse()) {
     try { docker(['rm', '--force', name]); } catch (error) { failures.push(error.message); }
   }
   if (volumeCreated) {

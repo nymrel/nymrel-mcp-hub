@@ -87,8 +87,9 @@ No login is completed and no provider account or production setting is touched.
 The fixture verifies UID 1000, private config/database permissions, issuer discovery,
 public JWKS and health, and that the read bridge remains disabled. It creates a
 real pre-login interaction and browser binding over the issuer HTTP routes, then
-checks their logical database digest and signing keys after a clean restart and
-SIGKILL recovery. A second container uses a different Remote store but the same
+checks their logical database digest and signing keys after a clean stop followed
+by removing/replacing the container on the same named volume, then SIGKILL recovery.
+A second container uses a different Remote store but the same
 issuer database so rejection specifically proves the SQLite ownership boundary.
 Cleanup removes only this run's generated container names and named volume.
 
