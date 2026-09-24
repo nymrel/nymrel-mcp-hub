@@ -3,6 +3,7 @@ import { createIssuer } from './issuer.js';
 import { createSqliteStore } from './sqlite-adapter.js';
 import { createGoogleClient, GOOGLE_ISSUER } from './google-client.js';
 import { createIssuerRateLimiter } from './rate-limit.js';
+import { startStorageMaintenance } from './storage-maintenance.js';
 
 const random = () => randomBytes(32).toString('base64url');
 const equal = (a, b) => typeof a === 'string' && typeof b === 'string' && Buffer.byteLength(a) === Buffer.byteLength(b) && timingSafeEqual(Buffer.from(a), Buffer.from(b));
@@ -27,13 +28,17 @@ export async function createIssuerHttp(config, { googleFetch, rateLimitClock } =
   if (rateLimitClock && !config.offline) throw new Error('Mock clock is offline-only');
   const rateLimit = createIssuerRateLimiter(rateLimitClock);
   const app = createIssuer(config);
-  const store = createSqliteStore(config.databasePath);
+  let store, maintenance, google;
+  const redirectUri = `${origin}/google/callback`;
+  try {
+    store = createSqliteStore(config.databasePath);
+    maintenance = startStorageMaintenance(store);
+    google = await createGoogleClient({ ...config.google, redirectUri, fetchImpl: googleFetch });
+  } catch (error) {
+    maintenance?.close(); app.close(); store?.close(); throw error;
+  }
   const bindings = new store.Adapter('BrowserInteractionBinding');
   const cookieName = config.offline ? 'nymrel_interaction' : '__Host-nymrel_interaction';
-  const redirectUri = `${origin}/google/callback`;
-  let google;
-  try { google = await createGoogleClient({ ...config.google, redirectUri, fetchImpl: googleFetch }); }
-  catch (error) { app.close(); store.close(); throw error; }
   app.provider.proxy = config.trustProxy === true;
   const callback = app.provider.callback();
   const cookie = req => {
@@ -59,14 +64,22 @@ export async function createIssuerHttp(config, { googleFetch, rateLimitClock } =
     res.setHeader('set-cookie', `${cookieName}=${sid}; Path=/; HttpOnly; SameSite=Lax; Max-Age=300${config.offline ? '' : '; Secure'}`);
     return csrf;
   }
+  let closed = false;
   return {
-    health() { app.health(); store.health(); },
-    close() { app.close(); store.close(); },
+    health() { maintenance.health(); app.health(); store.health(); },
+    close() {
+      if (closed) return;
+      closed = true;
+      maintenance.close();
+      try { app.close(); } finally { store.close(); }
+    },
     async handler(req, res) {
       res.setHeader('cache-control', 'no-store');
       res.setHeader('referrer-policy', 'no-referrer');
       res.setHeader('x-content-type-options', 'nosniff');
       res.setHeader('content-security-policy', "default-src 'none'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'");
+      try { maintenance.health(); }
+      catch { res.writeHead(503, { 'content-type': 'text/plain' }); res.end('Service unavailable'); return; }
       try {
         const url = new URL(req.url, origin);
         if (url.origin !== origin) throw new Denied();
