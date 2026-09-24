@@ -41,7 +41,8 @@ export class NativeReadPolicy {
     const target = fold(this.paths.resolve(this.cwd, candidate));
     for (const denied of this.deniedPaths) {
       const relative = this.paths.relative(fold(denied), target);
-      if (relative === '' || (!relative.startsWith('..') && !this.paths.isAbsolute(relative))) this.#deny();
+      const outside = relative === '..' || relative.startsWith(`..${this.paths.sep}`) || this.paths.isAbsolute(relative);
+      if (!outside) this.#deny();
     }
     return candidate;
   }

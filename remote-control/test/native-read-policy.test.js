@@ -101,6 +101,22 @@ test('allowed-root containment still rejects traversal and sibling-prefix paths'
   }
 });
 
+test('explicit denied directories include children whose names start with two dots', async (t) => {
+  const { client, root } = await fixture(t, { deniedReadPaths: ['private-notes', 'private'] });
+  await fs.mkdir(path.join(root, 'private', '..notes'), { recursive: true });
+  await fs.writeFile(path.join(root, 'private', '..notes', 'ordinary.md'), SECRET);
+  const file = path.join(root, 'private', '..notes', 'ordinary.md');
+  const directory = path.dirname(file);
+  for (const candidate of [file, ...(process.platform === 'win32' ? [file.toUpperCase()] : [])]) {
+    await denied(client, 'read_file', { path: candidate });
+    await denied(client, 'get_file_info', { path: candidate });
+  }
+  await denied(client, 'search_content', { path: directory, pattern: 'SYNTHETIC' });
+  const output = JSON.stringify(await client.callTool('search_content', { path: '.', pattern: 'SYNTHETIC' }));
+  assert.ok(!output.includes(SECRET));
+  assert.equal((await client.callTool('read_file', { path: 'docs/ordinary.md' })).structuredContent.text, ORDINARY);
+});
+
 test('requested and canonical paths both exclude junction/symlink aliases', async (t) => {
   const { client, root, sibling } = await fixture(t);
   const linkType = process.platform === 'win32' ? 'junction' : 'dir';
@@ -164,7 +180,7 @@ test('Windows name folding, trailing aliases and explicit exclusions are host-in
   const policy = new NativeReadPolicy({ cwd: 'C:\\studio', platform: 'win32', deniedPaths: ['private'] });
   for (const file of ['C:\\studio\\.ENV', 'C:\\studio\\auth.json. ', 'C:/studio/config/app.env',
     'docs\\ordinary.md:private', 'C:\\studio\\ordinary.md::$DATA', '\\\\?\\C:\\studio\\ordinary.md',
-    '\\\\.\\C:\\studio\\ordinary.md', 'c:\\STUDIO\\PRIVATE\\note.md', '.env\\..\\ordinary.md']) {
+    '\\\\.\\C:\\studio\\ordinary.md', 'c:\\STUDIO\\PRIVATE\\note.md', 'private\\..notes\\ordinary.md', '.env\\..\\ordinary.md']) {
     assert.throws(() => policy.assertReadable(file), /native read policy/, file);
   }
   assert.equal(policy.assertReadable('C:\\STUDIO\\private-sibling\\note.md'), 'C:\\STUDIO\\private-sibling\\note.md');
