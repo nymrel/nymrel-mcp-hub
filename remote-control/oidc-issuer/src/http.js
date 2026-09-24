@@ -57,6 +57,7 @@ export async function createIssuerHttp(config, { googleFetch } = {}) {
     return csrf;
   }
   return {
+    health() { app.health(); store.health(); },
     close() { app.close(); store.close(); },
     async handler(req, res) {
       res.setHeader('cache-control', 'no-store');

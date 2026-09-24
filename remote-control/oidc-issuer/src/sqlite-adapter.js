@@ -44,5 +44,5 @@ export function createSqliteStore(filename) {
     }
     async revokeByGrantId(id) { db.prepare('DELETE FROM oidc WHERE grant_id=?').run(id); }
   }
-  return { Adapter, close: () => db.close(), prune: () => db.prepare('DELETE FROM oidc WHERE expires IS NOT NULL AND expires<=?').run(now()) };
+  return { Adapter, health: () => { db.prepare('SELECT count(*) FROM oidc').get(); }, close: () => db.close(), prune: () => db.prepare('DELETE FROM oidc WHERE expires IS NOT NULL AND expires<=?').run(now()) };
 }
