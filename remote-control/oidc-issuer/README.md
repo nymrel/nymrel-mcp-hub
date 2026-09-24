@@ -91,9 +91,35 @@ It listens only on `127.0.0.1` (`PORT`, default 3100). A locally trusted TLS pro
 is required. If `trustProxy` is enabled, that proxy must replace forwarding headers
 and prevent untrusted direct ingress. Do not deploy behind an unreviewed proxy or
 change binding to a public interface without reviewing this trust boundary.
-Request/header timeouts are set; capacity limits, rate limiting and operational
+Request/header timeouts are set; broader capacity limits and operational
 monitoring remain required. The HTTP factory's custom Google transport is accepted
 only in offline mode, for tests.
+
+### HTTP abuse bounds
+
+Every HTTP factory instance has three process-wide token buckets: 60 authorization,
+interaction and other requests; 20 Google callback requests; and 60 token/revocation
+requests. Each bucket starts full and replenishes its capacity over 60 seconds,
+with no accumulated credit beyond one burst. All methods and failed attempts count.
+Only exact GET discovery and JWKS routes are exempt. Admission happens before
+provider dispatch, body parsing, binding access/consumption or upstream Google calls.
+Exhaustion returns HTTP 429, a whole-second `Retry-After`, `Cache-Control: no-store`,
+and a JSON `temporarily_unavailable` error. A retry still needs valid, unexpired
+OAuth/CSRF material; throttling does not extend its lifetime.
+
+These budgets are deliberately shared for this single-operator issuer. Cookies,
+interaction IDs, claimed IPs and proxy headers cannot create fresh buckets, and
+limiter memory is constant. A caller can exhaust a shared budget and temporarily
+delay legitimate users; upstream ingress controls and monitoring are still needed.
+Limits reset on process restart and do not coordinate across processes or hosts.
+Keep one issuer instance; review limits and deployment ingress behavior before
+activation. The optional test clock is accepted only in offline mode.
+
+Offline tests prove burst and gradual refill bounds, independent budgets, concurrent
+callback abuse, resistance to changing cookies/forwarding headers, and recovery.
+A throttled valid Google callback makes no upstream request and keeps its pending
+login; a throttled valid token exchange leaves its code usable after retry. The
+mocked full login/consent/token flow continues to pass with the limiter enabled.
 
 ## Required before deployment
 
@@ -116,7 +142,7 @@ only in offline mode, for tests.
    handling separately from the MCP resource token.
 5. Protect the SQLite database, WAL files, backups and key store with host access
    controls; they contain live authorization material. Establish backups, restore
-   tests, pruning, a process ownership lock, monitoring, rate limits, dependency
+   tests, pruning, a process ownership lock, monitoring, ingress rate controls, dependency
    updates, HTTPS/reverse-proxy settings and key rotation. Node's SQLite API/runtime
    compatibility and crash recovery need deployment-environment validation.
 6. Test concurrent code/refresh replay and crash recovery under the chosen process

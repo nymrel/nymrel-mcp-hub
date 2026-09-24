@@ -2,6 +2,7 @@ import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { createIssuer } from './issuer.js';
 import { createSqliteStore } from './sqlite-adapter.js';
 import { createGoogleClient, GOOGLE_ISSUER } from './google-client.js';
+import { createIssuerRateLimiter } from './rate-limit.js';
 
 const random = () => randomBytes(32).toString('base64url');
 const equal = (a, b) => typeof a === 'string' && typeof b === 'string' && Buffer.byteLength(a) === Buffer.byteLength(b) && timingSafeEqual(Buffer.from(a), Buffer.from(b));
@@ -18,11 +19,13 @@ async function form(req) {
 }
 
 // Production-shaped, but deploy only after the README's operational/live gates.
-export async function createIssuerHttp(config, { googleFetch } = {}) {
+export async function createIssuerHttp(config, { googleFetch, rateLimitClock } = {}) {
   if (config.identity?.issuer !== GOOGLE_ISSUER) throw new Error('Google issuer required');
   const origin = new URL(config.issuer).origin;
   if (config.issuer !== origin) throw new Error('HTTP issuer must be an origin without a path or trailing slash');
   if (googleFetch && !config.offline) throw new Error('Mock transport is offline-only');
+  if (rateLimitClock && !config.offline) throw new Error('Mock clock is offline-only');
+  const rateLimit = createIssuerRateLimiter(rateLimitClock);
   const app = createIssuer(config);
   const store = createSqliteStore(config.databasePath);
   const bindings = new store.Adapter('BrowserInteractionBinding');
@@ -67,6 +70,12 @@ export async function createIssuerHttp(config, { googleFetch } = {}) {
       try {
         const url = new URL(req.url, origin);
         if (url.origin !== origin) throw new Denied();
+        const retryAfter = rateLimit(url.pathname, req.method);
+        if (retryAfter) {
+          res.writeHead(429, { 'content-type': 'application/json', 'retry-after': String(retryAfter) });
+          res.end(JSON.stringify({ error: 'temporarily_unavailable', error_description: 'Too many requests; retry later' }));
+          return;
+        }
         if (url.pathname === '/google/callback') {
           if (req.method !== 'GET') throw new Denied();
           const sid = cookie(req), pending = sid && await bindings.find(sid);

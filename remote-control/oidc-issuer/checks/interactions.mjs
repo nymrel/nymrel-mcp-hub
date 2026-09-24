@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createIssuerHttp } from '../src/http.js';
 import { RESOURCE, READ_SCOPES } from '../src/issuer.js';
+import { ISSUER_RATE_LIMITS } from '../src/rate-limit.js';
 
 const googleIssuer = 'https://accounts.google.com';
 const callback = 'https://chatgpt.com/connector/oauth/mock';
@@ -66,6 +67,7 @@ async function fixture(t) {
   const dir = await mkdtemp(join(tmpdir(), 'nymrel-google-'));
   const google = googleMock();
   let app;
+  let clock = 0;
   const server = createServer((req, res) => app.handler(req, res));
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const issuer = `http://127.0.0.1:${server.address().port}`;
@@ -75,7 +77,7 @@ async function fixture(t) {
     jwks: { keys: [{ ...key, alg: 'RS256', kid: 'issuer-fixture', use: 'sig' }] },
     cookieKeys: [randomBytes(32).toString('hex')], databasePath: join(dir, 'state.sqlite'), offline: true,
     google: { clientId: 'google-fixture', clientSecret: 'offline-fixture-secret' } };
-  app = await createIssuerHttp(config, { googleFetch: google.fetch });
+  app = await createIssuerHttp(config, { googleFetch: google.fetch, rateLimitClock: () => clock });
   t.after(async () => { await new Promise(resolve => server.close(resolve)); app.close(); await rm(dir, { recursive: true, force: true }); });
   function browser() {
     const cookies = new Map();
@@ -118,7 +120,7 @@ async function fixture(t) {
     }
     return { request, page, post, loginPage, reachConsent, cookies };
   }
-  return { browser, issuer, google };
+  return { browser, issuer, google, advance: ms => { clock += ms; } };
 }
 
 test('Google code verification, server-bound login and explicit consent produce downstream OAuth code', async t => {
@@ -133,14 +135,63 @@ test('Google code verification, server-bound login and explicit consent produce 
   assert.equal(authorized.origin + authorized.pathname, callback);
   assert.equal(authorized.searchParams.get('iss'), f.issuer);
   assert.equal(authorized.searchParams.get('state'), 'chatgpt-state');
-  const token = await b.request('/token', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' },
+  const exchange = () => b.request('/token', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({ grant_type: 'authorization_code', client_id: 'chatgpt-fixture', redirect_uri: callback,
       code: authorized.searchParams.get('code'), code_verifier: consent.verifier, resource: RESOURCE }) });
+  for (let i = 0; i < ISSUER_RATE_LIMITS.token; i++) {
+    assert.notEqual((await b.request('/token', { method: 'POST' })).status, 429);
+  }
+  assert.equal((await exchange()).status, 429, 'Throttled token exchange must not consume the code');
+  for (const path of ['/TOKEN', '/ToKeN', '/token/revocation', '/TOKEN/REVOCATION', '/ToKeN/ReVoCaTiOn']) {
+    const blocked = await b.request(path, { method: 'POST' });
+    assert.equal(blocked.status, 429, `${path} must share the exhausted token budget`);
+    assert.equal(blocked.headers.get('retry-after'), '1');
+  }
+  f.advance(1000);
+  const token = await exchange();
   assert.equal(token.status, 200, token.body);
   const payload = JSON.parse(Buffer.from(JSON.parse(token.body).access_token.split('.')[1], 'base64url'));
   assert.equal(payload.sub, 'internal-operator'); assert.equal(payload.aud, RESOURCE);
   assert.equal(f.google.stats().tokenRequests, 1); assert.equal(f.google.stats().jwksRequests, 1);
   assert.equal((await b.post(consent)).status, 403, 'Consent cannot be replayed');
+});
+
+test('Google callback budget blocks upstream work without consuming pending valid login', async t => {
+  const f = await fixture(t), b = f.browser();
+  const start = await b.post(await b.loginPage());
+  const valid = f.google.issue(start.location);
+  const results = await Promise.all(Array.from({ length: ISSUER_RATE_LIMITS.google + 5 }, (_, i) =>
+    b.request(`/google/callback?state=wrong-${i}`, { headers: { 'x-forwarded-for': `192.0.2.${i}`, forwarded: `for=192.0.2.${i}` } })));
+  assert.equal(results.filter(r => r.status === 403).length, ISSUER_RATE_LIMITS.google);
+  assert.equal(results.filter(r => r.status === 429).length, 5);
+  const blocked = await b.request(valid);
+  assert.equal(blocked.status, 429);
+  assert.equal(blocked.headers.get('retry-after'), '3');
+  assert.equal(blocked.headers.get('cache-control'), 'no-store');
+  assert.equal(blocked.headers.get('set-cookie'), null);
+  assert.equal(f.google.stats().tokenRequests, 0);
+  assert.equal((await b.request('/.well-known/openid-configuration')).status, 200);
+  f.advance(3000);
+  const completed = await b.request(valid);
+  assert.equal(completed.status, 303, completed.body);
+  assert.equal(f.google.stats().tokenRequests, 1);
+  assert.equal((await b.page(completed.location)).status, 200);
+});
+
+test('interaction attempts share a budget across paths, methods, cookies and forwarding headers', async t => {
+  const f = await fixture(t), b = f.browser();
+  for (let i = 0; i < ISSUER_RATE_LIMITS.interaction; i++) {
+    const result = await b.request(`/interaction/fake-${i}/start`, { method: 'POST',
+      headers: { cookie: `nymrel_interaction=${randomBytes(32).toString('base64url')}`, 'x-forwarded-for': `192.0.2.${i}` } });
+    assert.equal(result.status, 403);
+  }
+  const blocked = await b.request('/auth');
+  assert.equal(blocked.status, 429);
+  assert.equal(blocked.headers.get('retry-after'), '1');
+  assert.equal(blocked.headers.get('set-cookie'), null);
+  assert.equal(f.google.stats().tokenRequests, 0);
+  f.advance(60000);
+  assert.equal((await b.reachConsent()).status, 200);
 });
 
 test('Google state, nonce, signature, audience, issuer, expiry and subject failures deny login', async t => {
