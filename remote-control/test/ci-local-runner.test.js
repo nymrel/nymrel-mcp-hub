@@ -81,6 +81,23 @@ test('failed dependency skips dependent jobs', async () => {
   });
 });
 
+test('refuses a job cwd that resolves outside the checkout', async (t) => {
+  if (process.platform === 'win32') { t.skip('symlink privilege varies on Windows'); return; }
+  await withRoot(async (root) => {
+    const outside = await fs.mkdtemp(path.join(os.tmpdir(), 'nymrel-ci-outside-'));
+    try {
+      await fs.symlink(outside, path.join(root, 'escape'));
+      const escapeManifest = { version: 1, jobs: [{ id: 'escape', command: 'x', cwd: 'escape' }] };
+      await assert.rejects(() => runTrustedCiCheckout({
+        repoRoot: root, repository: 'nymrel/example', commitSha: sha, manifest: escapeManifest,
+        git: fakeGit(root), executeJob: async () => { throw new Error('must not execute'); }
+      }), /escapes repository root/);
+    } finally {
+      await fs.rm(outside, { recursive: true, force: true });
+    }
+  });
+});
+
 test('refuses mismatched or dirty checkouts before execution', async () => {
   await withRoot(async (root) => {
     const base = { repoRoot: root, repository: 'nymrel/example', commitSha: sha, manifest, executeJob: async () => { throw new Error('must not execute'); } };
