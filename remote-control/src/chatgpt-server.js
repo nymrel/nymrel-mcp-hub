@@ -8,6 +8,7 @@ import { ForbiddenError, NymrelRemoteError, UnauthorizedError } from './errors.j
 import { bearerFromHeaders } from './token.js';
 import { createRemoteHttpServer } from './server.js';
 import { installIssuerHost } from './issuer-host.js';
+import { createPublisherHistoryClientFromEnv } from './publisher-history-client.js';
 
 const CHATGPT_MCP_SCOPES = [
   'devices:read', 'tools:read', 'tools:write', 'tools:execute', 'tools:network'
@@ -147,6 +148,10 @@ export async function createChatgptRemoteHttpServer(config, options = {}) {
       (chatgptAudience === NYMREL_PLUGIN_RESOURCE || mcpAudience === NYMREL_PLUGIN_RESOURCE || readonlyAudience === NYMREL_PLUGIN_RESOURCE)) {
     throw new Error('The Nymrel plugin resource audience must not be shared with a full-control MCP resource');
   }
+  const publisherHistoryClient = createPublisherHistoryClientFromEnv({
+    env: options.publisherHistoryEnv || process.env,
+    fetchImpl: options.publisherHistoryFetchImpl || globalThis.fetch
+  });
   const oauth = createExternalOAuthAuthenticator(config, {
     audience: chatgptAudience, fetchImpl: options.oauthFetchImpl
   });
@@ -160,9 +165,11 @@ export async function createChatgptRemoteHttpServer(config, options = {}) {
   const original = server.listeners('request')[0];
   if (!original) throw new Error('Nymrel Remote HTTP request handler is unavailable');
   const edge = new ChatgptMcpEdge({ broker: runtime.broker, syncWaitMs: config.syncWaitMs });
-  const readonlyEdge = new ChatgptReadonlyMcpEdge({ broker: runtime.broker, syncWaitMs: config.syncWaitMs });
+  const readonlyEdge = new ChatgptReadonlyMcpEdge({ broker: runtime.broker, syncWaitMs: config.syncWaitMs,
+    publisherHistoryClient });
   const nymrelPluginEdge = config.nymrelPluginReadonlyEnabled
-    ? new ChatgptReadonlyMcpEdge({ broker: runtime.broker, syncWaitMs: config.syncWaitMs, sourceProfile: 'nymrel-plugin-readonly' })
+    ? new ChatgptReadonlyMcpEdge({ broker: runtime.broker, syncWaitMs: config.syncWaitMs,
+      sourceProfile: 'nymrel-plugin-readonly', publisherHistoryClient })
     : null;
   const limiter = new FixedWindowRateLimiter();
   runtime.chatgptMcp = edge;
