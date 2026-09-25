@@ -43,7 +43,9 @@ export class PublisherHistoryClient {
   constructor({ baseUrl, token, tenantBrands, fetchImpl = globalThis.fetch, timeoutMs = DEFAULT_TIMEOUT_MS } = {}) {
     let parsed;
     try { parsed = new URL(baseUrl); } catch { parsed = null; }
-    if (!parsed || parsed.protocol !== 'https:' || parsed.username || parsed.password || parsed.search || parsed.hash ||
+    const privateRailway = parsed?.protocol === 'http:' && parsed.hostname.endsWith('.railway.internal');
+    const secureOrigin = parsed?.protocol === 'https:' || privateRailway;
+    if (!parsed || !secureOrigin || parsed.username || parsed.password || parsed.search || parsed.hash ||
         parsed.pathname !== '/' || !bounded(token, 4096) || !(tenantBrands instanceof Map) ||
         typeof fetchImpl !== 'function' || !Number.isSafeInteger(timeoutMs) || timeoutMs < 1_000 || timeoutMs > 30_000) {
       throw new TypeError('Publisher history client configuration is invalid');
