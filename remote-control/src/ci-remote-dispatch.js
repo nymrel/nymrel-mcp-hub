@@ -73,16 +73,6 @@ export async function dispatchTrustedCi({
   );
   if (!ciTool) throw new Error('CI target device does not expose start_trusted_ci');
 
-  const args = {
-    repoRoot: targetRoot,
-    repository,
-    commitSha: commitSha.toLowerCase(),
-    manifestPath: targetManifest,
-    selectedJobs: plan.jobs.map((job) => job.id),
-    allowNetwork,
-    expectedManifestHash: manifestHash,
-    expectedPlanHash: planHash
-  };
   const dispatchIdentity = {
     schema: 'nymrel.ci.remote-dispatch/v1',
     tenantId: principal.tenant,
@@ -96,6 +86,17 @@ export async function dispatchTrustedCi({
     attempt
   };
   const dispatchKey = sha256(dispatchIdentity);
+  const args = {
+    runId: dispatchKey,
+    repoRoot: targetRoot,
+    repository,
+    commitSha: commitSha.toLowerCase(),
+    manifestPath: targetManifest,
+    selectedJobs: plan.jobs.map((job) => job.id),
+    allowNetwork,
+    expectedManifestHash: manifestHash,
+    expectedPlanHash: planHash
+  };
   const call = await broker.createCall(principal, ciTool.name, args, {
     sourceProfile: 'nymrel-ci-trusted',
     idempotencyKey: dispatchKey
