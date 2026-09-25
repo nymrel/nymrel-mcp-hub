@@ -6,7 +6,7 @@
 [![Node runtime dependencies](https://img.shields.io/badge/Node%20runtime%20dependencies-0-success.svg?style=flat-square)](#validation)
 [![Engines](https://img.shields.io/badge/engines-TypeScript%20%2B%20Python-FAF8F2.svg?style=flat-square)](#run-from-source)
 
-A dual-engine Model Context Protocol server exposing 14 Nymrel tools, 3 resources, and 3 prompt templates through TypeScript/Node.js and Python stdio entry points.
+A dual-engine Model Context Protocol server exposing 15 Nymrel tools, 3 resources, and 3 prompt templates through TypeScript/Node.js and Python stdio entry points.
 
 The repository supports the modern MCP `2026-07-28` request model while retaining initialize-era compatibility through `2025-11-25`. It does not currently claim a hosted transport or verified npm/PyPI publication.
 
@@ -126,6 +126,13 @@ The hub exposes Nymrel-oriented tools through one MCP surface. Repository names 
 | 12 | `nymrel_a2ui_render` | `nymrel/a2ui-warm-paper` | Declarative decision-card rendering. |
 | 13 | `nymrel_swarm_bus` | `nymrel/nymrel-swarm-protocol` | Inter-agent message envelopes and dispatch support. |
 | 14 | `nymrel_proof_verify` | `nymrel/nymrel-proof-ledger` | Merkle receipt and signature verification. |
+| 15 | `nymrel_web_search` | `nymrel/nymrel-mcp-hub` | Provider-neutral public-web search with configured fallback across Exa, Tavily, Brave Search, and SerpAPI. |
+
+### Web search gateway
+
+`nymrel_web_search` is the discovery layer of the studio web-access stack. API keys are read only from the MCP server environment (`EXA_API_KEY`, `TAVILY_API_KEY`, `BRAVE_SEARCH_API_KEY`, `SERPAPI_API_KEY`); callers cannot pass credentials as tool arguments. `provider: "auto"` prefers Exa/Tavily-style agent search and falls back across configured providers. `mode: "serp_exact"` prioritizes SerpAPI, while `mode: "research"` asks Tavily for advanced search when routed there. Results are normalized, domain-filtered, and never synthesized when providers fail.
+
+Search does not fetch arbitrary result URLs. Escalate selected URLs to `nymrel_crawler_mesh` for extraction/crawling, and use a separately privileged browser service only when JavaScript execution, login state, forms, or other interaction is genuinely required.
 
 ## Resources
 

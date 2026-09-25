@@ -90,7 +90,7 @@ def test_python_modern_inline_requests_are_validated_and_result_enveloped():
         "method": "tools/list",
         "params": modern_params(),
     })
-    assert len(list_res["result"]["tools"]) == 14
+    assert len(list_res["result"]["tools"]) == 15
     assert list_res["result"]["resultType"] == "complete"
     assert list_res["result"]["ttlMs"] == 300_000
     assert list_res["result"]["cacheScope"] == "public"
@@ -168,7 +168,7 @@ def test_python_mcp_tools_list():
         "id": 2,
         "method": "tools/list"
     })
-    assert len(res["result"]["tools"]) == 14
+    assert len(res["result"]["tools"]) == 15
     assert "resultType" not in res["result"]
 
 def test_python_mcp_tool_execution():

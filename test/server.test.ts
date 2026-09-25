@@ -103,7 +103,7 @@ test('MCP Server: modern inline requests are validated and result-enveloped', as
     params: modernParams()
   });
 
-  assert.strictEqual(listRes?.result?.tools?.length, 14);
+  assert.strictEqual(listRes?.result?.tools?.length, 15);
   assert.strictEqual(listRes?.result?.resultType, 'complete');
   assert.strictEqual(listRes?.result?.ttlMs, 300_000);
   assert.strictEqual(listRes?.result?.cacheScope, 'public');
@@ -190,7 +190,7 @@ test('MCP Server: ping returns empty object', async () => {
   assert.deepStrictEqual(res?.result, {});
 });
 
-test('MCP Server: tools/list returns all 14 tools', async () => {
+test('MCP Server: tools/list returns all 15 tools', async () => {
   const server = new MCPServer();
   const res = await server.handleRequest({
     jsonrpc: '2.0',
@@ -200,7 +200,7 @@ test('MCP Server: tools/list returns all 14 tools', async () => {
 
   assert.strictEqual(res?.id, 2);
   assert.ok(Array.isArray(res?.result?.tools));
-  assert.strictEqual(res?.result?.tools?.length, 14);
+  assert.strictEqual(res?.result?.tools?.length, 15);
   assert.strictEqual(res?.result?.resultType, undefined);
 });
 

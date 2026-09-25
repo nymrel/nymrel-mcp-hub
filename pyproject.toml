@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "nymrel-mcp-hub"
 version = "1.0.0"
-description = "Dual-engine Model Context Protocol (MCP) server exposing 14 Nymrel tools"
+description = "Dual-engine Model Context Protocol (MCP) server exposing 15 Nymrel tools"
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE", "docs/proof-ledger/LICENSE", "THIRD_PARTY_NOTICES.md"]
