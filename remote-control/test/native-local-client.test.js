@@ -3,7 +3,22 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import { execFile } from 'node:child_process';
 import { NativeLocalClient } from '../src/native-local-client.js';
+
+function execFileText(file, args, cwd) {
+  return new Promise((resolve, reject) => {
+    execFile(file, args, { cwd, windowsHide: true }, (error, stdout, stderr) => {
+      if (error) {
+        error.stdout = String(stdout || '');
+        error.stderr = String(stderr || '');
+        reject(error);
+        return;
+      }
+      resolve(String(stdout).trim());
+    });
+  });
+}
 
 async function withClient(run) {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'nymrel-native-'));
@@ -71,6 +86,57 @@ test('native backend retains process output in a managed session', async () => {
 
     const sessions = await client.callTool('list_sessions', {});
     assert.ok(sessions.structuredContent.sessions.some((session) => session.pid === pid));
+  });
+});
+
+test('structured trusted CI launcher executes an exact clean Git checkout without inherited secrets', async () => {
+  await withClient(async (client, root) => {
+    await fs.mkdir(path.join(root, '.nymrel'), { recursive: true });
+    await fs.writeFile(path.join(root, '.nymrel', 'ci.json'), JSON.stringify({
+      version: 1,
+      jobs: [{
+        id: 'env-proof',
+        command: 'node -e "process.stdout.write(process.env.NYMREL_TEST_SECRET ? \'leak\' : \'ci-env-clean\')"'
+      }]
+    }), 'utf8');
+
+    await execFileText('git', ['init'], root);
+    await execFileText('git', ['add', '.nymrel/ci.json'], root);
+    await execFileText('git', ['-c', 'user.name=Nymrel CI', '-c', 'user.email=ci@nymrel.invalid', 'commit', '-m', 'ci fixture'], root);
+    const sha = await execFileText('git', ['rev-parse', 'HEAD'], root);
+
+    const previous = process.env.NYMREL_TEST_SECRET;
+    process.env.NYMREL_TEST_SECRET = 'must-not-reach-ci';
+    try {
+      const tools = await client.listTools();
+      assert.ok(tools.some((tool) => tool.name === 'start_trusted_ci'));
+      const started = await client.callTool('start_trusted_ci', {
+        repoRoot: root,
+        repository: 'nymrel/ci-fixture',
+        commitSha: sha
+      });
+      assert.equal(started.isError, false);
+      const pid = started.structuredContent.pid;
+
+      let output = '';
+      let last;
+      const deadline = Date.now() + (process.platform === 'win32' ? 30_000 : 15_000);
+      do {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        last = await client.callTool('read_process_output', { pid, length: 5000 });
+        output += last.structuredContent.output;
+      } while (Date.now() < deadline && last.structuredContent.state !== 'finished');
+
+      assert.equal(last.structuredContent.state, 'finished', output);
+      assert.equal(last.structuredContent.exitCode, 0, output);
+      assert.match(output, /ci-env-clean/);
+      assert.doesNotMatch(output, /must-not-reach-ci|\bleak\b/);
+      assert.match(output, /NYMREL_CI_RECEIPT/);
+      assert.match(output, /"conclusion":"success"/);
+    } finally {
+      if (previous === undefined) delete process.env.NYMREL_TEST_SECRET;
+      else process.env.NYMREL_TEST_SECRET = previous;
+    }
   });
 });
 
