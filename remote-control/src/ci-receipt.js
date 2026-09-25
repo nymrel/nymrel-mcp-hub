@@ -2,6 +2,7 @@ import { sha256 } from './crypto.js';
 
 const HASH_RE = /^[0-9a-f]{64}$/i;
 const SHA_RE = /^[0-9a-f]{40}$/i;
+const JOB_ID_RE = /^[a-z0-9][a-z0-9._-]{0,63}$/;
 const JOB_STATUS = new Set([
   'success',
   'failed',
@@ -32,20 +33,34 @@ export function verifyTrustedCiReceipt(value, expected = {}) {
   assertHash(value.receiptHash, 'CI receipt receiptHash');
   assertIso(value.startedAt, 'CI receipt startedAt');
   assertIso(value.completedAt, 'CI receipt completedAt');
+  if (Date.parse(value.completedAt) < Date.parse(value.startedAt)) throw new Error('CI receipt completedAt precedes startedAt');
   if (!['success', 'failure'].includes(value.conclusion)) throw new Error('CI receipt conclusion is invalid');
   if (!value.runner || typeof value.runner !== 'object' || Array.isArray(value.runner)) throw new Error('CI receipt runner is invalid');
   for (const field of ['hostname', 'platform', 'arch']) {
     if (typeof value.runner[field] !== 'string' || !value.runner[field]) throw new Error(`CI receipt runner.${field} is invalid`);
   }
   if (!Array.isArray(value.jobs) || value.jobs.length === 0 || value.jobs.length > 32) throw new Error('CI receipt jobs are invalid');
+  const jobIds = new Set();
   for (const job of value.jobs) {
-    if (!job || typeof job !== 'object' || Array.isArray(job) || typeof job.id !== 'string' || !job.id) {
+    if (!job || typeof job !== 'object' || Array.isArray(job) || typeof job.id !== 'string' || !JOB_ID_RE.test(job.id)) {
       throw new Error('CI receipt job is invalid');
     }
+    if (jobIds.has(job.id)) throw new Error(`CI receipt contains duplicate job id: ${job.id}`);
+    jobIds.add(job.id);
     if (!JOB_STATUS.has(job.status)) throw new Error(`CI receipt job ${job.id} status is invalid`);
+    if (job.exitCode !== undefined && job.exitCode !== null && !Number.isInteger(job.exitCode)) {
+      throw new Error(`CI receipt job ${job.id} exitCode is invalid`);
+    }
+    for (const field of ['durationMs', 'stdoutBytes', 'stderrBytes']) {
+      if (job[field] !== undefined && (!Number.isInteger(job[field]) || job[field] < 0)) {
+        throw new Error(`CI receipt job ${job.id} ${field} is invalid`);
+      }
+    }
     if (job.stdoutHash !== undefined) assertHash(job.stdoutHash, `CI receipt job ${job.id} stdoutHash`);
     if (job.stderrHash !== undefined) assertHash(job.stderrHash, `CI receipt job ${job.id} stderrHash`);
   }
+  const derivedConclusion = value.jobs.every((job) => job.status === 'success') ? 'success' : 'failure';
+  if (value.conclusion !== derivedConclusion) throw new Error('CI receipt conclusion does not match job statuses');
 
   const { receiptHash, ...body } = value;
   const calculated = sha256(body);
