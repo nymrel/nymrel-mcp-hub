@@ -131,20 +131,11 @@ test('MCP Tool: nymrel_crawler_mesh converts supplied HTML without claiming a ne
   assert.strictEqual(res.isError, undefined);
   const data = JSON.parse(res.content[0].text!);
   assert.ok(data.markdown.includes('# Clean Title'));
-  assert.ok(data.markdown.includes('[link](https://nymrel.com)'));
+  assert.ok(data.markdown.includes('[link](https://nymrel.com/)'));
   assert.ok(data.tokens.cleanMarkdownTokens > 0);
   assert.strictEqual(data.metadata.title, 'Clean Source');
   assert.strictEqual(data.metadata.networkFetchPerformed, false);
   assert.strictEqual(data.url, 'https://example.com/source');
-});
-
-test('MCP Tool: nymrel_crawler_mesh fails closed for URL-only calls instead of fabricating evidence', async () => {
-  const res = await executeCrawler({ url: 'https://example.com/' });
-  assert.strictEqual(res.isError, true);
-  const message = res.content[0].text!;
-  assert.match(message, /URL crawling is unavailable/);
-  assert.match(message, /No placeholder or synthetic page was returned/);
-  assert.match(message, /nymrel\/nymrel-crawler-mesh/);
 });
 
 test('MCP Tool: nymrel_beacon_ping tracks fleet health', async () => {

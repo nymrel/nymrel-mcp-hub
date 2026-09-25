@@ -21,3 +21,16 @@ library's legacy v1 implementation is retained in the verbatim vendor copy but
 is not exposed by these tools. Update both runtimes from the same upstream
 revision, refresh the source digests and fixtures, and run cross-runtime tests
 and independent security review before changing the pin.
+
+# Vendored Crawler Mesh
+
+This package contains a pinned subset of Nymrel Crawler Mesh under the MIT license.
+Source: https://github.com/nymrel/nymrel-crawler-mesh
+Revision: `35634d2109bb8c33cb17e38acf70c584e891c2e6`.
+
+The TypeScript crawler, extractor, cache, Firecrawl-compatibility facade, and network-policy modules required by the Node MCP adapter are copied without changes under `src/vendor/crawler-mesh/`. The Python crawler, extractor, cache, queue, robots, sitemap, rate-limiter, models, and network-policy modules required by the Python MCP adapter are copied without changes under `python/nymrel_mcp_hub/_crawler_mesh/`. The upstream MIT license is included at `docs/crawler-mesh/LICENSE`; source paths and exact upstream Git blob IDs are recorded in `docs/crawler-mesh/SOURCE.json`; the verifier LF-normalizes CRLF checkouts before reconstructing those text blob IDs. The six exact low-severity Bandit findings retained by the verbatim Python copy are reviewed in `docs/crawler-mesh/bandit-reviewed.json`; changed or new findings remain blocking.
+
+`scripts/verify-crawler-mesh-vendor.mjs` recomputes Git blob IDs from the local bytes during the normal package verification gate. The Node and Python MCP adapters remain local to this repository and only shape the public tool contract. Upstream network protections remain authoritative, including public-only HTTP(S), DNS/IP validation, redirect revalidation, response-size limits, robots handling, and bounded concurrency.
+
+The vendored runtime depends on upstream-pinned `undici@8.10.2` for DNS/IP-pinned outbound requests. No Firecrawl Cloud client, Firecrawl API key, or Firecrawl source code is included.
+

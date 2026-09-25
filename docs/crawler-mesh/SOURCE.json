@@ -1,0 +1,137 @@
+{
+  "repository": "https://github.com/nymrel/nymrel-crawler-mesh",
+  "revision": "35634d2109bb8c33cb17e38acf70c584e891c2e6",
+  "license": "MIT",
+  "files": [
+    {
+      "source": "src/types.ts",
+      "destination": "src/vendor/crawler-mesh/types.ts",
+      "gitBlobSha": "4a1929d5387a6b904b9f679fcb0e71bd718dd343"
+    },
+    {
+      "source": "src/firecrawl-compat.ts",
+      "destination": "src/vendor/crawler-mesh/firecrawl-compat.ts",
+      "gitBlobSha": "d331ad050fc1629f0e531989a9bb1901f7b712df"
+    },
+    {
+      "source": "src/cache/index.ts",
+      "destination": "src/vendor/crawler-mesh/cache/index.ts",
+      "gitBlobSha": "707236976d09fb179f0e2d34eb57c27ff7d05b02"
+    },
+    {
+      "source": "src/cache/types.ts",
+      "destination": "src/vendor/crawler-mesh/cache/types.ts",
+      "gitBlobSha": "e40d301a4d2b8f01b45217b24892bb73d9fc1a45"
+    },
+    {
+      "source": "src/extractor/index.ts",
+      "destination": "src/vendor/crawler-mesh/extractor/index.ts",
+      "gitBlobSha": "c3fd3528bf7b26b6764525ef3427bb881532741c"
+    },
+    {
+      "source": "src/extractor/types.ts",
+      "destination": "src/vendor/crawler-mesh/extractor/types.ts",
+      "gitBlobSha": "47929ae244716abeda6a478a294973c04a4e33aa"
+    },
+    {
+      "source": "src/extractor/html-cleaner.ts",
+      "destination": "src/vendor/crawler-mesh/extractor/html-cleaner.ts",
+      "gitBlobSha": "b965b46de2804934c4b202439c3112f1610ea162"
+    },
+    {
+      "source": "src/extractor/ast.ts",
+      "destination": "src/vendor/crawler-mesh/extractor/ast.ts",
+      "gitBlobSha": "67e0cda066b588e03fb46e2615d885b3d8a0f45a"
+    },
+    {
+      "source": "src/crawler/mesh.ts",
+      "destination": "src/vendor/crawler-mesh/crawler/mesh.ts",
+      "gitBlobSha": "16360e6fcf675512cb9c249b760bc477f5615deb"
+    },
+    {
+      "source": "src/crawler/types.ts",
+      "destination": "src/vendor/crawler-mesh/crawler/types.ts",
+      "gitBlobSha": "67c6591ef249a9c71747f384959cba29107031ef"
+    },
+    {
+      "source": "src/crawler/rate-limiter.ts",
+      "destination": "src/vendor/crawler-mesh/crawler/rate-limiter.ts",
+      "gitBlobSha": "60cbcedfb69c0c6b4c4187fd6b22445819eae52f"
+    },
+    {
+      "source": "src/crawler/queue.ts",
+      "destination": "src/vendor/crawler-mesh/crawler/queue.ts",
+      "gitBlobSha": "0c7c9626fab57d2946c47abb57763d4e950bdf19"
+    },
+    {
+      "source": "src/crawler/robots.ts",
+      "destination": "src/vendor/crawler-mesh/crawler/robots.ts",
+      "gitBlobSha": "e556768eaccea08132ab12342e26b929b100feb9"
+    },
+    {
+      "source": "src/crawler/sitemap.ts",
+      "destination": "src/vendor/crawler-mesh/crawler/sitemap.ts",
+      "gitBlobSha": "9285f3c03d8243189ba14a3d06f5917b945e663c"
+    },
+    {
+      "source": "src/crawler/network-policy.ts",
+      "destination": "src/vendor/crawler-mesh/crawler/network-policy.ts",
+      "gitBlobSha": "10f587ddc3f2d592356b9a2720a1102473337215"
+    },
+    {
+      "source": "LICENSE",
+      "destination": "docs/crawler-mesh/LICENSE",
+      "gitBlobSha": "115cded080f94e23fee1e7e84db84433c0a80281"
+    },
+    {
+      "source": "python/nymrel_crawler_mesh/__init__.py",
+      "destination": "python/nymrel_mcp_hub/_crawler_mesh/__init__.py",
+      "gitBlobSha": "c8ceb28dd45d22a4d722e60fc0573ae74bb7da3b"
+    },
+    {
+      "source": "python/nymrel_crawler_mesh/models.py",
+      "destination": "python/nymrel_mcp_hub/_crawler_mesh/models.py",
+      "gitBlobSha": "360e310439fb77d51df45764674ca75efdf9ec53"
+    },
+    {
+      "source": "python/nymrel_crawler_mesh/extractor.py",
+      "destination": "python/nymrel_mcp_hub/_crawler_mesh/extractor.py",
+      "gitBlobSha": "c029fa981bdbcc339917444a3db4de78539589da"
+    },
+    {
+      "source": "python/nymrel_crawler_mesh/network_policy.py",
+      "destination": "python/nymrel_mcp_hub/_crawler_mesh/network_policy.py",
+      "gitBlobSha": "fbf610163a04fcfc29f388fdd25a52f0f9381a4c"
+    },
+    {
+      "source": "python/nymrel_crawler_mesh/cache.py",
+      "destination": "python/nymrel_mcp_hub/_crawler_mesh/cache.py",
+      "gitBlobSha": "3524f0f84254133729b5c7b8a236f37c1d65c560"
+    },
+    {
+      "source": "python/nymrel_crawler_mesh/queue.py",
+      "destination": "python/nymrel_mcp_hub/_crawler_mesh/queue.py",
+      "gitBlobSha": "bb019b6dae4448a2e766cfb989ffad191db2b593"
+    },
+    {
+      "source": "python/nymrel_crawler_mesh/rate_limiter.py",
+      "destination": "python/nymrel_mcp_hub/_crawler_mesh/rate_limiter.py",
+      "gitBlobSha": "51caea49802eec22b06ca86f6f38de8e7eebb95b"
+    },
+    {
+      "source": "python/nymrel_crawler_mesh/robots.py",
+      "destination": "python/nymrel_mcp_hub/_crawler_mesh/robots.py",
+      "gitBlobSha": "e4798d1ea8319d9bf76eb80f18a229167eb79270"
+    },
+    {
+      "source": "python/nymrel_crawler_mesh/sitemap.py",
+      "destination": "python/nymrel_mcp_hub/_crawler_mesh/sitemap.py",
+      "gitBlobSha": "6e9d576882da09d7ea0e0db30439bb6e2b471024"
+    },
+    {
+      "source": "python/nymrel_crawler_mesh/crawler.py",
+      "destination": "python/nymrel_mcp_hub/_crawler_mesh/crawler.py",
+      "gitBlobSha": "aa2db9b7e7dd774b4002f56dfa2dc8bf6f3bf649"
+    }
+  ]
+}
