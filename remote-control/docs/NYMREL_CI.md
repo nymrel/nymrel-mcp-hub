@@ -2,7 +2,7 @@
 
 Nymrel CI is the studio-owned execution and evidence layer for validating repository commits without depending on GitHub-hosted Actions capacity.
 
-This document describes the first contract slice only. It does not claim that webhook ingestion, GitHub check-run publishing, ephemeral public-PR workers, artifact storage, or deployment promotion are live.
+This document describes the current pre-activation implementation. The draft now includes the deterministic contract, a trusted local runner, structured Nymrel Remote launch, hash-bound control-plane dispatch, and idempotent Remote call creation. It does not claim that webhook ingestion, autonomous approval, GitHub check-run publishing, ephemeral public-PR workers, artifact storage, or deployment promotion are live.
 
 ## Goals
 
@@ -68,7 +68,7 @@ The canonical location should be `.nymrel/ci.json` once consumers are migrated. 
 5. Build a deterministic plan with `buildCiPlan()`.
 6. Materialize a clean checkout/worktree for the exact SHA.
 7. Dispatch jobs:
-   - trusted lane: Nymrel Remote device call(s), normally `start_process`, on an approved CI workspace;
+   - trusted lane: the structured Nymrel Remote `start_trusted_ci` tool on an approved CI workspace;
    - untrusted lane: disposable sandbox worker only.
 8. Capture bounded stdout/stderr, exit code, duration, manifest hash, plan hash, runner identity, and artifact digests.
 9. Append a Nymrel proof/audit receipt.
@@ -105,11 +105,28 @@ The command verifies that the worktree root is exact, `HEAD` equals the requeste
 
 This is still not an operating-system sandbox. A trusted job can read files available to its OS account and can make network requests unless the host itself prevents them. Run this lane under a dedicated CI account/workspace with no production credentials, SSH keys, package-registry auth files (for example `.npmrc`), cloud profiles, or other secrets. Public or otherwise untrusted pull-request code belongs only on disposable workers.
 
+### Current Remote dispatch slice
+
+The control plane can now preflight a trusted manifest for one specific Remote device and call `dispatchTrustedCi()`. The dispatcher:
+
+- requires a user principal, explicit device id, absolute device-side repository root, immutable 40-character commit SHA, and validated manifest;
+- builds the plan for the target device platform before dispatch;
+- passes both the expected manifest hash and expected plan hash to `start_trusted_ci`;
+- derives a deterministic dispatch key from tenant, device, repository, commit, workspace, manifest, plan, and explicit attempt number;
+- uses Remote broker idempotency so concurrent duplicate deliveries for the same attempt resolve to the same call id;
+- stores only a SHA-256 hash of the broker idempotency key;
+- leaves execution under the existing `execute = operator` policy, so a dispatch is `awaiting_approval` until an authorized operator approves it;
+- requires an incremented `attempt` for an intentional rerun after a terminal/expired prior attempt.
+
+On-device `start_trusted_ci` uses a structured argument vector and `shell: false`; it does not interpolate repository names, paths, SHAs, or job names into a shell command. The child receives the stripped CI environment. The local runner independently rebuilds the plan from the clean exact-SHA checkout and fails before job execution if either expected hash differs.
+
+This gives Nymrel an idempotent trusted dispatch primitive, not yet an autonomous CI scheduler. Webhook intake, approval policy for a dedicated CI service identity, durable result collection, and GitHub status projection remain separate activation steps.
+
 ### Phase 1 — autonomous trusted CI
 
 - webhook ingestion for approved repositories;
-- durable deduplicated queue keyed by repo/SHA/job;
-- trusted-runner scheduling;
+- durable deduplicated Remote dispatch keyed by repo/SHA/plan/attempt (implemented in the draft);
+- trusted-runner scheduling and device selection beyond one explicit target;
 - bounded logs and artifact digests;
 - commit status publishing;
 - retry/cancel semantics and concurrency limits.
