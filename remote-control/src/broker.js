@@ -281,8 +281,11 @@ export class RemoteBroker extends EventEmitter {
     throw new NotFoundError('Remote tool not found');
   }
 
-  async createCall(principal, projectedName, args, { sourceProfile = null } = {}) {
+  async createCall(principal, projectedName, args, { sourceProfile = null, idempotencyKey = null } = {}) {
     if (principal.typ !== 'user') throw new UnauthorizedError('User token required');
+    if (idempotencyKey !== null && (typeof idempotencyKey !== 'string' || idempotencyKey.length < 1 || idempotencyKey.length > 256)) {
+      throw new Error('idempotencyKey must be a string from 1 to 256 characters');
+    }
     const { device, tool } = await this.resolveProjectedTool(principal, projectedName);
     const deviceView = publicDevice(device, this.config.heartbeatTtlMs);
     if (deviceView.status === 'revoked') throw new ConflictError('Device revoked');
@@ -293,6 +296,7 @@ export class RemoteBroker extends EventEmitter {
     const callId = randomId('call_');
     const createdMs = Date.now();
     const argsHash = sha256(args ?? {});
+    const idempotencyHash = idempotencyKey === null ? null : sha256(idempotencyKey);
     const encryptedArgs = this.cipher.seal(args ?? {}, `${callId}:args`);
     const status = policy.decision === 'auto' ? 'queued' : 'awaiting_approval';
     const call = {
@@ -308,6 +312,7 @@ export class RemoteBroker extends EventEmitter {
       status,
       policy,
       argsHash,
+      idempotencyHash,
       args: encryptedArgs,
       result: null,
       resultHash: null,
@@ -320,15 +325,44 @@ export class RemoteBroker extends EventEmitter {
       completedAt: null,
       version: 1
     };
+    let stored = call;
+    let replay = false;
     await this.store.transaction((state) => {
+      if (idempotencyHash) {
+        const existing = Object.values(state.calls).find((item) =>
+          item.tenantId === principal.tenant &&
+          item.principal === principal.sub &&
+          item.idempotencyHash === idempotencyHash
+        );
+        if (existing) {
+          const sameCall = existing.deviceId === device.id &&
+            existing.projectedName === projectedName &&
+            existing.toolName === tool.name &&
+            existing.schemaHash === tool.schemaHash &&
+            existing.argsHash === argsHash &&
+            (existing.sourceProfile ?? null) === sourceProfile;
+          if (!sameCall) throw new ConflictError('Idempotency key is already bound to a different remote call');
+          stored = deepClone(existing);
+          replay = true;
+          this.audit.append(state, {
+            event: 'call.idempotent_replay', tenantId: principal.tenant, principal: principal.sub,
+            deviceId: existing.deviceId, callId: existing.id, toolName: existing.toolName,
+            status: existing.status, policy: existing.policy, argsHash: existing.argsHash,
+            metadata: { sourceProfile: sourceProfile ?? null }
+          });
+          return;
+        }
+      }
       state.calls[callId] = call;
       this.audit.append(state, {
         event: 'call.created', tenantId: principal.tenant, principal: principal.sub, deviceId: device.id,
         callId, toolName: tool.name, status, policy, argsHash
       });
     });
-    if (status === 'queued') this.#notifyQueued(call);
-    return this.#publicCall(call, { includeResult: false });
+    if (!replay && status === 'queued') this.#notifyQueued(call);
+    const response = this.#publicCall(stored, { includeResult: false });
+    if (replay) response.idempotentReplay = true;
+    return response;
   }
 
   async approveCall(principal, callId) {
