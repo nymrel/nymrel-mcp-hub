@@ -41,7 +41,7 @@ test('trusted CI receipt verifies its digest and expected identity', () => {
 test('trusted CI receipt rejects tampering and wrong expected identity', () => {
   const value = receipt();
   assert.throws(
-    () => verifyTrustedCiReceipt({ ...value, conclusion: 'failure' }),
+    () => verifyTrustedCiReceipt({ ...value, runner: { ...value.runner, hostname: 'tampered-runner' } }),
     /hash mismatch/
   );
   assert.throws(
