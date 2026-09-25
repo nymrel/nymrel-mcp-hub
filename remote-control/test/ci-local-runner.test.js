@@ -28,6 +28,12 @@ function fakeGit(root, { head = sha, dirty = '' } = {}) {
   };
 }
 
+test('trusted runner source contains no escaped source newline artifact', async () => {
+  const source = await fs.readFile(new URL('../src/ci-local-runner.js', import.meta.url), 'utf8');
+  assert.equal(source.includes('resolveJobCwd(job.cwd);\\\\n'), false);
+  assert.match(source, /const resolveJobCwd = async/);
+});
+
 test('safe environment keeps platform essentials and strips secret-shaped extras', () => {
   const env = buildSafeCiEnvironment({ PATH: '/bin', HOME: '/home/x', OPENAI_API_KEY: 'nope', DATABASE_URL: 'nope' });
   assert.equal(env.PATH, '/bin');
