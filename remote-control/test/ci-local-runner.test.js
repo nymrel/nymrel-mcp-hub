@@ -66,6 +66,32 @@ test('trusted checkout executes dependency order and emits deterministic evidenc
   });
 });
 
+test('expected manifest and plan hashes fail closed before job execution', async () => {
+  await withRoot(async (root) => {
+    let executions = 0;
+    const base = {
+      repoRoot: root,
+      repository: 'nymrel/example',
+      commitSha: sha,
+      manifest,
+      git: fakeGit(root),
+      executeJob: async () => {
+        executions += 1;
+        return { status: 'success', exitCode: 0, durationMs: 1 };
+      }
+    };
+    await assert.rejects(
+      () => runTrustedCiCheckout({ ...base, expectedManifestHash: '0'.repeat(64) }),
+      /manifest hash mismatch/
+    );
+    await assert.rejects(
+      () => runTrustedCiCheckout({ ...base, expectedPlanHash: 'f'.repeat(64) }),
+      /plan hash mismatch/
+    );
+    assert.equal(executions, 0);
+  });
+});
+
 test('failed dependency skips dependent jobs', async () => {
   await withRoot(async (root) => {
     let calls = 0;
