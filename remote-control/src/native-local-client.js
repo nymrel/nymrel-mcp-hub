@@ -687,6 +687,7 @@ export class NativeLocalClient extends EventEmitter {
   }
 
   async #startTrustedCi({
+    runId,
     repoRoot,
     repository,
     commitSha,
@@ -696,6 +697,10 @@ export class NativeLocalClient extends EventEmitter {
     expectedManifestHash,
     expectedPlanHash
   }) {
+    if (typeof runId !== 'string' || !/^[0-9a-f]{64}$/i.test(runId)) {
+      throw new Error('runId must be a SHA-256 hex digest');
+    }
+    const normalizedRunId = runId.toLowerCase();
     if (typeof repository !== 'string' || !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository)) {
       throw new Error('repository must be owner/name');
     }
@@ -739,6 +744,12 @@ export class NativeLocalClient extends EventEmitter {
     if (expectedManifestHash) args.push('--expected-manifest-hash', expectedManifestHash);
     if (expectedPlanHash) args.push('--expected-plan-hash', expectedPlanHash);
 
+    const ciIdentity = {
+      repository,
+      commitSha: commitSha.toLowerCase(),
+      manifestHash: expectedManifestHash?.toLowerCase(),
+      planHash: expectedPlanHash?.toLowerCase()
+    };
     const child = spawn(process.execPath, args, {
       cwd: workingDirectory,
       shell: false,
@@ -746,15 +757,26 @@ export class NativeLocalClient extends EventEmitter {
       stdio: ['ignore', 'pipe', 'pipe'],
       env: buildSafeCiEnvironment(process.env)
     });
-    return this.#trackProcess(child, workingDirectory, {
+    const result = this.#trackProcess(child, workingDirectory, {
       kind: 'trusted_ci',
-      ciIdentity: {
-        repository,
-        commitSha: commitSha.toLowerCase(),
-        manifestHash: expectedManifestHash?.toLowerCase(),
-        planHash: expectedPlanHash?.toLowerCase()
-      }
+      ciIdentity,
+      runId: normalizedRunId
     });
+    const session = this.sessions.get(child.pid);
+    if (this.ciStateDirectory) {
+      session.persistPromise = session.persistPromise.then(() => writeTrustedCiRunning(this.ciStateDirectory, {
+        runId: normalizedRunId,
+        identity: ciIdentity
+      }));
+      try {
+        await session.persistPromise;
+      } catch (error) {
+        session.persistenceError = String(error?.message || error).slice(0, 1000);
+        try { child.kill('SIGTERM'); } catch { /* best effort */ }
+        throw new Error(`Unable to persist trusted CI start state: ${session.persistenceError}`);
+      }
+    }
+    return result;
   }
 
   #sessionFor(pid) {
@@ -763,33 +785,113 @@ export class NativeLocalClient extends EventEmitter {
     return session;
   }
 
-  async #getTrustedCiResult({ pid }) {
-    const session = this.#sessionFor(pid);
-    if (session.kind !== 'trusted_ci') throw new Error('Process session is not a trusted CI run');
-    if (session.state === 'running') {
-      return textResult({ pid: Number(pid), state: 'running', exitCode: null });
-    }
-    if (session.state === 'error') {
-      return textResult({ pid: Number(pid), state: 'error', exitCode: session.exitCode, error: 'Trusted CI process failed before a verifiable receipt was produced' }, { isError: true });
-    }
-    let receipt;
-    try {
-      receipt = extractTrustedCiReceipt(session.output, session.ciIdentity ?? {});
-    } catch (error) {
+  #sessionForRunId(runId) {
+    const normalized = String(runId ?? '').toLowerCase();
+    return [...this.sessions.values()].find((session) => session.runId === normalized) ?? null;
+  }
+
+  #renderPersistedCiState(record, { recovered = false } = {}) {
+    if (record.status === 'verified') {
       return textResult({
-        pid: Number(pid),
-        state: session.state,
-        exitCode: session.exitCode,
-        error: String(error?.message || error).slice(0, 1000)
+        runId: record.runId,
+        state: 'finished',
+        exitCode: record.exitCode,
+        conclusion: record.receipt.conclusion,
+        receipt: record.receipt,
+        durable: true,
+        recovered
+      });
+    }
+    if (record.status === 'invalid') {
+      return textResult({
+        runId: record.runId,
+        state: 'invalid',
+        exitCode: record.exitCode,
+        error: record.error,
+        durable: true,
+        recovered
       }, { isError: true });
     }
     return textResult({
-      pid: Number(pid),
-      state: session.state,
-      exitCode: session.exitCode,
-      conclusion: receipt.conclusion,
-      receipt
-    });
+      runId: record.runId,
+      state: 'interrupted',
+      exitCode: null,
+      error: 'Trusted CI was running when the durable state was last written; no verified final receipt exists',
+      durable: true,
+      recovered
+    }, { isError: true });
+  }
+
+  async #getTrustedCiResult({ pid, runId }) {
+    if (pid === undefined && runId === undefined) throw new Error('pid or runId is required');
+    let normalizedRunId = null;
+    if (runId !== undefined) {
+      if (typeof runId !== 'string' || !/^[0-9a-f]{64}$/i.test(runId)) throw new Error('runId must be a SHA-256 hex digest');
+      normalizedRunId = runId.toLowerCase();
+    }
+
+    let session = null;
+    if (pid !== undefined) {
+      session = this.#sessionFor(pid);
+      if (normalizedRunId && session.runId !== normalizedRunId) throw new Error('pid and runId do not identify the same trusted CI session');
+    } else {
+      session = this.#sessionForRunId(normalizedRunId);
+    }
+
+    if (session) {
+      if (session.kind !== 'trusted_ci') throw new Error('Process session is not a trusted CI run');
+      normalizedRunId = session.runId;
+      if (session.state === 'running') {
+        return textResult({
+          pid: session.child.pid,
+          runId: normalizedRunId,
+          state: 'running',
+          exitCode: null,
+          durable: Boolean(this.ciStateDirectory)
+        });
+      }
+      await session.persistPromise;
+      if (session.persistenceError) {
+        return textResult({
+          pid: session.child.pid,
+          runId: normalizedRunId,
+          state: 'persistence_error',
+          exitCode: session.exitCode,
+          error: session.persistenceError
+        }, { isError: true });
+      }
+      if (this.ciStateDirectory) {
+        const record = await readTrustedCiState(this.ciStateDirectory, normalizedRunId);
+        if (record) return this.#renderPersistedCiState(record, { recovered: false });
+      }
+      try {
+        const receipt = extractTrustedCiReceipt(session.output, session.ciIdentity ?? {});
+        return textResult({
+          pid: session.child.pid,
+          runId: normalizedRunId,
+          state: session.state,
+          exitCode: session.exitCode,
+          conclusion: receipt.conclusion,
+          receipt,
+          durable: false
+        });
+      } catch (error) {
+        return textResult({
+          pid: session.child.pid,
+          runId: normalizedRunId,
+          state: session.state,
+          exitCode: session.exitCode,
+          error: String(error?.message || error).slice(0, 1000),
+          durable: false
+        }, { isError: true });
+      }
+    }
+
+    if (!normalizedRunId) throw new Error('Unknown trusted CI session');
+    if (!this.ciStateDirectory) throw new Error('Durable trusted CI state is not configured');
+    const record = await readTrustedCiState(this.ciStateDirectory, normalizedRunId);
+    if (!record) throw new Error(`Unknown trusted CI run: ${normalizedRunId}`);
+    return this.#renderPersistedCiState(record, { recovered: true });
   }
 
   async #readProcessOutput({ pid, offset = 0, length = 1000 }) {
