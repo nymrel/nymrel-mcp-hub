@@ -347,6 +347,7 @@ export class NativeLocalClient extends EventEmitter {
       hostname: os.hostname(),
       allowedDirectories: [...this.allowedRoots],
       cwd: this.cwd,
+      ciStateDirectory: this.ciStateDirectory,
       shell: this.shell,
       blockedCommandRules: this.blockedCommands.length,
       toolCount: NATIVE_TOOLS.length
@@ -934,6 +935,7 @@ export class NativeLocalClient extends EventEmitter {
       pid,
       sessionId: session.id,
       kind: session.kind ?? 'process',
+      runId: session.runId ?? null,
       state: session.state,
       exitCode: session.exitCode,
       cwd: session.cwd,
