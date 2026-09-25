@@ -63,7 +63,7 @@ function defaultExecuteJob(job, { repoRoot, environment, maxOutputBytes = 2 * 10
     let limitExceeded = false;
     let timedOut = false;
     let settled = false;
-    const cwd = path.resolve(repoRoot, job.cwd);
+    const cwd = job.resolvedCwd || path.resolve(repoRoot, job.cwd);
     const child = spawn(job.command, {
       cwd,
       env: environment,
@@ -150,7 +150,7 @@ export async function runTrustedCiCheckout({
       statusById.set(job.id, skipped.status);
       continue;
     }
-    const result = await executeJob(job, { repoRoot: root, environment: safeEnvironment, onOutput });
+    const resolvedCwd = await resolveJobCwd(job.cwd);\n    const result = await executeJob({ ...job, resolvedCwd }, { repoRoot: root, environment: safeEnvironment, onOutput });
     const normalized = {
       id: job.id,
       status: result.status,
