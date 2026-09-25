@@ -146,7 +146,9 @@ export const NATIVE_TOOLS = Object.freeze([
         items: { type: 'string', pattern: '^[a-z0-9][a-z0-9._-]{0,63}$' }
       },
       allowNetwork: { type: 'boolean', default: false },
-      expectedManifestHash: { type: 'string', pattern: '^[0-9a-fA-F]{64}    }
+      expectedManifestHash: { type: 'string', pattern: '^[0-9a-fA-F]{64}$' },
+      expectedPlanHash: { type: 'string', pattern: '^[0-9a-fA-F]{64}$' }
+    }
   }),
   readTool('read_process_output', 'Read retained stdout/stderr from a Nymrel process session.', {
     type: 'object', additionalProperties: false, required: ['pid'],
