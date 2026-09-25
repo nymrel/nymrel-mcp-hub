@@ -133,6 +133,13 @@ test('structured trusted CI launcher executes an exact clean Git checkout withou
       assert.doesNotMatch(output, /must-not-reach-ci|\bleak\b/);
       assert.match(output, /NYMREL_CI_RECEIPT/);
       assert.match(output, /"conclusion":"success"/);
+
+      const verified = await client.callTool('get_trusted_ci_result', { pid });
+      assert.equal(verified.isError, false);
+      assert.equal(verified.structuredContent.conclusion, 'success');
+      assert.equal(verified.structuredContent.receipt.repository, 'nymrel/ci-fixture');
+      assert.equal(verified.structuredContent.receipt.commitSha, sha.toLowerCase());
+      assert.match(verified.structuredContent.receipt.receiptHash, /^[0-9a-f]{64}$/);
     } finally {
       if (previous === undefined) delete process.env.NYMREL_TEST_SECRET;
       else process.env.NYMREL_TEST_SECRET = previous;
