@@ -45,8 +45,9 @@ async function fixture({ callTtlMs = 60_000 } = {}) {
         name: 'start_trusted_ci',
         inputSchema: {
           type: 'object',
-          required: ['repoRoot', 'repository', 'commitSha'],
+          required: ['runId', 'repoRoot', 'repository', 'commitSha'],
           properties: {
+            runId: { type: 'string' },
             repoRoot: { type: 'string' },
             repository: { type: 'string' },
             commitSha: { type: 'string' },
@@ -163,6 +164,7 @@ test('trusted CI dispatch collapses concurrent duplicate deliveries and preserve
     assert.equal((await f.broker.listQueuedForDevice(f.devicePrincipal)).length, 1);
     const claim = await f.broker.claimCall(f.devicePrincipal, first.call.id);
     assert.equal(claim.toolName, 'start_trusted_ci');
+    assert.equal(claim.args.runId, first.dispatchKey);
     assert.equal(claim.args.expectedManifestHash, first.manifestHash);
     assert.equal(claim.args.expectedPlanHash, first.planHash);
     assert.deepEqual(claim.args.selectedJobs, ['verify']);
