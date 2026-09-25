@@ -138,6 +138,12 @@ export async function runTrustedCiCheckout({
   const root = await assertTrustedCheckout(repoRoot, commitSha, git);
   const { plan, planHash } = buildCiPlan(manifest, { selectedJobs, platform: process.platform, allowNetwork });
   const safeEnvironment = buildSafeCiEnvironment(environment);
+  const resolveJobCwd = async (relative) => {
+    const candidate = await fs.realpath(path.resolve(root, relative));
+    const rel = path.relative(root, candidate);
+    if (rel.startsWith('..') || path.isAbsolute(rel)) throw new Error(`job cwd escapes repository root: ${relative}`);
+    return candidate;
+  };
   const startedAt = nowIso();
   const results = [];
   const statusById = new Map();
