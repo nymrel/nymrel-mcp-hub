@@ -6,6 +6,18 @@ import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
+REVIEW_FILES = (
+    ROOT / 'docs/proof-ledger/bandit-reviewed.json',
+    ROOT / 'docs/crawler-mesh/bandit-reviewed.json',
+)
+
+
+def load_reviewed_findings():
+    findings = []
+    for path in REVIEW_FILES:
+        findings.extend(json.loads(path.read_text())['findings'])
+    return findings
+
 
 
 def finding_key(item):
@@ -38,8 +50,8 @@ def main():
         print(process.stderr, file=sys.stderr)
         return 1
     report = json.loads(process.stdout)
-    reviewed = json.loads((ROOT / 'docs/proof-ledger/bandit-reviewed.json').read_text())
-    unexpected = unexpected_findings(report['results'], reviewed['findings'])
+    reviewed = load_reviewed_findings()
+    unexpected = unexpected_findings(report['results'], reviewed)
     if report['errors'] or unexpected:
         print(json.dumps({'errors': report['errors'], 'unexpected': unexpected}, indent=2))
         return 1

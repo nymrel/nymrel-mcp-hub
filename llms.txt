@@ -16,7 +16,7 @@
 - A local build, GitHub artifact, tag, or release workflow is not equivalent to registry publication.
 
 ## Overview
-`@nymrel/mcp-hub` is a dual-engine TypeScript/Node.js and Python Model Context Protocol server. Node has no runtime dependencies; Python uses cryptography and rfc8785 for canonical authenticated receipts. It exposes 15 Nymrel-oriented tools, 3 resources, and 3 prompt templates for MCP clients including Claude Desktop, Cursor, Codex, and OpenAI agents.
+`@nymrel/mcp-hub` is a dual-engine TypeScript/Node.js and Python Model Context Protocol server. Node pins undici for the Crawler Mesh transport; Python uses cryptography and rfc8785 for canonical authenticated receipts. It exposes 15 Nymrel-oriented tools, 3 resources, and 3 prompt templates for MCP clients including Claude Desktop, Cursor, Codex, and OpenAI agents.
 
 ## Protocol Contract
 - Modern MCP revision: `2026-07-28`, using `server/discover` and per-request `params._meta`.
@@ -31,7 +31,7 @@
 3. `nymrel_swarm_claim` - Distributed directory lock and lease coordination with fencing generations.
 4. `nymrel_machine_trust` - Schema.org JSON-LD organization graph and llms.txt generation.
 5. `nymrel_proof_ledger` - Canonical signed claim receipt generation.
-6. `nymrel_crawler_mesh` - Web content extraction and Markdown conversion for agent consumption.
+6. `nymrel_crawler_mesh` - Nymrel-owned public-web scrape, map, bounded crawl, and local HTML-to-Markdown extraction with SSRF/redirect/robots protections; no Firecrawl Cloud fallback.
 7. `nymrel_beacon_ping` - Liveness telemetry and multi-agent heartbeat reporting.
 8. `nymrel_headless_quote` - Deterministic service-quote calculation.
 9. `nymrel_local_forge` - Local model and Ollama capability inspection and routing support.

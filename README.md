@@ -3,7 +3,7 @@
 [![Registry status](https://img.shields.io/badge/registry%20publication-unverified-lightgrey.svg?style=flat-square)](#distribution-status)
 [![License: MIT](https://img.shields.io/badge/License-MIT-A8541F.svg?style=flat-square)](./LICENSE)
 [![MCP Spec](https://img.shields.io/badge/MCP-2026--07--28-2A332E.svg?style=flat-square)](https://modelcontextprotocol.io/specification/2026-07-28)
-[![Node runtime dependencies](https://img.shields.io/badge/Node%20runtime%20dependencies-0-success.svg?style=flat-square)](#validation)
+[![Node runtime dependency](https://img.shields.io/badge/Node%20runtime-undici%208.10.2-success.svg?style=flat-square)](#validation)
 [![Engines](https://img.shields.io/badge/engines-TypeScript%20%2B%20Python-FAF8F2.svg?style=flat-square)](#run-from-source)
 
 A dual-engine Model Context Protocol server exposing 15 Nymrel tools, 3 resources, and 3 prompt templates through TypeScript/Node.js and Python stdio entry points.
@@ -117,7 +117,7 @@ The hub exposes Nymrel-oriented tools through one MCP surface. Repository names 
 | 3 | `nymrel_swarm_claim` | `nymrel/nymrel-swarm-protocol` | Lease coordination and fencing generations. |
 | 4 | `nymrel_machine_trust` | `nymrel/nymrel-machine-trust` | Machine-readable organization and trust metadata. |
 | 5 | `nymrel_proof_ledger` | `nymrel/nymrel-proof-ledger` | Canonical signed claim receipt generation. |
-| 6 | `nymrel_crawler_mesh` | `nymrel/nymrel-crawler-mesh` | Web-content extraction and Markdown conversion. |
+| 6 | `nymrel_crawler_mesh` | `nymrel/nymrel-crawler-mesh` | Public-web scrape, map, bounded crawl, and local HTML-to-Markdown extraction. |
 | 7 | `nymrel_beacon_ping` | `nymrel/agent-beacon` | Agent liveness and heartbeat reporting. |
 | 8 | `nymrel_headless_quote` | `nymrel/headless-quote-layer` | Deterministic quote calculation. |
 | 9 | `nymrel_local_forge` | `nymrel/local-agent-forge` | Local-model capability inspection and routing support. |
@@ -133,6 +133,19 @@ The hub exposes Nymrel-oriented tools through one MCP surface. Repository names 
 `nymrel_web_search` is the discovery layer of the studio web-access stack. API keys are read only from the MCP server environment (`EXA_API_KEY`, `TAVILY_API_KEY`, `BRAVE_SEARCH_API_KEY`, `SERPAPI_API_KEY`); callers cannot pass credentials as tool arguments. `provider: "auto"` prefers Exa/Tavily-style agent search and falls back across configured providers. `mode: "serp_exact"` prioritizes SerpAPI, while `mode: "research"` asks Tavily for advanced search when routed there. Results are normalized, domain-filtered, and never synthesized when providers fail.
 
 Search does not fetch arbitrary result URLs. Escalate selected URLs to `nymrel_crawler_mesh` for extraction/crawling, and use a separately privileged browser service only when JavaScript execution, login state, forms, or other interaction is genuinely required.
+
+### Crawler Mesh agent usage
+
+`nymrel_crawler_mesh` is the studio-owned replacement for the paid Firecrawl path. It keeps one stable MCP tool name and accepts `action: "scrape" | "map" | "crawl"`.
+
+- **scrape:** fetch one public HTTP(S) page or convert caller-supplied HTML locally.
+- **map:** discover URLs with optional search filtering and bounded sitemap/link traversal.
+- **crawl:** recursively fetch a bounded child path by default, with explicit full-domain or subdomain expansion.
+- Network operations reject private/loopback/link-local targets, validate DNS and every redirect destination, respect robots.txt, cap decoded response size, and enforce MCP hard caps of 100 pages and depth 10.
+- Responses identify `nymrel-crawler-mesh` as the provider and use zero Firecrawl/provider credits.
+- Firecrawl Cloud is not a fallback and no Firecrawl key is required.
+
+Both the TypeScript/Node and Python stdio engines expose these crawler actions. Their required upstream modules are pinned to `nymrel/nymrel-crawler-mesh@b5dcdb971328a07bd77e953935abac1c89e43c99`. See [vendored source and license provenance](./THIRD_PARTY_NOTICES.md).
 
 ## Resources
 
@@ -206,7 +219,7 @@ See [SECURITY.md](./SECURITY.md) for responsible disclosure and supply-chain con
 
 ## Validation
 
-The repository pins npm `12.0.2` and targets Node.js 22/24 plus Python 3.11-3.14. The Node package has no runtime dependencies. Python uses `cryptography>=50.0.1,<51` for Ed25519 and `rfc8785==0.1.4` for canonical JSON, matching the pinned Proof Ledger implementation.
+The repository pins npm `12.0.2` and targets Node.js 22/24 plus Python 3.11-3.14. The Node runtime pins `undici@8.10.2` for Crawler Mesh DNS/IP-pinned HTTP transport; the crawler implementation itself is vendored verbatim from a reviewed Nymrel revision with an exact Git-blob manifest. Python uses `cryptography>=50.0.1,<51` for Ed25519 and `rfc8785==0.1.4` for canonical JSON, matching the pinned Proof Ledger implementation.
 
 ### Node.js
 

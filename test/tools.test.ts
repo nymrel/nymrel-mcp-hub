@@ -138,15 +138,6 @@ test('MCP Tool: nymrel_crawler_mesh converts supplied HTML without claiming a ne
   assert.strictEqual(data.url, 'https://example.com/source');
 });
 
-test('MCP Tool: nymrel_crawler_mesh fails closed for URL-only calls instead of fabricating evidence', async () => {
-  const res = await executeCrawler({ url: 'https://example.com/' });
-  assert.strictEqual(res.isError, true);
-  const message = res.content[0].text!;
-  assert.match(message, /URL crawling is unavailable/);
-  assert.match(message, /No placeholder or synthetic page was returned/);
-  assert.match(message, /nymrel\/nymrel-crawler-mesh/);
-});
-
 test('MCP Tool: nymrel_beacon_ping tracks fleet health', async () => {
   const res = await executeBeacon({
     agentId: 'test-runner-01',

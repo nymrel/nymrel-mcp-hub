@@ -1,0 +1,59 @@
+{
+  "reason": "Exact low-severity Bandit findings in the verbatim Python Crawler Mesh vendor copy pinned at b5dcdb971328a07bd77e953935abac1c89e43c99. B110 sites are deliberate best-effort/nonfatal cache, robots, URL-discovery, and sitemap handling. B311 is rate-limit retry jitter only and is not used for secrets, tokens, identifiers, authentication, authorization, or cryptography. The vendor Git-blob verifier runs before runtime tests; changed files or changed/new findings fail closed.",
+  "findings": [
+    {
+      "filename": "python/nymrel_mcp_hub/_crawler_mesh/cache.py",
+      "test_id": "B110",
+      "line_number": 141,
+      "code": "140                     f.write(entry.get(\"html\", \"\"))\n141             except Exception:\n142                 pass\n143 \n",
+      "issue_severity": "LOW",
+      "issue_confidence": "HIGH",
+      "issue_text": "Try, Except, Pass detected."
+    },
+    {
+      "filename": "python/nymrel_mcp_hub/_crawler_mesh/crawler.py",
+      "test_id": "B110",
+      "line_number": 140,
+      "code": "139                 crawl_delay = parser.get_crawl_delay(self.user_agent)\n140         except Exception:\n141             pass\n142 \n",
+      "issue_severity": "LOW",
+      "issue_confidence": "HIGH",
+      "issue_text": "Try, Except, Pass detected."
+    },
+    {
+      "filename": "python/nymrel_mcp_hub/_crawler_mesh/crawler.py",
+      "test_id": "B110",
+      "line_number": 309,
+      "code": "308                     start_domains.append(host)\n309             except Exception:\n310                 pass\n311 \n",
+      "issue_severity": "LOW",
+      "issue_confidence": "HIGH",
+      "issue_text": "Try, Except, Pass detected."
+    },
+    {
+      "filename": "python/nymrel_mcp_hub/_crawler_mesh/crawler.py",
+      "test_id": "B110",
+      "line_number": 338,
+      "code": "337                     )\n338                 except Exception:\n339                     pass\n340 \n",
+      "issue_severity": "LOW",
+      "issue_confidence": "HIGH",
+      "issue_text": "Try, Except, Pass detected."
+    },
+    {
+      "filename": "python/nymrel_mcp_hub/_crawler_mesh/crawler.py",
+      "test_id": "B110",
+      "line_number": 350,
+      "code": "349                             queue.enqueue(QueueItem(url=entry.loc, depth=1))\n350                     except Exception:\n351                         pass\n352 \n",
+      "issue_severity": "LOW",
+      "issue_confidence": "HIGH",
+      "issue_text": "Try, Except, Pass detected."
+    },
+    {
+      "filename": "python/nymrel_mcp_hub/_crawler_mesh/rate_limiter.py",
+      "test_id": "B311",
+      "line_number": 88,
+      "code": "87                 base = min(30.0, 2.0 * (2 ** (state.consecutive_failures - 1)))\n88                 jitter = random.uniform(0.1, 1.0)\n89                 state.backoff_until = time.time() + base + jitter\n",
+      "issue_severity": "LOW",
+      "issue_confidence": "HIGH",
+      "issue_text": "Standard pseudo-random generators are not suitable for security/cryptographic purposes."
+    }
+  ]
+}

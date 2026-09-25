@@ -8,7 +8,7 @@ version = "1.0.0"
 description = "Dual-engine Model Context Protocol (MCP) server exposing 15 Nymrel tools"
 readme = "README.md"
 license = "MIT"
-license-files = ["LICENSE", "docs/proof-ledger/LICENSE", "THIRD_PARTY_NOTICES.md"]
+license-files = ["LICENSE", "docs/proof-ledger/LICENSE", "docs/crawler-mesh/LICENSE", "THIRD_PARTY_NOTICES.md"]
 authors = [
     { name = "Nymrel", email = "contact@nymrel.com" }
 ]

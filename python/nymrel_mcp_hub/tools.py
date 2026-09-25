@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 from typing import Dict, Any, List
 
 from .proof_tools import proof_ledger, proof_verify
+from .crawler_tool import execute_crawler
 from .web_search import execute_web_search
 
 ALL_TOOLS: List[Dict[str, Any]] = [
@@ -93,15 +94,33 @@ ALL_TOOLS: List[Dict[str, Any]] = [
                      'required': ['action', 'agentId', 'payload', 'signingKey', 'algorithm']}},
     {
         "name": "nymrel_crawler_mesh",
-        "description": "Clean web crawler & Markdown AST extractor optimized for LLM token efficiency.",
+        "description": (
+            "Nymrel-owned public-web scrape, map, bounded crawl, and local "
+            "HTML-to-Markdown extraction with SSRF, redirect, and robots protections."
+        ),
         "inputSchema": {
             "type": "object",
+            "additionalProperties": False,
             "properties": {
+                "action": {
+                    "type": "string",
+                    "enum": ["scrape", "map", "crawl"],
+                    "default": "scrape",
+                },
                 "url": {"type": "string"},
                 "html": {"type": "string"},
-                "extractMetadata": {"type": "boolean", "default": True}
-            }
-        }
+                "extractMetadata": {"type": "boolean", "default": True},
+                "limit": {"type": "number"},
+                "maxDepth": {"type": "number"},
+                "search": {"type": "string"},
+                "includeSubdomains": {"type": "boolean"},
+                "crawlEntireDomain": {"type": "boolean"},
+                "sitemap": {
+                    "type": "string",
+                    "enum": ["include", "skip"],
+                },
+            },
+        },
     },
     {
         "name": "nymrel_web_search",
@@ -328,6 +347,9 @@ def dispatch_tool_call(name: str, args: Dict[str, Any]) -> Dict[str, Any]:
 
     if tool_key in ("proof_verify", "nymrel_proof_verify"):
         return proof_verify(args)
+
+    if tool_key in ("crawler_mesh", "nymrel_crawler_mesh"):
+        return execute_crawler(args)
 
     if tool_key == "web_search":
         return execute_web_search(args)
