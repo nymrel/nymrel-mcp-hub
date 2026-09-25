@@ -83,6 +83,31 @@ test('durable calls encrypt arguments/results and exactly one concurrent claim w
   } finally { await cleanup(f); }
 });
 
+test('idempotency keys replay the same remote call and reject semantic reuse', async () => {
+  const f = await fixture();
+  try {
+    const projectedRead = (await f.broker.projectedTools(f.operator))
+      .find((tool) => tool._meta['nymrel/originalToolName'] === 'read_file');
+    const options = { sourceProfile: 'nymrel-ci-trusted', idempotencyKey: 'ci:repo:sha:plan:attempt-1' };
+    const first = await f.broker.createCall(f.operator, projectedRead.name, { path: 'C:/repo/a.txt' }, options);
+    const replay = await f.broker.createCall(f.operator, projectedRead.name, { path: 'C:/repo/a.txt' }, options);
+    assert.equal(replay.id, first.id);
+    assert.equal(replay.idempotentReplay, true);
+    assert.equal((await f.broker.listQueuedForDevice(f.devicePrincipal)).length, 1);
+
+    const state = await f.store.read();
+    assert.equal(Object.values(state.calls).length, 1);
+    assert.equal(Object.values(state.calls)[0].idempotencyHash.length, 64);
+    assert.equal(JSON.stringify(state).includes(options.idempotencyKey), false);
+    assert.ok(state.receipts.some((receipt) => receipt.event === 'call.idempotent_replay'));
+
+    await assert.rejects(
+      f.broker.createCall(f.operator, projectedRead.name, { path: 'C:/repo/other.txt' }, options),
+      /already bound to a different remote call/
+    );
+  } finally { await cleanup(f); }
+});
+
 test('write calls require approval and MRTR state is principal, args, and schema bound', async () => {
   const f = await fixture();
   try {
