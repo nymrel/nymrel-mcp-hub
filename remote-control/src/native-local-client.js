@@ -7,6 +7,7 @@ import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { NativeReadPolicy } from './native-read-policy.js';
 import { buildSafeCiEnvironment } from './ci-local-runner.js';
+import { extractTrustedCiReceipt } from './ci-receipt.js';
 
 const MAX_TEXT_BYTES = 4 * 1024 * 1024;
 const MAX_PROCESS_OUTPUT_BYTES = 2 * 1024 * 1024;
@@ -158,6 +159,10 @@ export const NATIVE_TOOLS = Object.freeze([
       length: { type: 'integer', minimum: 1, maximum: 5000, default: 1000 }
     }
   }),
+  readTool('get_trusted_ci_result', 'Return a verified receipt for a managed trusted-CI session, or its current execution state.', {
+    type: 'object', additionalProperties: false, required: ['pid'],
+    properties: { pid: { type: 'integer', minimum: 1 } }
+  }),
   execTool('interact_with_process', 'Write one line to the stdin of a retained process session.', {
     type: 'object', additionalProperties: false, required: ['pid', 'input'],
     properties: {
@@ -307,6 +312,7 @@ export class NativeLocalClient extends EventEmitter {
         case 'start_process': return this.#startProcess(args);
         case 'start_trusted_ci': return this.#startTrustedCi(args);
         case 'read_process_output': return this.#readProcessOutput(args);
+        case 'get_trusted_ci_result': return this.#getTrustedCiResult(args);
         case 'interact_with_process': return this.#interact(args);
         case 'list_sessions': return this.#listSessions();
         case 'list_processes': return this.#listProcesses();
@@ -576,8 +582,10 @@ export class NativeLocalClient extends EventEmitter {
     if (this.blockedCommands.some((rule) => rule.test(command))) throw new Error('Command blocked by native device policy');
   }
 
-  #trackProcess(child, workingDirectory) {
+  #trackProcess(child, workingDirectory, { kind = 'process', ciIdentity = null } = {}) {
     const session = {
+      kind,
+      ciIdentity,
       id: randomUUID(),
       child,
       commandStartedAt: new Date().toISOString(),
@@ -684,13 +692,50 @@ export class NativeLocalClient extends EventEmitter {
       stdio: ['ignore', 'pipe', 'pipe'],
       env: buildSafeCiEnvironment(process.env)
     });
-    return this.#trackProcess(child, workingDirectory);
+    return this.#trackProcess(child, workingDirectory, {
+      kind: 'trusted_ci',
+      ciIdentity: {
+        repository,
+        commitSha: commitSha.toLowerCase(),
+        manifestHash: expectedManifestHash?.toLowerCase(),
+        planHash: expectedPlanHash?.toLowerCase()
+      }
+    });
   }
 
   #sessionFor(pid) {
     const session = this.sessions.get(Number(pid));
     if (!session) throw new Error(`Unknown Nymrel process session: ${pid}`);
     return session;
+  }
+
+  async #getTrustedCiResult({ pid }) {
+    const session = this.#sessionFor(pid);
+    if (session.kind !== 'trusted_ci') throw new Error('Process session is not a trusted CI run');
+    if (session.state === 'running') {
+      return textResult({ pid: Number(pid), state: 'running', exitCode: null });
+    }
+    if (session.state === 'error') {
+      return textResult({ pid: Number(pid), state: 'error', exitCode: session.exitCode, error: 'Trusted CI process failed before a verifiable receipt was produced' }, { isError: true });
+    }
+    let receipt;
+    try {
+      receipt = extractTrustedCiReceipt(session.output, session.ciIdentity ?? {});
+    } catch (error) {
+      return textResult({
+        pid: Number(pid),
+        state: session.state,
+        exitCode: session.exitCode,
+        error: String(error?.message || error).slice(0, 1000)
+      }, { isError: true });
+    }
+    return textResult({
+      pid: Number(pid),
+      state: session.state,
+      exitCode: session.exitCode,
+      conclusion: receipt.conclusion,
+      receipt
+    });
   }
 
   async #readProcessOutput({ pid, offset = 0, length = 1000 }) {
@@ -732,6 +777,7 @@ export class NativeLocalClient extends EventEmitter {
     const sessions = [...this.sessions.entries()].map(([pid, session]) => ({
       pid,
       sessionId: session.id,
+      kind: session.kind ?? 'process',
       state: session.state,
       exitCode: session.exitCode,
       cwd: session.cwd,
