@@ -38,3 +38,19 @@ test('Publisher history client is disabled unless all service configuration is p
     env: { NYMREL_PUBLISHER_HISTORY_URL: 'https://history.nymrel.test' }
   }), /must be configured together/);
 });
+
+test('Publisher history client permits private Railway HTTP but rejects public plaintext origins', () => {
+  const mapping = new Map([['t1', new Set(['draftadynasty'])]]);
+  assert.doesNotThrow(() => new PublisherHistoryClient({
+    baseUrl: 'http://nymrel-publisher-history-runtime.railway.internal:8788',
+    token: 'x'.repeat(48),
+    tenantBrands: mapping,
+    fetchImpl: async () => { throw new Error('not called'); }
+  }));
+  assert.throws(() => new PublisherHistoryClient({
+    baseUrl: 'http://example.com',
+    token: 'x'.repeat(48),
+    tenantBrands: mapping,
+    fetchImpl: async () => { throw new Error('not called'); }
+  }), /configuration is invalid/);
+});
