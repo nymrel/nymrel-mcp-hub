@@ -161,6 +161,11 @@ test('trusted CI dispatch collapses concurrent duplicate deliveries and preserve
 
     await f.broker.approveCall(f.operator, first.call.id);
     assert.equal((await f.broker.listQueuedForDevice(f.devicePrincipal)).length, 1);
+    const claim = await f.broker.claimCall(f.devicePrincipal, first.call.id);
+    assert.equal(claim.toolName, 'start_trusted_ci');
+    assert.equal(claim.args.expectedManifestHash, first.manifestHash);
+    assert.equal(claim.args.expectedPlanHash, first.planHash);
+    assert.deepEqual(claim.args.selectedJobs, ['verify']);
 
     const rerun = await dispatchTrustedCi({ ...request, attempt: 2 });
     assert.notEqual(rerun.call.id, first.call.id);
