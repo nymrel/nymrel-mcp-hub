@@ -4,7 +4,7 @@ import path from 'node:path';
 import { runTrustedCiCheckout } from '../src/ci-local-runner.js';
 
 function usage() {
-  return `Usage: nymrel-ci-local --trusted-source --repo PATH --repository owner/name --sha FULL_SHA [--manifest PATH] [--job ID ...] [--allow-network-request]\n\nRuns Nymrel CI only for an operator-approved trusted checkout. This command is not a sandbox and must not be used for untrusted/public-fork code.`;
+  return `Usage: nymrel-ci-local --trusted-source --repo PATH --repository owner/name --sha FULL_SHA [--manifest PATH] [--job ID ...] [--allow-network-request] [--expected-manifest-hash SHA256] [--expected-plan-hash SHA256]\n\nRuns Nymrel CI only for an operator-approved trusted checkout. This command is not a sandbox and must not be used for untrusted/public-fork code.`;
 }
 
 function parseArgs(argv) {
@@ -13,6 +13,8 @@ function parseArgs(argv) {
     const arg = argv[i];
     if (arg === '--trusted-source') out.trustedSource = true;
     else if (arg === '--allow-network-request') out.allowNetwork = true;
+    else if (arg === '--expected-manifest-hash') out.expectedManifestHash = argv[++i];
+    else if (arg === '--expected-plan-hash') out.expectedPlanHash = argv[++i];
     else if (arg === '--repo') out.repoRoot = argv[++i];
     else if (arg === '--repository') out.repository = argv[++i];
     else if (arg === '--sha') out.commitSha = argv[++i];
@@ -44,6 +46,8 @@ try {
     manifest,
     selectedJobs: args.jobs,
     allowNetwork: args.allowNetwork,
+    expectedManifestHash: args.expectedManifestHash,
+    expectedPlanHash: args.expectedPlanHash,
     onOutput: (stream, chunk) => (stream === 'stderr' ? process.stderr : process.stdout).write(chunk)
   });
   process.stdout.write(`\nNYMREL_CI_RECEIPT ${JSON.stringify(receipt)}\n`);
