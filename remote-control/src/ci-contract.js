@@ -21,7 +21,7 @@ function normalizeCwd(value) {
   const cwd = value ?? '.';
   if (typeof cwd !== 'string' || cwd.length === 0 || cwd.length > 512) throw new Error('job.cwd must be a non-empty string');
   if (path.isAbsolute(cwd)) throw new Error('job.cwd must be repository-relative');
-  const normalized = path.posix.normalize(cwd.replaceAll('\\\\', '/'));
+  const normalized = path.posix.normalize(cwd.replaceAll('\\', '/'));
   if (normalized === '..' || normalized.startsWith('../')) throw new Error('job.cwd must remain inside the repository');
   return normalized === '' ? '.' : normalized;
 }
