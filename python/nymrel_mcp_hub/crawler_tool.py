@@ -13,7 +13,7 @@ from ._crawler_mesh.extractor import extract_markdown, extract_metadata
 from ._crawler_mesh.sitemap import fetch_and_parse_sitemap
 
 CANONICAL_REPOSITORY = "https://github.com/nymrel/nymrel-crawler-mesh"
-CANONICAL_REVISION = "b5dcdb971328a07bd77e953935abac1c89e43c99"
+CANONICAL_REVISION = "35634d2109bb8c33cb17e38acf70c584e891c2e6"
 DEFAULT_LIMIT = 20
 MAX_LIMIT = 100
 DEFAULT_DEPTH = 2

@@ -1,6 +1,6 @@
 {
   "repository": "https://github.com/nymrel/nymrel-crawler-mesh",
-  "revision": "b5dcdb971328a07bd77e953935abac1c89e43c99",
+  "revision": "35634d2109bb8c33cb17e38acf70c584e891c2e6",
   "license": "MIT",
   "files": [
     {
@@ -36,7 +36,7 @@
     {
       "source": "src/extractor/html-cleaner.ts",
       "destination": "src/vendor/crawler-mesh/extractor/html-cleaner.ts",
-      "gitBlobSha": "6de57dcfeaf62c674a36ccbb962afaf6d5a03bac"
+      "gitBlobSha": "b965b46de2804934c4b202439c3112f1610ea162"
     },
     {
       "source": "src/extractor/ast.ts",
@@ -96,7 +96,7 @@
     {
       "source": "python/nymrel_crawler_mesh/extractor.py",
       "destination": "python/nymrel_mcp_hub/_crawler_mesh/extractor.py",
-      "gitBlobSha": "d794024be800604b34152b8308776f8597eb2598"
+      "gitBlobSha": "c029fa981bdbcc339917444a3db4de78539589da"
     },
     {
       "source": "python/nymrel_crawler_mesh/network_policy.py",

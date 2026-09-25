@@ -60,6 +60,84 @@ function stripHtmlComments(input: string): string {
   return output;
 }
 
+function readTagAttribute(tag: string, attributeName: string): string | undefined {
+  const lower = tag.toLowerCase();
+  const needle = attributeName.toLowerCase();
+  let cursor = 0;
+
+  while (cursor < lower.length) {
+    const index = lower.indexOf(needle, cursor);
+    if (index === -1) return undefined;
+
+    const before = index === 0 ? '' : lower[index - 1];
+    const after = lower[index + needle.length] ?? '';
+    const isNameChar = (char: string) => /[a-z0-9_:-]/i.test(char);
+    if ((before && isNameChar(before)) || (after && isNameChar(after))) {
+      cursor = index + needle.length;
+      continue;
+    }
+
+    let position = index + needle.length;
+    while (position < tag.length && /\s/.test(tag[position])) position++;
+    if (tag[position] !== '=') {
+      cursor = index + needle.length;
+      continue;
+    }
+
+    position++;
+    while (position < tag.length && /\s/.test(tag[position])) position++;
+    const quote = tag[position];
+    if (quote === '"' || quote === "'") {
+      const end = tag.indexOf(quote, position + 1);
+      return end === -1 ? tag.slice(position + 1) : tag.slice(position + 1, end);
+    }
+
+    let end = position;
+    while (end < tag.length && !/[\s>]/.test(tag[end])) end++;
+    return tag.slice(position, end);
+  }
+
+  return undefined;
+}
+
+function stripTrackingImages(input: string): string {
+  const lower = input.toLowerCase();
+  let output = '';
+  let cursor = 0;
+
+  while (cursor < input.length) {
+    let start = lower.indexOf('<img', cursor);
+    while (start !== -1) {
+      const boundary = lower[start + 4] ?? '';
+      if (!boundary || /[\s/>]/.test(boundary)) break;
+      start = lower.indexOf('<img', start + 4);
+    }
+
+    if (start === -1) {
+      output += input.slice(cursor);
+      break;
+    }
+
+    const end = input.indexOf('>', start + 4);
+    if (end === -1) {
+      output += input.slice(cursor);
+      break;
+    }
+
+    output += input.slice(cursor, start);
+    const tag = input.slice(start, end + 1);
+    const width = readTagAttribute(tag, 'width')?.trim();
+    const height = readTagAttribute(tag, 'height')?.trim();
+    const style = readTagAttribute(tag, 'style')?.toLowerCase().replace(/\s+/g, '') ?? '';
+    const tracking = width === '1' || height === '1' || style.includes('display:none');
+
+    if (!tracking) output += tag;
+    cursor = end + 1;
+  }
+
+  return output;
+}
+
 export interface CleanHtmlOptions {
   baseUrl?: string;
   targetMainContent?: boolean;
@@ -91,8 +169,8 @@ export function cleanHtml(html: string, options: CleanHtmlOptions = {}): string 
     cleaned = cleaned.replace(regex, '');
   }
 
-  // 4. Remove tracking pixels (1x1 images, display:none images)
-  cleaned = cleaned.replace(/<img\b[^>]*\b(width=["']1["']|height=["']1["']|style=["'][^"']*display:\s*none[^"']*["'])[^>]*\/?>/gi, '');
+  // 4. Remove tracking pixels (1x1 images, display:none images) with a bounded scanner.
+  cleaned = stripTrackingImages(cleaned);
 
   // 5. Remove ad / cookie / popup / modal / newsletter / social banner elements by class/id/role heuristics
   const noisePatterns = [

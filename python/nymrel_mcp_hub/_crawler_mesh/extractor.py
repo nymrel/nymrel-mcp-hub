@@ -94,6 +94,88 @@ def _escape_yaml_double_quoted(value: str) -> str:
     )
 
 
+def _read_tag_attribute(tag: str, attribute_name: str) -> Optional[str]:
+    lower = tag.lower()
+    needle = attribute_name.lower()
+    cursor = 0
+
+    while cursor < len(lower):
+        index = lower.find(needle, cursor)
+        if index < 0:
+            return None
+
+        before = lower[index - 1] if index > 0 else ""
+        after_index = index + len(needle)
+        after = lower[after_index] if after_index < len(lower) else ""
+
+        def is_name_char(char: str) -> bool:
+            return char.isalnum() or char in "_:-"
+
+        if (before and is_name_char(before)) or (after and is_name_char(after)):
+            cursor = after_index
+            continue
+
+        position = after_index
+        while position < len(tag) and tag[position].isspace():
+            position += 1
+        if position >= len(tag) or tag[position] != "=":
+            cursor = after_index
+            continue
+
+        position += 1
+        while position < len(tag) and tag[position].isspace():
+            position += 1
+        if position >= len(tag):
+            return ""
+
+        quote = tag[position]
+        if quote in {'"', "'"}:
+            end = tag.find(quote, position + 1)
+            return tag[position + 1:] if end < 0 else tag[position + 1:end]
+
+        end = position
+        while end < len(tag) and not tag[end].isspace() and tag[end] != ">":
+            end += 1
+        return tag[position:end]
+
+    return None
+
+
+def _strip_tracking_images(value: str) -> str:
+    lower = value.lower()
+    output = []
+    cursor = 0
+
+    while cursor < len(value):
+        start = lower.find("<img", cursor)
+        while start >= 0:
+            boundary_index = start + 4
+            boundary = lower[boundary_index] if boundary_index < len(lower) else ""
+            if not boundary or boundary.isspace() or boundary in "/>":
+                break
+            start = lower.find("<img", start + 4)
+
+        if start < 0:
+            output.append(value[cursor:])
+            break
+
+        end = value.find(">", start + 4)
+        if end < 0:
+            output.append(value[cursor:])
+            break
+
+        output.append(value[cursor:start])
+        tag = value[start:end + 1]
+        width = (_read_tag_attribute(tag, "width") or "").strip()
+        height = (_read_tag_attribute(tag, "height") or "").strip()
+        style = "".join((_read_tag_attribute(tag, "style") or "").lower().split())
+        if width != "1" and height != "1" and "display:none" not in style:
+            output.append(tag)
+        cursor = end + 1
+
+    return "".join(output)
+
+
 def clean_html(raw_html: str, target_main_content: bool = True) -> str:
     cleaned = raw_html
 
@@ -113,13 +195,8 @@ def clean_html(raw_html: str, target_main_content: bool = True) -> str:
     for tag in ["nav", "footer", "aside", "menu", "dialog"]:
         cleaned = re.sub(rf"<{tag}\b[^>]*>[\s\S]*?</{tag}>", "", cleaned, flags=re.IGNORECASE)
 
-    # 4. Remove tracking pixels (1x1 images, display:none images)
-    cleaned = re.sub(
-        r'<img\b[^>]*\b(width=["\']1["\']|height=["\']1["\']|style=["\'][^"\']*display:\s*none[^"\']*["\'])[^>]*\/?>',
-        "",
-        cleaned,
-        flags=re.IGNORECASE,
-    )
+    # 4. Remove tracking pixels (1x1 images, display:none images) with a bounded scanner.
+    cleaned = _strip_tracking_images(cleaned)
 
     # 5. Remove ad / cookie / popup / modal / newsletter / social banner elements
     noise_regex = (
