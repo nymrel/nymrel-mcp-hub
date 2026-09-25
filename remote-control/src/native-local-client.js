@@ -723,6 +723,12 @@ export class NativeLocalClient extends EventEmitter {
     }
 
     const workingDirectory = await this.#resolveExisting(repoRoot);
+    if (this.ciStateDirectory) {
+      const stateRelative = path.relative(workingDirectory, this.ciStateDirectory);
+      if (stateRelative === '' || (!stateRelative.startsWith('..') && !path.isAbsolute(stateRelative))) {
+        throw new Error('CI state directory must be outside repoRoot');
+      }
+    }
     const manifestCandidate = path.resolve(workingDirectory, manifestPath);
     const manifestReal = await fs.realpath(manifestCandidate);
     this.#assertAllowed(manifestReal);
