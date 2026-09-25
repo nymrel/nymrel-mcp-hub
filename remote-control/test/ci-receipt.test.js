@@ -50,6 +50,41 @@ test('trusted CI receipt rejects tampering and wrong expected identity', () => {
   );
 });
 
+test('trusted CI receipt rejects internally inconsistent evidence even when rehashed', () => {
+  assert.throws(
+    () => verifyTrustedCiReceipt(receipt({
+      conclusion: 'success',
+      jobs: [{
+        id: 'verify',
+        status: 'failed',
+        exitCode: 1,
+        durationMs: 5,
+        stdoutHash: 'd'.repeat(64),
+        stderrHash: 'e'.repeat(64)
+      }]
+    })),
+    /conclusion does not match/
+  );
+
+  assert.throws(
+    () => verifyTrustedCiReceipt(receipt({
+      jobs: [
+        { id: 'verify', status: 'success', exitCode: 0, durationMs: 1, stdoutHash: 'd'.repeat(64), stderrHash: 'e'.repeat(64) },
+        { id: 'verify', status: 'success', exitCode: 0, durationMs: 1, stdoutHash: 'd'.repeat(64), stderrHash: 'e'.repeat(64) }
+      ]
+    })),
+    /duplicate job id/
+  );
+
+  assert.throws(
+    () => verifyTrustedCiReceipt(receipt({
+      startedAt: '2026-09-25T00:00:02.000Z',
+      completedAt: '2026-09-25T00:00:01.000Z'
+    })),
+    /precedes startedAt/
+  );
+});
+
 test('extractor uses the final receipt marker and validates the payload', () => {
   const old = receipt({ commitSha: '1'.repeat(40) });
   const current = receipt();
