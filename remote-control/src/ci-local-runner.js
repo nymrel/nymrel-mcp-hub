@@ -129,6 +129,8 @@ export async function runTrustedCiCheckout({
   manifest,
   selectedJobs,
   allowNetwork = false,
+  expectedManifestHash,
+  expectedPlanHash,
   environment = process.env,
   executeJob = defaultExecuteJob,
   git = execFileText,
@@ -137,6 +139,12 @@ export async function runTrustedCiCheckout({
   if (typeof repository !== 'string' || !REPOSITORY_RE.test(repository)) throw new Error('repository must be owner/name');
   const root = await assertTrustedCheckout(repoRoot, commitSha, git);
   const { plan, planHash } = buildCiPlan(manifest, { selectedJobs, platform: process.platform, allowNetwork });
+  if (expectedManifestHash !== undefined && expectedManifestHash !== plan.manifestHash) {
+    throw new Error(`manifest hash mismatch: expected ${expectedManifestHash}, got ${plan.manifestHash}`);
+  }
+  if (expectedPlanHash !== undefined && expectedPlanHash !== planHash) {
+    throw new Error(`plan hash mismatch: expected ${expectedPlanHash}, got ${planHash}`);
+  }
   const safeEnvironment = buildSafeCiEnvironment(environment);
   const resolveJobCwd = async (relative) => {
     const candidate = await fs.realpath(path.resolve(root, relative));
