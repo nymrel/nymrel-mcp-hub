@@ -138,7 +138,16 @@ export const NATIVE_TOOLS = Object.freeze([
     type: 'object', additionalProperties: false, required: ['repoRoot', 'repository', 'commitSha'],
     properties: {
       repoRoot: pathProp,
-      repository: { type: 'string', minLength: 3, maxLength: 200, pattern: '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+
+      repository: { type: 'string', minLength: 3, maxLength: 200, pattern: '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$' },
+      commitSha: { type: 'string', pattern: '^[0-9a-fA-F]{40}$' },
+      manifestPath: { type: 'string', minLength: 1, maxLength: 512, default: '.nymrel/ci.json' },
+      selectedJobs: {
+        type: 'array', maxItems: 32, default: [],
+        items: { type: 'string', pattern: '^[a-z0-9][a-z0-9._-]{0,63}$' }
+      },
+      allowNetwork: { type: 'boolean', default: false }
+    }
+  }),
   readTool('read_process_output', 'Read retained stdout/stderr from a Nymrel process session.', {
     type: 'object', additionalProperties: false, required: ['pid'],
     properties: {
