@@ -288,6 +288,6 @@ export class MCPServer {
       }
     });
 
-    process.stderr.write(`[@nymrel/mcp-hub] Server online and listening on stdio (14 tools, 3 resources, 3 prompts registered)\n`);
+    process.stderr.write(`[@nymrel/mcp-hub] Server online and listening on stdio (${ALL_MCP_TOOLS.length} tools, 3 resources, 3 prompts registered)\n`);
   }
 }

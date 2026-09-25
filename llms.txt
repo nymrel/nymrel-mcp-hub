@@ -16,7 +16,7 @@
 - A local build, GitHub artifact, tag, or release workflow is not equivalent to registry publication.
 
 ## Overview
-`@nymrel/mcp-hub` is a dual-engine TypeScript/Node.js and Python Model Context Protocol server. Node has no runtime dependencies; Python uses cryptography and rfc8785 for canonical authenticated receipts. It exposes 14 Nymrel-oriented tools, 3 resources, and 3 prompt templates for MCP clients including Claude Desktop, Cursor, Codex, and OpenAI agents.
+`@nymrel/mcp-hub` is a dual-engine TypeScript/Node.js and Python Model Context Protocol server. Node has no runtime dependencies; Python uses cryptography and rfc8785 for canonical authenticated receipts. It exposes 15 Nymrel-oriented tools, 3 resources, and 3 prompt templates for MCP clients including Claude Desktop, Cursor, Codex, and OpenAI agents.
 
 ## Protocol Contract
 - Modern MCP revision: `2026-07-28`, using `server/discover` and per-request `params._meta`.
@@ -25,7 +25,7 @@
 - Unsupported modern revisions fail with `-32022`. Missing or malformed modern metadata fails with `-32602`.
 - Transport shipped here: stdio. No Streamable HTTP endpoint, hosted transport, or registry release is implied.
 
-## 14 Registered MCP Tools
+## 15 Registered MCP Tools
 1. `nymrel_ucp_audit` - AI commerce readiness and JSON-LD schema scorecard.
 2. `nymrel_surety_guard` - Pre-execution destructive-command inspection and path-jail checks.
 3. `nymrel_swarm_claim` - Distributed directory lock and lease coordination with fencing generations.
@@ -40,6 +40,7 @@
 12. `nymrel_a2ui_render` - Declarative decision-card rendering with Nymrel Warm Paper tokens.
 13. `nymrel_swarm_bus` - Studio task-bus message envelopes and dispatch support.
 14. `nymrel_proof_verify` - Merkle receipt and signature verification.
+15. `nymrel_web_search` - Provider-neutral public-web discovery with server-side Exa, Tavily, Brave Search, and SerpAPI credentials plus fail-closed fallback.
 
 ## Resources
 - `nymrel://status` - Server identity, engine status, and supported protocol revisions.

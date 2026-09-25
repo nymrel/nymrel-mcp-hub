@@ -1,7 +1,7 @@
 {
   "name": "@nymrel/mcp-hub",
   "version": "1.0.0",
-  "description": "Dual-engine Model Context Protocol (MCP) server exposing 14 Nymrel tools for Claude Desktop, Cursor, Codex, and other MCP clients.",
+  "description": "Dual-engine Model Context Protocol (MCP) server exposing 15 Nymrel tools for Claude Desktop, Cursor, Codex, and other MCP clients.",
   "keywords": [
     "mcp",
     "model-context-protocol",

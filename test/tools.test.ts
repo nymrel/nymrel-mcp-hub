@@ -1,6 +1,6 @@
 /**
  * Automated Test Suite: MCP Tool Verification
- * Verifies registration and execution of all 14 Nymrel MCP tools
+ * Verifies registration and execution of all 15 Nymrel MCP tools
  */
 
 import test from 'node:test';
@@ -24,8 +24,8 @@ import {
   executeProofVerify
 } from '../src/tools/index.js';
 
-test('MCP Tool Registry: Contains exactly 14 registered tools', () => {
-  assert.strictEqual(ALL_MCP_TOOLS.length, 14);
+test('MCP Tool Registry: Contains exactly 15 registered tools', () => {
+  assert.strictEqual(ALL_MCP_TOOLS.length, 15);
   const toolNames = ALL_MCP_TOOLS.map(t => t.name);
   
   assert.ok(toolNames.includes('nymrel_ucp_audit'));
@@ -42,6 +42,7 @@ test('MCP Tool Registry: Contains exactly 14 registered tools', () => {
   assert.ok(toolNames.includes('nymrel_a2ui_render'));
   assert.ok(toolNames.includes('nymrel_swarm_bus'));
   assert.ok(toolNames.includes('nymrel_proof_verify'));
+  assert.ok(toolNames.includes('nymrel_web_search'));
 });
 
 test('MCP Tool: nymrel_ucp_audit execution', async () => {
