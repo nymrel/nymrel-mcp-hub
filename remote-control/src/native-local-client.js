@@ -598,10 +598,11 @@ export class NativeLocalClient extends EventEmitter {
     if (this.blockedCommands.some((rule) => rule.test(command))) throw new Error('Command blocked by native device policy');
   }
 
-  #trackProcess(child, workingDirectory, { kind = 'process', ciIdentity = null } = {}) {
+  #trackProcess(child, workingDirectory, { kind = 'process', ciIdentity = null, runId = null } = {}) {
     const session = {
       kind,
       ciIdentity,
+      runId,
       id: randomUUID(),
       child,
       commandStartedAt: new Date().toISOString(),
@@ -610,7 +611,9 @@ export class NativeLocalClient extends EventEmitter {
       readCursor: 0,
       state: 'running',
       exitCode: null,
-      signal: null
+      signal: null,
+      persistPromise: Promise.resolve(),
+      persistenceError: null
     };
     const append = (chunk) => {
       session.output += Buffer.from(chunk).toString('utf8');
@@ -629,9 +632,44 @@ export class NativeLocalClient extends EventEmitter {
       session.state = 'finished';
       session.exitCode = code;
       session.signal = signalName;
+      if (session.kind === 'trusted_ci' && session.runId && this.ciStateDirectory) {
+        this.#queueTrustedCiFinal(session);
+      }
     });
     this.sessions.set(child.pid, session);
-    return textResult({ pid: child.pid, sessionId: session.id, state: session.state, cwd: session.cwd });
+    return textResult({
+      pid: child.pid,
+      sessionId: session.id,
+      state: session.state,
+      cwd: session.cwd,
+      ...(runId ? { runId } : {})
+    });
+  }
+
+  #queueTrustedCiFinal(session) {
+    session.persistPromise = session.persistPromise
+      .catch(() => {})
+      .then(async () => {
+        try {
+          const receipt = extractTrustedCiReceipt(session.output, session.ciIdentity ?? {});
+          await writeTrustedCiFinal(this.ciStateDirectory, {
+            runId: session.runId,
+            identity: session.ciIdentity ?? {},
+            receipt,
+            exitCode: session.exitCode
+          });
+        } catch (error) {
+          await writeTrustedCiFinal(this.ciStateDirectory, {
+            runId: session.runId,
+            identity: session.ciIdentity ?? {},
+            exitCode: session.exitCode,
+            error: String(error?.message || error).slice(0, 1000)
+          });
+        }
+      })
+      .catch((error) => {
+        session.persistenceError = String(error?.message || error).slice(0, 1000);
+      });
   }
 
   async #startProcess({ command, cwd = this.cwd, shell = this.shell }) {
