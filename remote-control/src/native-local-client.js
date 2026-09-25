@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { NativeReadPolicy } from './native-read-policy.js';
 import { buildSafeCiEnvironment } from './ci-local-runner.js';
 import { extractTrustedCiReceipt } from './ci-receipt.js';
+import { readTrustedCiState, writeTrustedCiFinal, writeTrustedCiRunning } from './ci-state.js';
 
 const MAX_TEXT_BYTES = 4 * 1024 * 1024;
 const MAX_PROCESS_OUTPUT_BYTES = 2 * 1024 * 1024;
@@ -136,8 +137,9 @@ export const NATIVE_TOOLS = Object.freeze([
     }
   }),
   execTool('start_trusted_ci', 'Start Nymrel CI for an operator-approved trusted checkout using structured arguments and no shell interpolation.', {
-    type: 'object', additionalProperties: false, required: ['repoRoot', 'repository', 'commitSha'],
+    type: 'object', additionalProperties: false, required: ['runId', 'repoRoot', 'repository', 'commitSha'],
     properties: {
+      runId: { type: 'string', pattern: '^[0-9a-fA-F]{64}$' },
       repoRoot: pathProp,
       repository: { type: 'string', minLength: 3, maxLength: 200, pattern: '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$' },
       commitSha: { type: 'string', pattern: '^[0-9a-fA-F]{40}$' },
@@ -159,9 +161,12 @@ export const NATIVE_TOOLS = Object.freeze([
       length: { type: 'integer', minimum: 1, maximum: 5000, default: 1000 }
     }
   }),
-  readTool('get_trusted_ci_result', 'Return a verified receipt for a managed trusted-CI session, or its current execution state.', {
-    type: 'object', additionalProperties: false, required: ['pid'],
-    properties: { pid: { type: 'integer', minimum: 1 } }
+  readTool('get_trusted_ci_result', 'Return a verified trusted-CI receipt by live PID or durable run id.', {
+    type: 'object', additionalProperties: false,
+    properties: {
+      pid: { type: 'integer', minimum: 1 },
+      runId: { type: 'string', pattern: '^[0-9a-fA-F]{64}$' }
+    }
   }),
   execTool('interact_with_process', 'Write one line to the stdin of a retained process session.', {
     type: 'object', additionalProperties: false, required: ['pid', 'input'],
@@ -221,12 +226,15 @@ export class NativeLocalClient extends EventEmitter {
     shell,
     blockedCommands = [],
     deniedReadPaths = [],
+    ciStateDirectory = null,
     maxTextBytes = MAX_TEXT_BYTES
   } = {}) {
     super();
     this.allowedDirectories = [...allowedDirectories];
     this.cwd = path.resolve(cwd);
     this.readPolicy = new NativeReadPolicy({ cwd: this.cwd, deniedPaths: deniedReadPaths });
+    this.ciStateDirectoryRequested = ciStateDirectory ? path.resolve(this.cwd, ciStateDirectory) : null;
+    this.ciStateDirectory = null;
     this.shell = shell || (process.platform === 'win32' ? 'powershell.exe' : '/bin/sh');
     this.blockedCommands = blockedCommands.map((value) => new RegExp(value, process.platform === 'win32' ? 'i' : ''));
     this.maxTextBytes = maxTextBytes;
@@ -253,6 +261,13 @@ export class NativeLocalClient extends EventEmitter {
     }));
     this.readPolicy.deniedPaths = [...new Set([...this.readPolicy.deniedPaths, ...canonicalDenials])];
     this.cwd = await this.#resolveExisting(this.cwd);
+    if (this.ciStateDirectoryRequested) {
+      const writable = await this.#resolveWritable(this.ciStateDirectoryRequested);
+      await fs.mkdir(writable, { recursive: true, mode: 0o700 });
+      this.ciStateDirectory = await fs.realpath(writable);
+      this.#assertAllowed(this.ciStateDirectory);
+      if (process.platform !== 'win32') await fs.chmod(this.ciStateDirectory, 0o700);
+    }
     this.ready = true;
     this.emit('ready');
   }
@@ -281,6 +296,7 @@ export class NativeLocalClient extends EventEmitter {
       }));
     }
     await Promise.allSettled(pending);
+    await Promise.allSettled([...this.sessions.values()].map((session) => session.persistPromise).filter(Boolean));
   }
 
   async ensureReady() {
