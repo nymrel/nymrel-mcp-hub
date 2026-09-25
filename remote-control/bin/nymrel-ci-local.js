@@ -32,8 +32,10 @@ try {
   }
   if (!args.trustedSource) throw new Error('--trusted-source is required; untrusted code must use a disposable worker');
   if (!args.repoRoot || !args.repository || !args.commitSha) throw new Error('--repo, --repository, and --sha are required');
-  const repoRoot = path.resolve(args.repoRoot);
-  const manifestPath = path.resolve(repoRoot, args.manifestPath || '.nymrel/ci.json');
+  const repoRoot = await fs.realpath(path.resolve(args.repoRoot));
+  const manifestPath = await fs.realpath(path.resolve(repoRoot, args.manifestPath || '.nymrel/ci.json'));
+  const manifestRelative = path.relative(repoRoot, manifestPath);
+  if (manifestRelative.startsWith('..') || path.isAbsolute(manifestRelative)) throw new Error('manifest must resolve inside the trusted checkout');
   const manifest = JSON.parse(await fs.readFile(manifestPath, 'utf8'));
   const receipt = await runTrustedCiCheckout({
     repoRoot,
