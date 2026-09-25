@@ -124,12 +124,25 @@ This gives Nymrel an idempotent trusted dispatch primitive, not yet an autonomou
 
 ### Phase 1 — autonomous trusted CI
 
-- webhook ingestion for approved repositories;
+- signed webhook normalization for approved repositories (library implemented; HTTP ingestion still disabled);
 - durable deduplicated Remote dispatch keyed by repo/SHA/plan/attempt (implemented in the draft);
 - trusted-runner scheduling and device selection beyond one explicit target;
 - bounded logs and artifact digests;
 - commit status publishing;
 - retry/cancel semantics and concurrency limits.
+
+### Pre-activation GitHub webhook normalization
+
+`normalizeGitHubCiWebhook()` exists as a library-only boundary; there is no production HTTP route yet. It:
+
+- verifies `X-Hub-Signature-256` style HMAC-SHA256 signatures against the raw request bytes before JSON classification;
+- limits payload size and validates delivery/event/repository/SHA fields;
+- supports only `push` and `pull_request` CI trigger families;
+- marks only allowlisted branch pushes and allowlisted same-repository, non-draft PR actions as dispatch-eligible trusted studio input;
+- classifies signed fork/external-head PRs as `untrusted_contribution` and keeps them ineligible for persistent Remote runners;
+- suppresses deleted refs, non-branch pushes, draft PRs, and unsupported PR actions.
+
+The normalizer does not call `dispatchTrustedCi()`. Enabling an HTTP route, configuring a webhook secret, mapping repositories to device workspaces, and deciding whether a trusted service identity may bypass per-run operator approval are separate activation decisions.
 
 ### Phase 2 — GitHub App checks
 
