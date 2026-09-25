@@ -156,7 +156,8 @@ export async function runTrustedCiCheckout({
       statusById.set(job.id, skipped.status);
       continue;
     }
-    const resolvedCwd = await resolveJobCwd(job.cwd);\n    const result = await executeJob({ ...job, resolvedCwd }, { repoRoot: root, environment: safeEnvironment, onOutput });
+    const resolvedCwd = await resolveJobCwd(job.cwd);
+    const result = await executeJob({ ...job, resolvedCwd }, { repoRoot: root, environment: safeEnvironment, onOutput });
     const normalized = {
       id: job.id,
       status: result.status,
