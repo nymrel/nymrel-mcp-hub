@@ -30,6 +30,11 @@ test('denies network-requiring jobs unless runner policy allows network', () => 
   assert.equal(buildCiPlan(manifest, { allowNetwork: true }).plan.jobs[0].id, 'install');
 });
 
+test('normalizes Windows-style repository-relative paths', () => {
+  const manifest = { version: 1, jobs: [{ id: 'win', command: 'npm test', cwd: 'web\\scripts' }] };
+  assert.equal(validateCiManifest(manifest).manifest.jobs[0].cwd, 'web/scripts');
+});
+
 test('rejects repository escapes and dependency cycles', () => {
   assert.throws(() => validateCiManifest({ version: 1, jobs: [{ id: 'bad', command: 'x', cwd: '../outside' }] }), /inside the repository/);
   assert.throws(() => validateCiManifest({ version: 1, jobs: [
