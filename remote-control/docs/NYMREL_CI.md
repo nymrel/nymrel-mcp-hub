@@ -89,6 +89,22 @@ GitHub webhooks and status/check publishing can fail independently; the Nymrel r
 - run on trusted studio branches through Nymrel Remote/manual orchestration;
 - retain GitHub Actions where available as a comparison signal, not the sole execution path.
 
+### Immediate trusted-checkout runner
+
+The first executable path is `nymrel-ci-local`. It is intentionally limited to operator-approved studio code and refuses to run unless the caller passes `--trusted-source`.
+
+```bash
+nymrel-ci-local \
+  --trusted-source \
+  --repo /absolute/path/to/clean/worktree \
+  --repository nymrel/example \
+  --sha <full-40-character-commit-sha>
+```
+
+The command verifies that the worktree root is exact, `HEAD` equals the requested SHA, and the worktree is clean before any CI command runs. It strips the normal inherited process environment down to platform essentials plus `CI=true` and `NYMREL_CI=1`, executes dependency-ordered jobs, bounds output, and emits a `nymrel.ci.trusted/v1` receipt with hashes rather than storing log bodies in the receipt.
+
+This is still not an operating-system sandbox. A trusted job can read files available to its OS account and can make network requests unless the host itself prevents them. Run this lane under a dedicated CI account/workspace with no production credentials, SSH keys, package-registry auth files (for example `.npmrc`), cloud profiles, or other secrets. Public or otherwise untrusted pull-request code belongs only on disposable workers.
+
 ### Phase 1 — autonomous trusted CI
 
 - webhook ingestion for approved repositories;
