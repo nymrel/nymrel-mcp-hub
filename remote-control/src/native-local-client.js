@@ -4,10 +4,15 @@ import os from 'node:os';
 import { spawn, execFile } from 'node:child_process';
 import { EventEmitter } from 'node:events';
 import { randomUUID } from 'node:crypto';
+import { fileURLToPath } from 'node:url';
 import { NativeReadPolicy } from './native-read-policy.js';
+import { buildSafeCiEnvironment } from './ci-local-runner.js';
+import { extractTrustedCiReceipt } from './ci-receipt.js';
+import { readTrustedCiState, writeTrustedCiFinal, writeTrustedCiRunning } from './ci-state.js';
 
 const MAX_TEXT_BYTES = 4 * 1024 * 1024;
 const MAX_PROCESS_OUTPUT_BYTES = 2 * 1024 * 1024;
+const CI_LOCAL_CLI_PATH = fileURLToPath(new URL('../bin/nymrel-ci-local.js', import.meta.url));
 
 function textResult(value, { isError = false } = {}) {
   const text = typeof value === 'string' ? value : JSON.stringify(value, null, 2);
@@ -131,12 +136,36 @@ export const NATIVE_TOOLS = Object.freeze([
       shell: { type: 'string', minLength: 1, maxLength: 1024 }
     }
   }),
+  execTool('start_trusted_ci', 'Start Nymrel CI for an operator-approved trusted checkout using structured arguments and no shell interpolation.', {
+    type: 'object', additionalProperties: false, required: ['runId', 'repoRoot', 'repository', 'commitSha'],
+    properties: {
+      runId: { type: 'string', pattern: '^[0-9a-fA-F]{64}$' },
+      repoRoot: pathProp,
+      repository: { type: 'string', minLength: 3, maxLength: 200, pattern: '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$' },
+      commitSha: { type: 'string', pattern: '^[0-9a-fA-F]{40}$' },
+      manifestPath: { type: 'string', minLength: 1, maxLength: 512, default: '.nymrel/ci.json' },
+      selectedJobs: {
+        type: 'array', maxItems: 32, default: [],
+        items: { type: 'string', pattern: '^[a-z0-9][a-z0-9._-]{0,63}$' }
+      },
+      allowNetwork: { type: 'boolean', default: false },
+      expectedManifestHash: { type: 'string', pattern: '^[0-9a-fA-F]{64}$' },
+      expectedPlanHash: { type: 'string', pattern: '^[0-9a-fA-F]{64}$' }
+    }
+  }),
   readTool('read_process_output', 'Read retained stdout/stderr from a Nymrel process session.', {
     type: 'object', additionalProperties: false, required: ['pid'],
     properties: {
       pid: { type: 'integer', minimum: 1 },
       offset: { type: 'integer', default: 0 },
       length: { type: 'integer', minimum: 1, maximum: 5000, default: 1000 }
+    }
+  }),
+  readTool('get_trusted_ci_result', 'Return a verified trusted-CI receipt by live PID or durable run id.', {
+    type: 'object', additionalProperties: false,
+    properties: {
+      pid: { type: 'integer', minimum: 1 },
+      runId: { type: 'string', pattern: '^[0-9a-fA-F]{64}$' }
     }
   }),
   execTool('interact_with_process', 'Write one line to the stdin of a retained process session.', {
@@ -197,12 +226,15 @@ export class NativeLocalClient extends EventEmitter {
     shell,
     blockedCommands = [],
     deniedReadPaths = [],
+    ciStateDirectory = null,
     maxTextBytes = MAX_TEXT_BYTES
   } = {}) {
     super();
     this.allowedDirectories = [...allowedDirectories];
     this.cwd = path.resolve(cwd);
     this.readPolicy = new NativeReadPolicy({ cwd: this.cwd, deniedPaths: deniedReadPaths });
+    this.ciStateDirectoryRequested = ciStateDirectory ? path.resolve(this.cwd, ciStateDirectory) : null;
+    this.ciStateDirectory = null;
     this.shell = shell || (process.platform === 'win32' ? 'powershell.exe' : '/bin/sh');
     this.blockedCommands = blockedCommands.map((value) => new RegExp(value, process.platform === 'win32' ? 'i' : ''));
     this.maxTextBytes = maxTextBytes;
@@ -229,6 +261,13 @@ export class NativeLocalClient extends EventEmitter {
     }));
     this.readPolicy.deniedPaths = [...new Set([...this.readPolicy.deniedPaths, ...canonicalDenials])];
     this.cwd = await this.#resolveExisting(this.cwd);
+    if (this.ciStateDirectoryRequested) {
+      const writable = await this.#resolveWritable(this.ciStateDirectoryRequested);
+      await fs.mkdir(writable, { recursive: true, mode: 0o700 });
+      this.ciStateDirectory = await fs.realpath(writable);
+      this.#assertAllowed(this.ciStateDirectory);
+      if (process.platform !== 'win32') await fs.chmod(this.ciStateDirectory, 0o700);
+    }
     this.ready = true;
     this.emit('ready');
   }
@@ -257,6 +296,7 @@ export class NativeLocalClient extends EventEmitter {
       }));
     }
     await Promise.allSettled(pending);
+    await Promise.allSettled([...this.sessions.values()].map((session) => session.persistPromise).filter(Boolean));
   }
 
   async ensureReady() {
@@ -286,7 +326,9 @@ export class NativeLocalClient extends EventEmitter {
         case 'search_files': return this.#searchFiles(args);
         case 'search_content': return this.#searchContent(args);
         case 'start_process': return this.#startProcess(args);
+        case 'start_trusted_ci': return this.#startTrustedCi(args);
         case 'read_process_output': return this.#readProcessOutput(args);
+        case 'get_trusted_ci_result': return this.#getTrustedCiResult(args);
         case 'interact_with_process': return this.#interact(args);
         case 'list_sessions': return this.#listSessions();
         case 'list_processes': return this.#listProcesses();
@@ -305,6 +347,7 @@ export class NativeLocalClient extends EventEmitter {
       hostname: os.hostname(),
       allowedDirectories: [...this.allowedRoots],
       cwd: this.cwd,
+      ciStateDirectory: this.ciStateDirectory,
       shell: this.shell,
       blockedCommandRules: this.blockedCommands.length,
       toolCount: NATIVE_TOOLS.length
@@ -556,18 +599,11 @@ export class NativeLocalClient extends EventEmitter {
     if (this.blockedCommands.some((rule) => rule.test(command))) throw new Error('Command blocked by native device policy');
   }
 
-  async #startProcess({ command, cwd = this.cwd, shell = this.shell }) {
-    if (typeof command !== 'string' || command.trim().length === 0) throw new Error('command must be a non-empty string');
-    this.#assertCommandAllowed(command);
-    const workingDirectory = await this.#resolveExisting(cwd);
-    const child = spawn(command, {
-      cwd: workingDirectory,
-      shell,
-      windowsHide: true,
-      stdio: ['pipe', 'pipe', 'pipe'],
-      env: { ...process.env, NYMREL_REMOTE_DEVICE: 'true', NYMREL_REMOTE_NATIVE_BACKEND: 'true' }
-    });
+  #trackProcess(child, workingDirectory, { kind = 'process', ciIdentity = null, runId = null } = {}) {
     const session = {
+      kind,
+      ciIdentity,
+      runId,
       id: randomUUID(),
       child,
       commandStartedAt: new Date().toISOString(),
@@ -576,7 +612,9 @@ export class NativeLocalClient extends EventEmitter {
       readCursor: 0,
       state: 'running',
       exitCode: null,
-      signal: null
+      signal: null,
+      persistPromise: Promise.resolve(),
+      persistenceError: null
     };
     const append = (chunk) => {
       session.output += Buffer.from(chunk).toString('utf8');
@@ -595,15 +633,272 @@ export class NativeLocalClient extends EventEmitter {
       session.state = 'finished';
       session.exitCode = code;
       session.signal = signalName;
+      if (session.kind === 'trusted_ci' && session.runId && this.ciStateDirectory) {
+        this.#queueTrustedCiFinal(session);
+      }
     });
     this.sessions.set(child.pid, session);
-    return textResult({ pid: child.pid, sessionId: session.id, state: session.state, cwd: session.cwd });
+    return textResult({
+      pid: child.pid,
+      sessionId: session.id,
+      state: session.state,
+      cwd: session.cwd,
+      ...(runId ? { runId } : {})
+    });
+  }
+
+  #queueTrustedCiFinal(session) {
+    session.persistPromise = session.persistPromise
+      .catch(() => {})
+      .then(async () => {
+        try {
+          const receipt = extractTrustedCiReceipt(session.output, session.ciIdentity ?? {});
+          await writeTrustedCiFinal(this.ciStateDirectory, {
+            runId: session.runId,
+            identity: session.ciIdentity ?? {},
+            receipt,
+            exitCode: session.exitCode
+          });
+        } catch (error) {
+          await writeTrustedCiFinal(this.ciStateDirectory, {
+            runId: session.runId,
+            identity: session.ciIdentity ?? {},
+            exitCode: session.exitCode,
+            error: String(error?.message || error).slice(0, 1000)
+          });
+        }
+      })
+      .catch((error) => {
+        session.persistenceError = String(error?.message || error).slice(0, 1000);
+      });
+  }
+
+  async #startProcess({ command, cwd = this.cwd, shell = this.shell }) {
+    if (typeof command !== 'string' || command.trim().length === 0) throw new Error('command must be a non-empty string');
+    this.#assertCommandAllowed(command);
+    const workingDirectory = await this.#resolveExisting(cwd);
+    const child = spawn(command, {
+      cwd: workingDirectory,
+      shell,
+      windowsHide: true,
+      stdio: ['pipe', 'pipe', 'pipe'],
+      env: { ...process.env, NYMREL_REMOTE_DEVICE: 'true', NYMREL_REMOTE_NATIVE_BACKEND: 'true' }
+    });
+    return this.#trackProcess(child, workingDirectory);
+  }
+
+  async #startTrustedCi({
+    runId,
+    repoRoot,
+    repository,
+    commitSha,
+    manifestPath = '.nymrel/ci.json',
+    selectedJobs = [],
+    allowNetwork = false,
+    expectedManifestHash,
+    expectedPlanHash
+  }) {
+    if (typeof runId !== 'string' || !/^[0-9a-f]{64}$/i.test(runId)) {
+      throw new Error('runId must be a SHA-256 hex digest');
+    }
+    const normalizedRunId = runId.toLowerCase();
+    if (typeof repository !== 'string' || !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository)) {
+      throw new Error('repository must be owner/name');
+    }
+    if (typeof commitSha !== 'string' || !/^[0-9a-f]{40}$/i.test(commitSha)) {
+      throw new Error('commitSha must be a full 40-character SHA');
+    }
+    if (typeof manifestPath !== 'string' || manifestPath.length < 1 || manifestPath.length > 512 || path.isAbsolute(manifestPath)) {
+      throw new Error('manifestPath must be a repository-relative path');
+    }
+    if (!Array.isArray(selectedJobs) || selectedJobs.length > 32 ||
+        selectedJobs.some((id) => typeof id !== 'string' || !/^[a-z0-9][a-z0-9._-]{0,63}$/.test(id))) {
+      throw new Error('selectedJobs must contain valid CI job ids');
+    }
+    if (typeof allowNetwork !== 'boolean') throw new Error('allowNetwork must be boolean');
+    for (const [label, value] of [['expectedManifestHash', expectedManifestHash], ['expectedPlanHash', expectedPlanHash]]) {
+      if (value !== undefined && (typeof value !== 'string' || !/^[0-9a-f]{64}$/i.test(value))) {
+        throw new Error(`${label} must be a SHA-256 hex digest`);
+      }
+    }
+
+    const workingDirectory = await this.#resolveExisting(repoRoot);
+    if (this.ciStateDirectory) {
+      const stateRelative = path.relative(workingDirectory, this.ciStateDirectory);
+      if (stateRelative === '' || (!stateRelative.startsWith('..') && !path.isAbsolute(stateRelative))) {
+        throw new Error('CI state directory must be outside repoRoot');
+      }
+    }
+    const manifestCandidate = path.resolve(workingDirectory, manifestPath);
+    const manifestReal = await fs.realpath(manifestCandidate);
+    this.#assertAllowed(manifestReal);
+    this.readPolicy.assertReadable(manifestReal);
+    const relativeManifest = path.relative(workingDirectory, manifestReal);
+    if (relativeManifest === '..' || relativeManifest.startsWith(`..${path.sep}`) || path.isAbsolute(relativeManifest)) {
+      throw new Error('manifestPath must resolve inside repoRoot');
+    }
+
+    const args = [
+      CI_LOCAL_CLI_PATH,
+      '--trusted-source',
+      '--repo', workingDirectory,
+      '--repository', repository,
+      '--sha', commitSha,
+      '--manifest', relativeManifest
+    ];
+    for (const id of selectedJobs) args.push('--job', id);
+    if (allowNetwork) args.push('--allow-network-request');
+    if (expectedManifestHash) args.push('--expected-manifest-hash', expectedManifestHash);
+    if (expectedPlanHash) args.push('--expected-plan-hash', expectedPlanHash);
+
+    const ciIdentity = {
+      repository,
+      commitSha: commitSha.toLowerCase(),
+      manifestHash: expectedManifestHash?.toLowerCase(),
+      planHash: expectedPlanHash?.toLowerCase()
+    };
+    const child = spawn(process.execPath, args, {
+      cwd: workingDirectory,
+      shell: false,
+      windowsHide: true,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      env: buildSafeCiEnvironment(process.env)
+    });
+    const result = this.#trackProcess(child, workingDirectory, {
+      kind: 'trusted_ci',
+      ciIdentity,
+      runId: normalizedRunId
+    });
+    const session = this.sessions.get(child.pid);
+    if (this.ciStateDirectory) {
+      session.persistPromise = session.persistPromise.then(() => writeTrustedCiRunning(this.ciStateDirectory, {
+        runId: normalizedRunId,
+        identity: ciIdentity
+      }));
+      try {
+        await session.persistPromise;
+      } catch (error) {
+        session.persistenceError = String(error?.message || error).slice(0, 1000);
+        try { child.kill('SIGTERM'); } catch { /* best effort */ }
+        throw new Error(`Unable to persist trusted CI start state: ${session.persistenceError}`);
+      }
+    }
+    return result;
   }
 
   #sessionFor(pid) {
     const session = this.sessions.get(Number(pid));
     if (!session) throw new Error(`Unknown Nymrel process session: ${pid}`);
     return session;
+  }
+
+  #sessionForRunId(runId) {
+    const normalized = String(runId ?? '').toLowerCase();
+    return [...this.sessions.values()].find((session) => session.runId === normalized) ?? null;
+  }
+
+  #renderPersistedCiState(record, { recovered = false } = {}) {
+    if (record.status === 'verified') {
+      return textResult({
+        runId: record.runId,
+        state: 'finished',
+        exitCode: record.exitCode,
+        conclusion: record.receipt.conclusion,
+        receipt: record.receipt,
+        durable: true,
+        recovered
+      });
+    }
+    if (record.status === 'invalid') {
+      return textResult({
+        runId: record.runId,
+        state: 'invalid',
+        exitCode: record.exitCode,
+        error: record.error,
+        durable: true,
+        recovered
+      }, { isError: true });
+    }
+    return textResult({
+      runId: record.runId,
+      state: 'interrupted',
+      exitCode: null,
+      error: 'Trusted CI was running when the durable state was last written; no verified final receipt exists',
+      durable: true,
+      recovered
+    }, { isError: true });
+  }
+
+  async #getTrustedCiResult({ pid, runId }) {
+    if (pid === undefined && runId === undefined) throw new Error('pid or runId is required');
+    let normalizedRunId = null;
+    if (runId !== undefined) {
+      if (typeof runId !== 'string' || !/^[0-9a-f]{64}$/i.test(runId)) throw new Error('runId must be a SHA-256 hex digest');
+      normalizedRunId = runId.toLowerCase();
+    }
+
+    let session = null;
+    if (pid !== undefined) {
+      session = this.#sessionFor(pid);
+      if (normalizedRunId && session.runId !== normalizedRunId) throw new Error('pid and runId do not identify the same trusted CI session');
+    } else {
+      session = this.#sessionForRunId(normalizedRunId);
+    }
+
+    if (session) {
+      if (session.kind !== 'trusted_ci') throw new Error('Process session is not a trusted CI run');
+      normalizedRunId = session.runId;
+      if (session.state === 'running') {
+        return textResult({
+          pid: session.child.pid,
+          runId: normalizedRunId,
+          state: 'running',
+          exitCode: null,
+          durable: Boolean(this.ciStateDirectory)
+        });
+      }
+      await session.persistPromise;
+      if (session.persistenceError) {
+        return textResult({
+          pid: session.child.pid,
+          runId: normalizedRunId,
+          state: 'persistence_error',
+          exitCode: session.exitCode,
+          error: session.persistenceError
+        }, { isError: true });
+      }
+      if (this.ciStateDirectory) {
+        const record = await readTrustedCiState(this.ciStateDirectory, normalizedRunId);
+        if (record) return this.#renderPersistedCiState(record, { recovered: false });
+      }
+      try {
+        const receipt = extractTrustedCiReceipt(session.output, session.ciIdentity ?? {});
+        return textResult({
+          pid: session.child.pid,
+          runId: normalizedRunId,
+          state: session.state,
+          exitCode: session.exitCode,
+          conclusion: receipt.conclusion,
+          receipt,
+          durable: false
+        });
+      } catch (error) {
+        return textResult({
+          pid: session.child.pid,
+          runId: normalizedRunId,
+          state: session.state,
+          exitCode: session.exitCode,
+          error: String(error?.message || error).slice(0, 1000),
+          durable: false
+        }, { isError: true });
+      }
+    }
+
+    if (!normalizedRunId) throw new Error('Unknown trusted CI session');
+    if (!this.ciStateDirectory) throw new Error('Durable trusted CI state is not configured');
+    const record = await readTrustedCiState(this.ciStateDirectory, normalizedRunId);
+    if (!record) throw new Error(`Unknown trusted CI run: ${normalizedRunId}`);
+    return this.#renderPersistedCiState(record, { recovered: true });
   }
 
   async #readProcessOutput({ pid, offset = 0, length = 1000 }) {
@@ -645,6 +940,8 @@ export class NativeLocalClient extends EventEmitter {
     const sessions = [...this.sessions.entries()].map(([pid, session]) => ({
       pid,
       sessionId: session.id,
+      kind: session.kind ?? 'process',
+      runId: session.runId ?? null,
       state: session.state,
       exitCode: session.exitCode,
       cwd: session.cwd,
