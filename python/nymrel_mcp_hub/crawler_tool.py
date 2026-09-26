@@ -13,7 +13,7 @@ from ._crawler_mesh.extractor import extract_markdown, extract_metadata
 from ._crawler_mesh.sitemap import fetch_and_parse_sitemap
 
 CANONICAL_REPOSITORY = "https://github.com/nymrel/nymrel-crawler-mesh"
-CANONICAL_REVISION = "35634d2109bb8c33cb17e38acf70c584e891c2e6"
+CANONICAL_REVISION = "041b0b26c6ed4b9d31e87bdf397bbbd7d1017171"
 DEFAULT_LIMIT = 20
 MAX_LIMIT = 100
 DEFAULT_DEPTH = 2
@@ -121,8 +121,16 @@ def _metadata(result: Any) -> dict[str, Any]:
 
 
 def _document(result: Any, include_metadata: bool = True) -> dict[str, Any]:
+    # Shape already-acquired HTML with the canonical extractor, as Node does.
+    # Generated frontmatter timestamps are acquisition metadata, not page content.
+    extraction = extract_markdown(
+        result.html,
+        base_url=result.url,
+        include_frontmatter=False,
+        target_main_content=True,
+    )
     payload: dict[str, Any] = {
-        "markdown": result.markdown,
+        "markdown": extraction.markdown,
         "links": [link.href for link in result.links if link.href],
     }
     if include_metadata:
@@ -229,7 +237,8 @@ def _crawl_documents(
 
     results: list[Any] = []
     visited: set[str] = set()
-    while queue and len(results) < limit:
+    # Failed page attempts consume the same page budget as successful ones.
+    while queue and len(visited) < limit:
         current, depth = queue.popleft()
         if current in visited:
             continue
@@ -238,6 +247,8 @@ def _crawl_documents(
         try:
             result = mesh.crawl_url_sync(current)
         except Exception:
+            if current == _canonical_url(root):
+                raise
             result = None
         if result is None:
             continue

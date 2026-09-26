@@ -20,9 +20,10 @@ ROOT = Path(__file__).resolve().parents[1]
 BASE = {"url": "https://example.com/", "limit": 1, "maxDepth": 0,
         "sitemap": "skip", "includeSubdomains": False}
 PUBLIC_REDIRECT = "https://httpbingo.org/redirect-to?url=https%3A%2F%2Fexample.com%2F"
-PRIVATE_REDIRECT = "https://httpbingo.org/redirect-to?url=http%3A%2F%2F127.0.0.1%2F"
+PRIVATE_REDIRECT = "https://httpbin.org/redirect-to?url=http%3A%2F%2F127.0.0.1%2F"
 CASES = [
     ("scrape", {**BASE, "action": "scrape"}, "document"),
+    ("scrape-repeat", {**BASE, "action": "scrape"}, "document"),
     ("map", {**BASE, "action": "map"}, "map"),
     ("crawl", {**BASE, "action": "crawl"}, "crawl"),
     ("public-redirect", {**BASE, "action": "scrape", "url": PUBLIC_REDIRECT}, "document"),
@@ -49,7 +50,7 @@ def check_result(result: dict, expected: str) -> dict:
             raise ValueError(f"expected rejection {expected}; got: {text[:180]}")
         return {"rejection": expected}
     if expected == "http-error":
-        if result.get("isError") is True and any(code in text.lower() for code in ("503", "http", "robots")):
+        if result.get("isError") is True and any(code in text.lower() for code in ("http 503", "crawl_root_not_acquired")):
             return {"rejection": text[:200]}
         raise ValueError(f"HTTP failure not surfaced as tool error: {text[:240]}")
     if result.get("isError"):
@@ -88,6 +89,7 @@ def main() -> int:
     env = {key: value for key, value in os.environ.items() if key != "FIRECRAWL_API_KEY"}
     env["PYTHONPATH"] = str(ROOT / "python")
     rows = []
+    hashes = {}
     for engine in ("python", "node"):
         for name, args, expected in CASES:
             started = time.monotonic()
@@ -101,7 +103,14 @@ def main() -> int:
                     raise ValueError(f"worker exit {completed.returncode}: {completed.stderr[-240:]}")
                 if len(completed.stdout) > 1_000_000:
                     raise ValueError("worker output cap exceeded")
-                row.update(check_result(json.loads(completed.stdout), expected), passed=True)
+                row.update(check_result(json.loads(completed.stdout), expected))
+                if name == "scrape":
+                    hashes[engine] = row["documents"][0]["content_sha256"]
+                if name == "scrape-repeat":
+                    if row["documents"][0]["content_sha256"] != hashes.get(engine):
+                        raise ValueError("unchanged page markdown hash is not stable")
+                    row["repeat_hash_stable"] = True
+                row["passed"] = True
             except (OSError, ValueError, KeyError, TypeError, subprocess.TimeoutExpired) as error:
                 row["error"] = str(error)[:400]
             row["elapsed_ms"] = round((time.monotonic() - started) * 1000)
