@@ -1,7 +1,7 @@
 {
   "name": "@nymrel/mcp-hub",
   "version": "1.0.0",
-  "description": "Dual-engine Model Context Protocol (MCP) server exposing 14 Nymrel tools for Claude Desktop, Cursor, Codex, and other MCP clients.",
+  "description": "Dual-engine Model Context Protocol (MCP) server exposing 15 Nymrel tools for Claude Desktop, Cursor, Codex, and other MCP clients.",
   "keywords": [
     "mcp",
     "model-context-protocol",
@@ -14,7 +14,7 @@
     "machine-trust",
     "agent-surety",
     "proof-ledger",
-    "zero-dependency"
+    "zero-telemetry"
   ],
   "homepage": "https://github.com/nymrel/nymrel-mcp-hub#readme",
   "bugs": {
@@ -40,7 +40,10 @@
     "llms.txt",
     "THIRD_PARTY_NOTICES.md",
     "docs/proof-ledger/LICENSE",
-    "docs/proof-ledger/SOURCE.json"
+    "docs/proof-ledger/SOURCE.json",
+    "docs/crawler-mesh/LICENSE",
+    "docs/crawler-mesh/SOURCE.json",
+    "docs/crawler-mesh/bandit-reviewed.json"
   ],
   "scripts": {
     "build": "tsc",
@@ -50,11 +53,12 @@
     "test:ci": "node --test test/ci-contract.test.mjs",
     "verify:toolchain": "node scripts/verify-toolchain.mjs",
     "verify:package": "tsc && corepack npm@12.0.2 pack --dry-run --json --ignore-scripts | node scripts/verify-npm-package.mjs",
-    "verify": "node scripts/verify-toolchain.mjs && tsc --noEmit && tsc && node --test dist/test/*.test.js && node --test test/ci-contract.test.mjs && corepack npm@12.0.2 pack --dry-run --json --ignore-scripts | node scripts/verify-npm-package.mjs",
+    "verify": "node scripts/verify-toolchain.mjs && node scripts/verify-crawler-mesh-vendor.mjs && tsc --noEmit && tsc && node --test dist/test/*.test.js && node --test test/ci-contract.test.mjs && corepack npm@12.0.2 pack --dry-run --json --ignore-scripts | node scripts/verify-npm-package.mjs",
     "start": "node ./bin/mcp-server.js",
     "clean": "node -e \"const fs=require('fs'); fs.rmSync('dist', {recursive:true, force:true});\"",
     "prepack": "tsc",
-    "prepublishOnly": "corepack npm@12.0.2 run verify"
+    "prepublishOnly": "corepack npm@12.0.2 run verify",
+    "verify:vendor": "node scripts/verify-crawler-mesh-vendor.mjs"
   },
   "devDependencies": {
     "@types/node": "24.13.3",
@@ -79,5 +83,8 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/nymrel/nymrel-mcp-hub.git"
+  },
+  "dependencies": {
+    "undici": "8.10.2"
   }
 }

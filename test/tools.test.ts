@@ -1,6 +1,6 @@
 /**
  * Automated Test Suite: MCP Tool Verification
- * Verifies registration and execution of all 14 Nymrel MCP tools
+ * Verifies registration and execution of all 15 Nymrel MCP tools
  */
 
 import test from 'node:test';
@@ -24,8 +24,8 @@ import {
   executeProofVerify
 } from '../src/tools/index.js';
 
-test('MCP Tool Registry: Contains exactly 14 registered tools', () => {
-  assert.strictEqual(ALL_MCP_TOOLS.length, 14);
+test('MCP Tool Registry: Contains exactly 15 registered tools', () => {
+  assert.strictEqual(ALL_MCP_TOOLS.length, 15);
   const toolNames = ALL_MCP_TOOLS.map(t => t.name);
   
   assert.ok(toolNames.includes('nymrel_ucp_audit'));
@@ -42,6 +42,7 @@ test('MCP Tool Registry: Contains exactly 14 registered tools', () => {
   assert.ok(toolNames.includes('nymrel_a2ui_render'));
   assert.ok(toolNames.includes('nymrel_swarm_bus'));
   assert.ok(toolNames.includes('nymrel_proof_verify'));
+  assert.ok(toolNames.includes('nymrel_web_search'));
 });
 
 test('MCP Tool: nymrel_ucp_audit execution', async () => {
@@ -130,20 +131,11 @@ test('MCP Tool: nymrel_crawler_mesh converts supplied HTML without claiming a ne
   assert.strictEqual(res.isError, undefined);
   const data = JSON.parse(res.content[0].text!);
   assert.ok(data.markdown.includes('# Clean Title'));
-  assert.ok(data.markdown.includes('[link](https://nymrel.com)'));
+  assert.ok(data.markdown.includes('[link](https://nymrel.com/)'));
   assert.ok(data.tokens.cleanMarkdownTokens > 0);
   assert.strictEqual(data.metadata.title, 'Clean Source');
   assert.strictEqual(data.metadata.networkFetchPerformed, false);
   assert.strictEqual(data.url, 'https://example.com/source');
-});
-
-test('MCP Tool: nymrel_crawler_mesh fails closed for URL-only calls instead of fabricating evidence', async () => {
-  const res = await executeCrawler({ url: 'https://example.com/' });
-  assert.strictEqual(res.isError, true);
-  const message = res.content[0].text!;
-  assert.match(message, /URL crawling is unavailable/);
-  assert.match(message, /No placeholder or synthetic page was returned/);
-  assert.match(message, /nymrel\/nymrel-crawler-mesh/);
 });
 
 test('MCP Tool: nymrel_beacon_ping tracks fleet health', async () => {

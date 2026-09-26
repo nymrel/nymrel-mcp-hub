@@ -10,6 +10,8 @@ from datetime import datetime, timezone
 from typing import Dict, Any, List
 
 from .proof_tools import proof_ledger, proof_verify
+from .crawler_tool import execute_crawler
+from .web_search import execute_web_search
 
 ALL_TOOLS: List[Dict[str, Any]] = [
     {
@@ -92,15 +94,65 @@ ALL_TOOLS: List[Dict[str, Any]] = [
                      'required': ['action', 'agentId', 'payload', 'signingKey', 'algorithm']}},
     {
         "name": "nymrel_crawler_mesh",
-        "description": "Clean web crawler & Markdown AST extractor optimized for LLM token efficiency.",
+        "description": (
+            "Nymrel-owned public-web scrape, map, bounded crawl, and local "
+            "HTML-to-Markdown extraction with SSRF, redirect, and robots protections."
+        ),
         "inputSchema": {
             "type": "object",
+            "additionalProperties": False,
             "properties": {
+                "action": {
+                    "type": "string",
+                    "enum": ["scrape", "map", "crawl"],
+                    "default": "scrape",
+                },
                 "url": {"type": "string"},
                 "html": {"type": "string"},
-                "extractMetadata": {"type": "boolean", "default": True}
-            }
-        }
+                "extractMetadata": {"type": "boolean", "default": True},
+                "limit": {"type": "number"},
+                "maxDepth": {"type": "number"},
+                "search": {"type": "string"},
+                "includeSubdomains": {"type": "boolean"},
+                "crawlEntireDomain": {"type": "boolean"},
+                "sitemap": {
+                    "type": "string",
+                    "enum": ["include", "skip"],
+                },
+            },
+        },
+    },
+    {
+        "name": "nymrel_web_search",
+        "description": (
+            "Search the public web through a normalized studio gateway. Uses server-side "
+            "Exa, Tavily, Brave Search, or SerpAPI credentials and fails closed rather "
+            "than fabricating results."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "query": {"type": "string", "minLength": 1, "description": "Public-web search query."},
+                "provider": {
+                    "type": "string",
+                    "enum": ["auto", "exa", "tavily", "brave", "serpapi"],
+                    "default": "auto",
+                },
+                "mode": {
+                    "type": "string",
+                    "enum": ["search", "research", "serp_exact"],
+                    "default": "search",
+                },
+                "maxResults": {"type": "number", "default": 8, "description": "Executor enforces 1-20."},
+                "language": {"type": "string", "description": "Preferred language, e.g. en."},
+                "country": {"type": "string", "description": "Preferred ISO alpha-2 country, e.g. US."},
+                "freshnessDays": {"type": "number", "description": "Optional freshness window in days."},
+                "includeDomains": {"type": "array", "items": {"type": "string"}},
+                "excludeDomains": {"type": "array", "items": {"type": "string"}},
+            },
+            "required": ["query"],
+        },
     },
     {
         "name": "nymrel_beacon_ping",
@@ -295,6 +347,12 @@ def dispatch_tool_call(name: str, args: Dict[str, Any]) -> Dict[str, Any]:
 
     if tool_key in ("proof_verify", "nymrel_proof_verify"):
         return proof_verify(args)
+
+    if tool_key in ("crawler_mesh", "nymrel_crawler_mesh"):
+        return execute_crawler(args)
+
+    if tool_key == "web_search":
+        return execute_web_search(args)
 
     # Fallback generic handler for other registered tools
     res = {

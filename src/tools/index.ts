@@ -19,6 +19,7 @@ import { sandstormToolDefinition, executeSandstorm } from './sandstormTool.js';
 import { a2uiToolDefinition, executeA2ui } from './a2uiTool.js';
 import { swarmBusToolDefinition, executeSwarmBus } from './swarmBusTool.js';
 import { proofVerifyToolDefinition, executeProofVerify } from './proofVerifyTool.js';
+import { webSearchToolDefinition, executeWebSearch } from './webSearchTool.js';
 
 export {
   ucpAuditToolDefinition, executeUcpAudit,
@@ -34,7 +35,8 @@ export {
   sandstormToolDefinition, executeSandstorm,
   a2uiToolDefinition, executeA2ui,
   swarmBusToolDefinition, executeSwarmBus,
-  proofVerifyToolDefinition, executeProofVerify
+  proofVerifyToolDefinition, executeProofVerify,
+  webSearchToolDefinition, executeWebSearch
 };
 
 export const ALL_MCP_TOOLS: MCPToolDefinition[] = [
@@ -51,7 +53,8 @@ export const ALL_MCP_TOOLS: MCPToolDefinition[] = [
   sandstormToolDefinition,
   a2uiToolDefinition,
   swarmBusToolDefinition,
-  proofVerifyToolDefinition
+  proofVerifyToolDefinition,
+  webSearchToolDefinition
 ];
 
 export async function dispatchToolCall(name: string, args: Record<string, any>): Promise<ToolExecutionResult> {
@@ -111,6 +114,10 @@ export async function dispatchToolCall(name: string, args: Record<string, any>):
     case 'nymrel_proof_verify':
     case 'proof_verify':
       return executeProofVerify(args as any);
+
+    case 'nymrel_web_search':
+    case 'web_search':
+      return executeWebSearch(args as any);
 
     default:
       throw new Error(`Tool "${name}" is not registered in @nymrel/mcp-hub.`);

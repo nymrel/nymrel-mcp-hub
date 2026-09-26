@@ -5,6 +5,7 @@ Nymrel MCP Hub - Python Resources
 import json
 from typing import Dict, Any, List
 from .protocol import LEGACY_PROTOCOL_VERSIONS, MODERN_PROTOCOL_VERSION
+from .tools import ALL_TOOLS
 
 ALL_RESOURCES: List[Dict[str, Any]] = [
     {
@@ -17,7 +18,7 @@ ALL_RESOURCES: List[Dict[str, Any]] = [
         "uri": "nymrel://ecosystem",
         "name": "Nymrel Ecosystem Repository Catalog",
         "mimeType": "application/json",
-        "description": "Structured directory metadata of all 14 Nymrel open-source toolchains."
+        "description": "Structured directory metadata of the Nymrel open-source toolchain ecosystem."
     },
     {
         "uri": "nymrel://llms-manifest",
@@ -38,7 +39,7 @@ def read_resource(uri: str) -> Dict[str, str]:
                     "server": "@nymrel/mcp-hub",
                     "engine": "python",
                     "status": "ONLINE",
-                    "registeredTools": 14,
+                    "registeredTools": len(ALL_TOOLS),
                     "protocolVersions": {
                         "modern": MODERN_PROTOCOL_VERSION,
                         "legacy": list(LEGACY_PROTOCOL_VERSIONS),
