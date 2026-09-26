@@ -1,6 +1,6 @@
 {
   "repository": "https://github.com/nymrel/nymrel-crawler-mesh",
-  "revision": "35634d2109bb8c33cb17e38acf70c584e891c2e6",
+  "revision": "041b0b26c6ed4b9d31e87bdf397bbbd7d1017171",
   "license": "MIT",
   "files": [
     {
@@ -11,7 +11,7 @@
     {
       "source": "src/firecrawl-compat.ts",
       "destination": "src/vendor/crawler-mesh/firecrawl-compat.ts",
-      "gitBlobSha": "d331ad050fc1629f0e531989a9bb1901f7b712df"
+      "gitBlobSha": "204f0fff048c00bf19a14a5e0fcf9de7b0840a74"
     },
     {
       "source": "src/cache/index.ts",

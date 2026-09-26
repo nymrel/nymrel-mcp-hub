@@ -117,6 +117,13 @@ function canonicalKey(rawUrl: string): string {
   return parsed.toString();
 }
 
+function requireRootResult(rootUrl: string, results: CrawlResult[]): void {
+  // A filtered map may be empty, but a failed seed acquisition is not success.
+  if (!results.some(result => canonicalKey(result.url) === canonicalKey(rootUrl))) {
+    throw new Error('CRAWL_ROOT_NOT_ACQUIRED');
+  }
+}
+
 function inMapScope(root: URL, candidate: URL, includeSubdomains: boolean): boolean {
   const rootHost = root.hostname.toLowerCase().replace(/^www\./, '');
   const host = candidate.hostname.toLowerCase().replace(/^www\./, '');
@@ -183,6 +190,7 @@ export class FirecrawlV2Compat {
       domainMatchMode: includeSubdomains ? 'subdomains' : 'same-domain',
       extractorOptions: { includeFrontmatter: false, targetMainContent: true }
     });
+    requireRootResult(request.url, summary.results);
 
     const search = (request.search ?? '').trim().toLowerCase();
     const found = new Map<string, FirecrawlCompatMapLink>();
@@ -240,6 +248,7 @@ export class FirecrawlV2Compat {
         targetMainContent: request.scrapeOptions?.onlyMainContent ?? true
       }
     });
+    requireRootResult(request.url, summary.results);
 
     return {
       success: true,
