@@ -1,0 +1,46 @@
+name: Crawler Mesh public-network canary
+
+on:
+  push:
+    branches: [chatgpt/crawler-live-canary-20260925]
+    paths:
+      - 'scripts/crawler-live-canary.py'
+      - '.github/workflows/crawler-live-canary.yml'
+      - 'python/nymrel_mcp_hub/crawler_tool.py'
+      - 'src/tools/crawlerTool.ts'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: crawler-live-canary-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  live:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '24.20.0'
+          package-manager-cache: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.13'
+      - name: Build the reviewed runtime without credentials
+        run: |
+          corepack npm@12.0.2 ci
+          corepack npm@12.0.2 run build
+          python -m pip install .
+          node scripts/verify-crawler-mesh-vendor.mjs
+      - name: Run bounded live public canaries in both engines
+        run: python scripts/crawler-live-canary.py
+      - name: Emit body-free execution receipt
+        if: always()
+        run: |
+          if test -f crawler-live-canary.json; then cat crawler-live-canary.json; fi
