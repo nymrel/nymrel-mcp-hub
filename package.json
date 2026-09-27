@@ -51,6 +51,7 @@
     "verify:toolchain": "node scripts/verify-toolchain.mjs",
     "verify:package": "tsc && corepack npm@12.0.2 pack --dry-run --json --ignore-scripts | node scripts/verify-npm-package.mjs",
     "verify": "node scripts/verify-toolchain.mjs && tsc --noEmit && tsc && node --test dist/test/*.test.js && node --test test/ci-contract.test.mjs && corepack npm@12.0.2 pack --dry-run --json --ignore-scripts | node scripts/verify-npm-package.mjs",
+    "demo:alexa": "tsc && node examples/alexa-simulator.mjs",
     "start": "node ./bin/mcp-server.js",
     "clean": "node -e \"const fs=require('fs'); fs.rmSync('dist', {recursive:true, force:true});\"",
     "prepack": "tsc",
