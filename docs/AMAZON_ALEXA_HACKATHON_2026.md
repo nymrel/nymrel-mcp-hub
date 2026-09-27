@@ -84,6 +84,27 @@ Build one end-to-end simulator flow that:
 
 Target demo length: under 3 minutes.
 
+#### Local simulator proof
+
+Run the deterministic loopback workflow after installing the locked dependencies:
+
+```bash
+corepack npm@12.0.2 run demo:alexa
+```
+
+The simulator performs a real MCP `2025-11-25` initialize handshake over the branch's
+Streamable HTTP adapter, then exercises three assistant-facing outcomes:
+
+1. a bounded `npm test` request receives an `ALLOW` verdict and a concise assistant response;
+2. `rm -rf /` receives a `BLOCK` verdict before execution and a clear refusal;
+3. a tool outside the hosted allowlist receives MCP error `-32602`.
+
+The command prints a stable JSON transcript suitable for local review and demo scripting.
+It binds only to loopback, uses a fixture-only bearer token, performs no external network
+request, and does not execute either inspected command. This is evidence of a local
+simulated assistant workflow; it is not evidence of Alexa+ platform validation, public
+hosting, deployment, or submission.
+
 ## Optional prize stacking
 
 Only after the core works:
