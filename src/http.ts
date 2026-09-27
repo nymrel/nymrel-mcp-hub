@@ -271,7 +271,6 @@ async function readBody(
     const onAborted = () => finish(new Error('Request aborted'));
 
     const timer = setTimeout(() => finish(new RequestTimeoutError()), timeoutMs);
-    timer.unref();
 
     req.on('data', onData);
     req.on('end', onEnd);
@@ -287,7 +286,6 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T
       promise,
       new Promise<never>((_resolve, reject) => {
         timer = setTimeout(() => reject(new RequestTimeoutError()), timeoutMs);
-        timer.unref();
       })
     ]);
   } finally {
@@ -667,7 +665,6 @@ export async function drainMCPHttpServer(
   while ((state?.handler.activeRequestCount() ?? 0) > 0 && Date.now() < deadline) {
     await new Promise<void>((resolve) => {
       const timer = setTimeout(resolve, Math.min(10, Math.max(1, deadline - Date.now())));
-      timer.unref();
     });
   }
 
