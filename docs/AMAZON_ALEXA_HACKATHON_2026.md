@@ -13,133 +13,120 @@ This branch is **not** evidence of Devpost registration, AWS credits, deployment
 The current hub already:
 
 - supports the MCP 2025-11-25 initialize-era revision required by the Alexa+ competition path;
-- exposes 14 bounded Nymrel tools plus resources/prompts;
+- exposes the canonical Nymrel tool surface plus resources/prompts;
 - has cross-runtime protocol tests and explicit security boundaries;
 - is public and MIT licensed.
 
-The missing competition-specific capability is a hosted Streamable HTTP transport. The main README currently states that hosted transport is not claimed; that statement must remain true on `main` until an independently verified hosted path exists.
+The competition-specific capability is a separately bounded Streamable HTTP transport. Main must not claim hosted availability until a separately authorized deployed path is independently verified.
 
 ## Product concept
 
 **Nymrel Operator for Alexa+**
 
-An Alexa+ agent can use a least-privilege subset of Nymrel inspection tools to answer questions such as:
+An Alexa+ agent can use a least-privilege subset of Nymrel inspection tools to inspect machine trust, proof receipts, routing/safety metadata, and bounded readiness without granting destructive execution authority.
 
-- Is this website ready for agentic commerce?
-- What machine-readable trust metadata is available?
-- Does this proof receipt verify against a supplied key?
-- Which model profile satisfies an explicit set of routing constraints?
-- Is a proposed command/path obviously destructive or unsafe?
+The first competition slice is read/inspect-first. No deployment, purchase, file write, credential rotation, publishing, or other destructive action belongs in the initial Alexa+ surface.
 
-The first competition slice should be read/inspect-first. No deployment, purchase, file write, credential rotation, publishing, or other destructive action belongs in the initial Alexa+ surface.
+## Implemented competition delta
 
-## Required competition delta
+### Streamable HTTP transport
 
-### 1. Streamable HTTP transport
+The branch:
 
-Add a separate hosted entry point that:
+- implements MCP 2025-11-25 over stateless Streamable HTTP JSON responses;
+- keeps stdio behavior separate;
+- exposes only the reviewed four-tool hosted allowlist;
+- rejects unsupported methods, protocols, content types, hosts, and origins;
+- bounds request bytes, JSON nesting, response bytes, request time, concurrent requests, and request rate;
+- requires bearer authentication for any non-loopback bind;
+- supports deterministic graceful drain with a bounded forced-close fallback;
+- returns sanitized deterministic transport errors.
 
-- implements the eligible MCP Streamable HTTP request path;
-- negotiates the existing supported protocol revision correctly;
-- does not silently change stdio semantics;
-- rejects unsupported methods/content types;
-- applies strict body, response, timeout, concurrency, and rate bounds;
-- returns deterministic sanitized errors.
+Default source limits are intentionally conservative and can only be changed by trusted server configuration:
 
-### 2. Hosted allowlist
+- body: 1 MiB;
+- response: 256 KiB;
+- request timeout: 5 seconds;
+- concurrent requests: 16;
+- request rate: 120 per 60 seconds;
+- JSON nesting: 32 levels;
+- drain timeout: 5 seconds.
 
-Begin with a reviewed allowlist of inspection-oriented tools. Hosted exposure must be explicit rather than inheriting every stdio tool automatically.
+These are application-level controls, not a substitute for TLS termination, network isolation, a reverse proxy, or provider-side abuse protection.
 
-Candidate first set:
+### Hosted allowlist
+
+The hosted transport exposes only:
 
 - `nymrel_ucp_audit`
 - `nymrel_surety_guard`
 - `nymrel_machine_trust`
 - `nymrel_proof_verify`
-- read-only status/resources needed for discovery
 
-Any tool requiring caller-supplied signing material needs a separate threat review before hosted exposure.
+Tools outside that list fail before dispatch. Any future hosted tool addition requires its own review.
 
-### 3. Authentication and abuse controls
+### Authentication and abuse controls
 
-The competition endpoint must document and test:
+Loopback fixtures may omit bearer authentication. **Any non-loopback bind fails before listen unless a bearer token is configured.** Allowed-host configuration is also required by the packaged CLI for non-loopback operation.
 
-- authentication model;
-- replay/session behavior;
-- CORS/origin posture where relevant;
-- per-request size and nesting limits;
-- rate limiting;
-- no logging of secrets/signing material;
-- deterministic shutdown/drain behavior.
+The source does not log bearer values or tool request bodies. The local demo keeps `executed:false` evidence and never executes the inspected commands.
 
-### 4. Alexa+ demo
+### Alexa+ local demo
 
-Build one end-to-end simulator flow that:
-
-1. invokes the Alexa+ MCP integration;
-2. calls a real Nymrel hosted tool;
-3. receives a bounded result;
-4. turns the result into a useful voice/assistant response;
-5. shows at least one safe failure case.
-
-Target demo length: under 3 minutes.
-
-#### Local simulator proof
-
-Run the deterministic loopback workflow after installing the locked dependencies:
+Run:
 
 ```bash
 corepack npm@12.0.2 run demo:alexa
 ```
 
-The simulator performs a real MCP `2025-11-25` initialize handshake over the branch's
-Streamable HTTP adapter, then exercises three assistant-facing outcomes:
+The deterministic loopback workflow performs the real MCP handshake and demonstrates:
 
-1. a bounded `npm test` request receives an `ALLOW` verdict and a concise assistant response;
-2. `rm -rf /` receives a `BLOCK` verdict before execution and a clear refusal;
-3. a tool outside the hosted allowlist receives MCP error `-32602`.
+1. bounded `npm test` inspection → **ALLOW**;
+2. `rm -rf /` → **BLOCK** before execution;
+3. `nymrel_swarm_claim` → hosted-boundary **REFUSED** with MCP `-32602`.
 
-The command prints a stable JSON transcript suitable for local review and demo scripting.
-It binds only to loopback, uses a fixture-only bearer token, performs no external network
-request, and does not execute either inspected command. This is evidence of a local
-simulated assistant workflow; it is not evidence of Alexa+ platform validation, public
-hosting, deployment, or submission.
-
-For a human-visible same-origin browser experience, run:
+For the human-visible same-origin browser flow:
 
 ```bash
 corepack npm@12.0.2 run demo:alexa:web
 ```
 
-The loopback page exposes three explicit scenarios: a bounded command check, a destructive
-command refusal, and a hosted-tool boundary refusal. The page calls the real MCP adapter
-from the browser, renders the resulting decision evidence, and lets the operator copy or
-download the deterministic JSON receipt. It carries a restrictive Content Security Policy,
-uses no third-party assets, and executes no inspected command. Closing the process removes
-the entire local surface; it is not deployed or published.
+It renders ALLOW/BLOCK/REFUSED outcomes and lets the operator copy or download deterministic JSON evidence. Every decision receipt explicitly says `executed:false`.
+
+These are local simulator proofs, not public endpoint, Alexa+ platform, deployment, or submission proof.
+
+## Friction-log fixture
+
+The canonical Stage-1 friction requirement is represented by:
+
+- `examples/amazon-alexa-friction-log.fixture.json`
+- `scripts/verify-alexa-friction-log.mjs`
+- `npm run verify:alexa-friction`
+
+The fixture is explicitly non-production and secret-free. The validator caps size, enforces required fields/statuses, and rejects secret-bearing keys and common credential-shaped values. Actual organizer-submission feedback, if ever supplied, must be captured separately from this local fixture and must not include credentials or private operator data.
 
 ## Optional prize stacking
 
 Only after the core works:
 
-- **Open Source mini-challenge:** this public, licensed competition-period contribution is a natural fit if the final Devpost rules confirm it.
-- **AWS Builder mini-challenge:** add a qualifying AWS component only if it improves the product architecture. Do not add AWS services solely to chase a prize.
+- **Open Source mini-challenge:** use the existing public MIT repository only if the final submission path remains eligible.
+- **AWS Builder mini-challenge:** add AWS only when it improves the product; no prize-only cloud dependency.
 
 ## Evidence checklist
 
 Before any public claim or submission:
 
-- [ ] exact-head local verification passes;
-- [ ] Streamable HTTP integration tests pass;
+- [ ] current exact-head repository verification passes;
+- [ ] Streamable HTTP boundary tests pass;
+- [ ] friction fixture validation passes;
+- [ ] genuinely independent review accepts the current head;
 - [ ] public endpoint is verified from an external client;
-- [ ] Alexa+ simulator invocation is captured;
-- [ ] hosted tool allowlist is documented;
-- [ ] abuse/security tests pass;
+- [ ] Alexa+ or organizer-accepted simulator evidence is captured;
 - [ ] no secret material appears in logs or fixtures;
-- [ ] main README capability boundary is updated only after evidence exists;
-- [ ] competition-period commits are clearly identified;
-- [ ] demo video and reproducible setup instructions exist.
+- [ ] main README capability boundary changes only after actual hosted evidence exists;
+- [ ] competition-period commits remain identifiable;
+- [ ] public demo video and reproducible setup instructions exist.
 
 ## External gates
 
-Devpost registration requires profile completion plus explicit user acceptance of the official competition rules, Devpost terms, and eligibility statement. Those are operator gates and are not satisfied by this branch.
+Devpost registration, official rule acceptance, Amazon/AWS credentials, credits, public deployment, public video publication, and final submission remain separately gated. This branch does not perform or imply any of them.

@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "fixtureOnly": true,
+  "competition": "amazon-build-ship-shape-2026",
+  "product": "nymrel-operator-alexa",
+  "entries": [
+    {
+      "id": "hosted-transport-boundaries",
+      "stage": "local-development",
+      "category": "security-contract",
+      "problem": "A hosted MCP surface needs explicit resource and authentication bounds rather than inheriting stdio assumptions.",
+      "resolution": "Require bounded body/response/depth/time/concurrency/rate controls and bearer authentication before any non-loopback bind.",
+      "status": "resolved-in-source",
+      "source": "local-fixture",
+      "secretFree": true
+    },
+    {
+      "id": "browser-evidence-custody",
+      "stage": "local-demo",
+      "category": "evidence",
+      "problem": "A useful operator demo needs inspectable evidence without implying that a command was executed.",
+      "resolution": "Emit deterministic ALLOW/BLOCK/REFUSED JSON receipts with executed:false and explicit local-simulation limitations.",
+      "status": "resolved-in-source",
+      "source": "local-fixture",
+      "secretFree": true
+    }
+  ]
+}

@@ -3,17 +3,27 @@ import { once } from 'node:events';
 import { request } from 'node:http';
 import test from 'node:test';
 import {
+  drainMCPHttpServer,
   HTTP_PROTOCOL_VERSION,
   startMCPHttpServer
 } from '../src/http.js';
 
+type ServerOptions = {
+  allowedOrigins?: string[];
+  bearerToken?: string;
+  hostedToolAllowlist?: string[];
+  maxBodyBytes?: number;
+  maxResponseBytes?: number;
+  requestTimeoutMs?: number;
+  maxConcurrentRequests?: number;
+  rateLimitWindowMs?: number;
+  rateLimitMaxRequests?: number;
+  maxJsonDepth?: number;
+};
+
 async function withServer(
   run: (baseUrl: string) => Promise<void>,
-  options: {
-    allowedOrigins?: string[];
-    bearerToken?: string;
-    hostedToolAllowlist?: string[];
-  } = {}
+  options: ServerOptions = {}
 ): Promise<void> {
   const server = startMCPHttpServer({
     host: '127.0.0.1',
@@ -27,8 +37,9 @@ async function withServer(
   try {
     await run(`http://127.0.0.1:${address.port}/mcp`);
   } finally {
-    server.close();
-    await once(server, 'close');
+    if (server.listening) {
+      await drainMCPHttpServer(server);
+    }
   }
 }
 
@@ -71,7 +82,7 @@ async function post(
   });
 }
 
-function initializeRequest() {
+function initializeRequest(extra: Record<string, unknown> = {}) {
   return {
     jsonrpc: '2.0',
     id: 1,
@@ -82,7 +93,8 @@ function initializeRequest() {
       clientInfo: {
         name: 'http-test',
         version: '1.0.0'
-      }
+      },
+      ...extra
     }
   };
 }
@@ -210,6 +222,138 @@ test('HTTP transport supports bearer authentication without reflecting credentia
   );
 });
 
+test('non-loopback hosting requires bearer authentication before bind', () => {
+  assert.throws(
+    () =>
+      startMCPHttpServer({
+        host: '0.0.0.0',
+        port: 0,
+        allowedHosts: ['example.test']
+      }),
+    /requires bearer authentication/
+  );
+});
+
+test('HTTP transport rejects JSON deeper than the configured nesting limit', async () => {
+  await withServer(
+    async (url) => {
+      const response = await post(url, initializeRequest({
+        nested: { one: { two: { three: true } } }
+      }));
+      assert.equal(response.status, 400);
+      assert.match(JSON.parse(response.body).error.message, /nesting limit/);
+    },
+    { maxJsonDepth: 4 }
+  );
+});
+
+test('HTTP transport bounds serialized responses', async () => {
+  await withServer(
+    async (url) => {
+      const response = await post(
+        url,
+        {
+          jsonrpc: '2.0',
+          id: 2,
+          method: 'tools/list',
+          params: {}
+        },
+        { 'mcp-protocol-version': HTTP_PROTOCOL_VERSION }
+      );
+      assert.equal(response.status, 500);
+      assert.equal(JSON.parse(response.body).error.code, -32024);
+    },
+    { maxResponseBytes: 256 }
+  );
+});
+
+test('HTTP transport rate limit fails closed with retry-after', async () => {
+  await withServer(
+    async (url) => {
+      const first = await post(url, initializeRequest());
+      assert.equal(first.status, 200);
+
+      const second = await post(url, initializeRequest());
+      assert.equal(second.status, 429);
+      assert.equal(second.headers['retry-after'], '60');
+    },
+    {
+      rateLimitMaxRequests: 1,
+      rateLimitWindowMs: 60_000
+    }
+  );
+});
+
+test('HTTP transport rejects concurrent work above the configured bound', async () => {
+  await withServer(
+    async (url) => {
+      const parsed = new URL(url);
+      const first = request({
+        hostname: parsed.hostname,
+        port: parsed.port,
+        path: parsed.pathname,
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          accept: 'application/json',
+          'content-length': '100'
+        }
+      });
+      first.on('error', () => {});
+      first.flushHeaders();
+      await new Promise((resolve) => setTimeout(resolve, 20));
+
+      const second = await post(url, initializeRequest());
+      assert.equal(second.status, 503);
+      assert.equal(second.headers['retry-after'], '1');
+      first.destroy();
+    },
+    {
+      maxConcurrentRequests: 1,
+      requestTimeoutMs: 1_000
+    }
+  );
+});
+
+test('HTTP transport times out an incomplete request body', async () => {
+  await withServer(
+    async (url) => {
+      const parsed = new URL(url);
+      const response = await new Promise<{ status: number; body: string }>((resolve, reject) => {
+        const req = request(
+          {
+            hostname: parsed.hostname,
+            port: parsed.port,
+            path: parsed.pathname,
+            method: 'POST',
+            headers: {
+              'content-type': 'application/json',
+              accept: 'application/json',
+              'content-length': '100'
+            }
+          },
+          (res) => {
+            const chunks: Buffer[] = [];
+            res.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
+            res.on('end', () =>
+              resolve({
+                status: res.statusCode ?? 0,
+                body: Buffer.concat(chunks).toString('utf8')
+              })
+            );
+          }
+        );
+        req.on('error', reject);
+        req.flushHeaders();
+      });
+
+      assert.equal(response.status, 504);
+      assert.match(JSON.parse(response.body).error.message, /timed out/);
+    },
+    { requestTimeoutMs: 25 }
+  );
+});
+
 test('HTTP notifications receive 202 with no JSON-RPC response body', async () => {
   await withServer(async (url) => {
     const response = await post(
@@ -227,4 +371,12 @@ test('HTTP notifications receive 202 with no JSON-RPC response body', async () =
     assert.equal(response.status, 202);
     assert.equal(response.body, '');
   });
+});
+
+test('HTTP server drains deterministically without forcing idle work', async () => {
+  const server = startMCPHttpServer({ host: '127.0.0.1', port: 0 });
+  await once(server, 'listening');
+  const result = await drainMCPHttpServer(server, 100);
+  assert.deepEqual(result, { forced: false });
+  assert.equal(server.listening, false);
 });
