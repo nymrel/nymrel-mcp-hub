@@ -105,6 +105,18 @@ request, and does not execute either inspected command. This is evidence of a lo
 simulated assistant workflow; it is not evidence of Alexa+ platform validation, public
 hosting, deployment, or submission.
 
+For a human-visible same-origin browser experience, run:
+
+```bash
+corepack npm@12.0.2 run demo:alexa:web
+```
+
+The loopback page exposes three explicit scenarios: a bounded command check, a destructive
+command refusal, and a hosted-tool boundary refusal. The page calls the real MCP adapter
+from the browser, carries a restrictive Content Security Policy, uses no third-party
+assets, and executes no inspected command. Closing the process removes the entire local
+surface; it is not deployed or published.
+
 ## Optional prize stacking
 
 Only after the core works:

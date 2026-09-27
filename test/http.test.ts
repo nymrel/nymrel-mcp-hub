@@ -182,6 +182,16 @@ test('HTTP transport rejects an unapproved Origin', async () => {
   );
 });
 
+test('HTTP transport accepts the exact same-origin browser host', async () => {
+  await withServer(async (url) => {
+    const parsed = new URL(url);
+    const response = await post(url, initializeRequest(), {
+      origin: parsed.origin
+    });
+    assert.equal(response.status, 200);
+  });
+});
+
 test('HTTP transport supports bearer authentication without reflecting credentials', async () => {
   await withServer(
     async (url) => {

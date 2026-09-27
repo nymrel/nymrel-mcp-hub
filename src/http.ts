@@ -108,9 +108,27 @@ function isAllowedHost(hostHeader: string | undefined, allowedHosts: readonly st
   });
 }
 
-function isAllowedOrigin(origin: string | undefined, allowedOrigins: readonly string[]): boolean {
+function isAllowedOrigin(
+  origin: string | undefined,
+  allowedOrigins: readonly string[],
+  hostHeader: string | undefined
+): boolean {
   if (!origin) return true;
-  return allowedOrigins.some((allowed) => allowed.trim() === origin);
+  if (allowedOrigins.some((allowed) => allowed.trim() === origin)) return true;
+
+  // Same-origin browser clients should work on reviewed hosts without requiring
+  // a duplicate origin configuration. The host check runs first, so this does
+  // not widen the DNS-rebinding boundary.
+  try {
+    const parsed = new URL(origin);
+    const normalizedHost = hostHeader?.trim().toLowerCase();
+    return (
+      (parsed.protocol === 'http:' || parsed.protocol === 'https:') &&
+      parsed.host.toLowerCase() === normalizedHost
+    );
+  } catch {
+    return false;
+  }
 }
 
 function isJsonContentType(contentType: string | undefined): boolean {
@@ -211,7 +229,7 @@ export function createMCPHttpHandler(options: MCPHttpOptions = {}) {
     }
 
     const origin = firstHeader(req.headers.origin);
-    if (!isAllowedOrigin(origin, allowedOrigins)) {
+    if (!isAllowedOrigin(origin, allowedOrigins, host)) {
       writeTransportError(res, 403, 'Origin not allowed');
       return;
     }
