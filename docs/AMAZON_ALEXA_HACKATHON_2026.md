@@ -113,9 +113,10 @@ corepack npm@12.0.2 run demo:alexa:web
 
 The loopback page exposes three explicit scenarios: a bounded command check, a destructive
 command refusal, and a hosted-tool boundary refusal. The page calls the real MCP adapter
-from the browser, carries a restrictive Content Security Policy, uses no third-party
-assets, and executes no inspected command. Closing the process removes the entire local
-surface; it is not deployed or published.
+from the browser, renders the resulting decision evidence, and lets the operator copy or
+download the deterministic JSON receipt. It carries a restrictive Content Security Policy,
+uses no third-party assets, and executes no inspected command. Closing the process removes
+the entire local surface; it is not deployed or published.
 
 ## Optional prize stacking
 

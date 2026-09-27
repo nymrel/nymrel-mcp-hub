@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { createServer } from 'node:http';
 import { once } from 'node:events';
+import { readFile } from 'node:fs/promises';
 import {
   createMCPHttpHandler,
   HTTP_PROTOCOL_VERSION
@@ -8,6 +9,8 @@ import {
 
 const rawPort = process.env.NYMREL_ALEXA_WEB_PORT ?? '8788';
 const port = Number.parseInt(rawPort, 10);
+const clientSource = await readFile(new URL('./alexa-web-client.mjs', import.meta.url));
+const receiptSource = await readFile(new URL('./alexa-web-receipt.mjs', import.meta.url));
 
 if (!Number.isInteger(port) || port < 0 || port > 65535) {
   process.stderr.write('[nymrel-alexa-web] NYMREL_ALEXA_WEB_PORT must be an integer from 0 to 65535\n');
@@ -34,6 +37,11 @@ const html = `<!doctype html>
     .label { color: #6d756f; font-size: .78rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
     #status { display: inline-block; margin: 8px 0 16px; border-radius: 999px; background: #e2e8e3; padding: 6px 10px; font-size: .85rem; font-weight: 800; }
     #answer { font-size: 1.2rem; line-height: 1.5; }
+    #evidence-panel { margin-top: 20px; border-top: 1px solid #ded8cf; padding-top: 18px; }
+    #evidence { overflow: auto; max-height: 260px; border-radius: 12px; background: #24302b; color: #eaf1eb; padding: 14px; font-size: .78rem; line-height: 1.45; }
+    .evidence-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+    .evidence-actions button { padding: 10px 14px; }
+    button:disabled { cursor: not-allowed; opacity: .5; }
     footer { margin-top: 18px; color: #6d756f; font-size: .85rem; line-height: 1.5; }
   </style>
 </head>
@@ -51,86 +59,18 @@ const html = `<!doctype html>
       <div class="label">Assistant response</div>
       <div id="status">Ready</div>
       <div id="answer">Choose a scenario to run the real local MCP workflow.</div>
+      <div id="evidence-panel" hidden>
+        <div class="label">Decision evidence</div>
+        <pre id="evidence"></pre>
+        <div class="evidence-actions">
+          <button type="button" id="copy-evidence" disabled>Copy evidence</button>
+          <button type="button" id="download-evidence" disabled>Download JSON</button>
+        </div>
+      </div>
     </section>
     <footer>Loopback only · MCP ${HTTP_PROTOCOL_VERSION} · No command execution · Not evidence of Alexa+ platform validation</footer>
   </main>
-  <script>
-    const protocolVersion = ${JSON.stringify(HTTP_PROTOCOL_VERSION)};
-    let nextId = 1;
-
-    async function rpc(method, params = {}) {
-      const headers = { 'content-type': 'application/json', accept: 'application/json' };
-      if (method !== 'initialize') headers['mcp-protocol-version'] = protocolVersion;
-      const response = await fetch('/mcp', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ jsonrpc: '2.0', id: nextId++, method, params })
-      });
-      return response.json();
-    }
-
-    function toolResult(payload) {
-      const text = payload?.result?.content?.find((item) => item?.type === 'text')?.text;
-      return typeof text === 'string' ? JSON.parse(text) : null;
-    }
-
-    async function initialize() {
-      const payload = await rpc('initialize', {
-        protocolVersion,
-        capabilities: {},
-        clientInfo: { name: 'nymrel-alexa-web-simulator', version: '1.0.0' }
-      });
-      if (payload?.result?.protocolVersion !== protocolVersion) throw new Error('MCP handshake failed');
-    }
-
-    async function runScenario(name) {
-      const status = document.querySelector('#status');
-      const answer = document.querySelector('#answer');
-      status.textContent = 'Checking';
-      answer.textContent = 'Running the local MCP safety workflow…';
-
-      try {
-        await initialize();
-
-        if (name === 'restricted') {
-          const payload = await rpc('tools/call', { name: 'nymrel_swarm_claim', arguments: {} });
-          status.textContent = payload?.error?.code === -32602 ? 'REFUSED' : 'Unexpected result';
-          answer.textContent = payload?.error?.code === -32602
-            ? 'That tool is not exposed through the reviewed Alexa+ hosted allowlist.'
-            : 'The hosted boundary returned an unexpected response.';
-          return;
-        }
-
-        const destructive = name === 'blocked';
-        const payload = await rpc('tools/call', {
-          name: 'nymrel_surety_guard',
-          arguments: {
-            command: destructive ? 'rm -rf /' : 'npm test',
-            workingDirectory: '/workspace/nymrel-mcp-hub',
-            strict: true
-          }
-        });
-        const result = toolResult(payload);
-
-        if (result?.verdict === 'ALLOW') {
-          status.textContent = 'ALLOW';
-          answer.textContent = 'Yes. The requested test command is bounded and passed the strict pre-execution safety check.';
-        } else if (result?.verdict === 'BLOCK') {
-          status.textContent = 'BLOCK';
-          answer.textContent = 'I will not run that command. Nymrel blocked it before execution because it targets recursive deletion outside a bounded worktree.';
-        } else {
-          throw new Error('Unexpected tool verdict');
-        }
-      } catch (error) {
-        status.textContent = 'ERROR';
-        answer.textContent = error instanceof Error ? error.message : String(error);
-      }
-    }
-
-    document.querySelectorAll('[data-scenario]').forEach((button) => {
-      button.addEventListener('click', () => runScenario(button.dataset.scenario));
-    });
-  </script>
+  <script type="module" src="/client.mjs"></script>
 </body>
 </html>`;
 
@@ -142,12 +82,28 @@ const server = createServer((req, res) => {
     return;
   }
 
+  const browserModule = requestUrl.pathname === '/client.mjs'
+    ? clientSource
+    : requestUrl.pathname === '/alexa-web-receipt.mjs'
+      ? receiptSource
+      : undefined;
+  if (req.method === 'GET' && browserModule) {
+    res.writeHead(200, {
+      'content-type': 'text/javascript; charset=utf-8',
+      'content-length': String(browserModule.byteLength),
+      'cache-control': 'no-store',
+      'x-content-type-options': 'nosniff'
+    });
+    res.end(browserModule);
+    return;
+  }
+
   if (req.method === 'GET' && (requestUrl.pathname === '/' || requestUrl.pathname === '/index.html')) {
     res.writeHead(200, {
       'content-type': 'text/html; charset=utf-8',
       'content-length': String(Buffer.byteLength(html)),
       'cache-control': 'no-store',
-      'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+      'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'; script-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
       'referrer-policy': 'no-referrer',
       'x-content-type-options': 'nosniff'
     });
