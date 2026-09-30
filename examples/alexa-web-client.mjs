@@ -38,6 +38,7 @@ export function createOperatorApp({
   const downloadButton = root.querySelector('#download-evidence');
   let currentEvidence = null;
   let nextId = 1;
+  let activeRun = 0;
 
   async function rpc(method, params = {}) {
     const headers = { 'content-type': 'application/json', accept: 'application/json' };
@@ -66,7 +67,17 @@ export function createOperatorApp({
     }
   }
 
-  function renderDecision(statusText, answerText, evidence) {
+  function clearEvidence() {
+    currentEvidence = null;
+    evidenceOutput.textContent = '';
+    evidencePanel.hidden = true;
+    copyButton.disabled = true;
+    copyButton.textContent = 'Copy evidence';
+    downloadButton.disabled = true;
+  }
+
+  function renderDecision(run, statusText, answerText, evidence) {
+    if (run !== activeRun) return;
     status.textContent = statusText;
     answer.textContent = answerText;
     currentEvidence = evidence;
@@ -77,17 +88,21 @@ export function createOperatorApp({
   }
 
   async function runScenario(name) {
+    const run = ++activeRun;
+    clearEvidence();
     status.textContent = 'Checking';
     answer.textContent = 'Running the local MCP safety workflow…';
 
     try {
       await initialize();
+      if (run !== activeRun) return;
 
       if (name === 'restricted') {
         const payload = await rpc('tools/call', { name: 'nymrel_swarm_claim', arguments: {} });
+        if (run !== activeRun) return;
         if (payload?.error?.code !== -32602) throw new Error('Unexpected hosted boundary response');
         const message = 'That tool is not exposed through the reviewed Alexa+ hosted allowlist.';
-        renderDecision('REFUSED', message, buildDecisionEvidence({
+        renderDecision(run, 'REFUSED', message, buildDecisionEvidence({
           scenario: name,
           tool: 'nymrel_swarm_claim',
           decision: 'REFUSED',
@@ -106,11 +121,12 @@ export function createOperatorApp({
           strict: true
         }
       });
+      if (run !== activeRun) return;
       const result = toolResult(payload);
 
       if (result?.verdict === 'ALLOW') {
         const message = 'Yes. The requested test command is bounded and passed the strict pre-execution safety check.';
-        renderDecision('ALLOW', message, buildDecisionEvidence({
+        renderDecision(run, 'ALLOW', message, buildDecisionEvidence({
           scenario: name,
           tool: 'nymrel_surety_guard',
           decision: result.verdict,
@@ -118,7 +134,7 @@ export function createOperatorApp({
         }));
       } else if (result?.verdict === 'BLOCK') {
         const message = 'I will not run that command. Nymrel blocked it before execution because it targets recursive deletion outside a bounded worktree.';
-        renderDecision('BLOCK', message, buildDecisionEvidence({
+        renderDecision(run, 'BLOCK', message, buildDecisionEvidence({
           scenario: name,
           tool: 'nymrel_surety_guard',
           decision: result.verdict,
@@ -128,6 +144,7 @@ export function createOperatorApp({
         throw new Error('Unexpected tool verdict');
       }
     } catch (error) {
+      if (run !== activeRun) return;
       status.textContent = 'ERROR';
       answer.textContent = error instanceof Error ? error.message : String(error);
     }
