@@ -21,8 +21,9 @@ MODERN = "2026-07-28"
 LEGACY = "2025-11-25"
 IDENTITY = "@nymrel/mcp-hub"
 CLIENT = {"name": "nymrel-crawler-stdio-canary", "version": "1.0.0"}
-BASE = {"url": "https://example.com/", "limit": 1, "maxDepth": 0,
+BASE = {"url": "https://httpbin.org/html", "limit": 1, "maxDepth": 0,
         "sitemap": "skip", "includeSubdomains": False}
+EXPECTED_BODY_MARKER = "Herman Melville - Moby-Dick"
 MAX_LINE_BYTES = 1_000_000
 REQUEST_TIMEOUT = 40
 
@@ -90,7 +91,7 @@ def inspect_tool_result(result, action):
     text = document.get("markdown") or ""
     if metadata.get("statusCode") != 200 or metadata.get("creditsUsed") != 0:
         raise ValueError("missing_http_status_or_zero_credits")
-    if metadata.get("sourceURL") != BASE["url"] or "Example Domain" not in text:
+    if metadata.get("sourceURL") != BASE["url"] or EXPECTED_BODY_MARKER not in text:
         raise ValueError("source_or_content_mismatch")
     return {"source_url": metadata["sourceURL"], "http_status": 200,
             "credits_used": 0, "content_chars": len(text),
