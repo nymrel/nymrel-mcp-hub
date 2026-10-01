@@ -19,3 +19,8 @@ Thumbs.db
 .vscode/
 .idea/
 *.log
+
+# Reproducible local plugin output (build from committed source)
+plugins/*/export/
+plugins/*/*.zip
+plugins/*/*.zip.sha256

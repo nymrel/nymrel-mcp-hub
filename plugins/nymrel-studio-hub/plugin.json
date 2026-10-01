@@ -1,0 +1,19 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "nymrel-studio-hub",
+  "version": "0.1.0",
+  "description": "Local stdio access to Nymrel Studio's verified MCP utilities.",
+  "author": { "name": "Nymrel" },
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Nymrel Studio Hub",
+        "shortDescription": "Local Nymrel utilities",
+        "longDescription": "Runs a local wrapper around 15 Nymrel MCP tools and labels their real evidence limits. Several are templates, simulations, or process-local helpers; crawler and configured provider search can make external read requests. OpenUCP never settles payment. No Remote activation or credentials are included.",
+        "developerName": "Nymrel",
+        "category": "Productivity",
+        "defaultPrompt": "Use the local Nymrel Studio Hub tools when they match my request."
+      }
+    }
+  }
+}
