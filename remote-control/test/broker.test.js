@@ -10,6 +10,7 @@ import { AuditLedger } from '../src/audit.js';
 import { PolicyEngine } from '../src/policy.js';
 import { RemoteBroker } from '../src/broker.js';
 import { RemoteMcpEdge } from '../src/mcp-edge.js';
+import { dispatchTrustedCi } from '../src/ci-remote-dispatch.js';
 import { CLIENT_CAPABILITIES_META_KEY, MODERN_PROTOCOL_VERSION, PROTOCOL_VERSION_META_KEY } from '../src/mcp-protocol.js';
 
 const key = Buffer.alloc(32, 11);
@@ -39,7 +40,27 @@ async function fixture({ callTtlMs = 60_000 } = {}) {
     deviceName: 'JalenPC', platform: 'win32', mcpReady: true,
     tools: [
       { name: 'read_file', inputSchema: { type: 'object', required: ['path'], properties: { path: { type: 'string' } } }, annotations: { readOnlyHint: true } },
-      { name: 'edit_block', inputSchema: editSchema, annotations: { readOnlyHint: false } }
+      { name: 'edit_block', inputSchema: editSchema, annotations: { readOnlyHint: false } },
+      {
+        name: 'start_trusted_ci',
+        inputSchema: {
+          type: 'object',
+          required: ['runId', 'repoRoot', 'repository', 'commitSha'],
+          properties: {
+            runId: { type: 'string' },
+            repoRoot: { type: 'string' },
+            repository: { type: 'string' },
+            commitSha: { type: 'string' },
+            manifestPath: { type: 'string' },
+            selectedJobs: { type: 'array', items: { type: 'string' } },
+            allowNetwork: { type: 'boolean' },
+            expectedManifestHash: { type: 'string' },
+            expectedPlanHash: { type: 'string' }
+          },
+          additionalProperties: false
+        },
+        annotations: { readOnlyHint: false }
+      }
     ]
   });
   return { dir, store, tokenService, broker, operator, devicePrincipal, editSchema, deviceId: firstPoll.device_id };
@@ -80,6 +101,80 @@ test('durable calls encrypt arguments/results and exactly one concurrent claim w
     const completed = await f.broker.getCall(f.operator, call.id, { includeResult: true });
     assert.deepEqual(completed.result, { text: 'private-result-marker-771' });
     assert.equal((await f.broker.verifyAudit(f.operator)).valid, true);
+  } finally { await cleanup(f); }
+});
+
+test('idempotency keys replay the same remote call and reject semantic reuse', async () => {
+  const f = await fixture();
+  try {
+    const projectedRead = (await f.broker.projectedTools(f.operator))
+      .find((tool) => tool._meta['nymrel/originalToolName'] === 'read_file');
+    const options = { sourceProfile: 'nymrel-ci-trusted', idempotencyKey: 'ci:repo:sha:plan:attempt-1' };
+    const first = await f.broker.createCall(f.operator, projectedRead.name, { path: 'C:/repo/a.txt' }, options);
+    const replay = await f.broker.createCall(f.operator, projectedRead.name, { path: 'C:/repo/a.txt' }, options);
+    assert.equal(replay.id, first.id);
+    assert.equal(replay.idempotentReplay, true);
+    assert.equal((await f.broker.listQueuedForDevice(f.devicePrincipal)).length, 1);
+
+    const state = await f.store.read();
+    assert.equal(Object.values(state.calls).length, 1);
+    assert.equal(Object.values(state.calls)[0].idempotencyHash.length, 64);
+    assert.equal(JSON.stringify(state).includes(options.idempotencyKey), false);
+    assert.ok(state.receipts.some((receipt) => receipt.event === 'call.idempotent_replay'));
+
+    await assert.rejects(
+      f.broker.createCall(f.operator, projectedRead.name, { path: 'C:/repo/other.txt' }, options),
+      /already bound to a different remote call/
+    );
+  } finally { await cleanup(f); }
+});
+
+test('trusted CI dispatch collapses concurrent duplicate deliveries and preserves explicit reruns', async () => {
+  const f = await fixture();
+  try {
+    const manifest = { version: 1, jobs: [{ id: 'verify', command: 'npm test' }] };
+    const request = {
+      broker: f.broker,
+      principal: f.operator,
+      deviceId: f.deviceId,
+      repoRoot: 'C:\\ci\\nymrel-mcp-hub',
+      repository: 'nymrel/nymrel-mcp-hub',
+      commitSha: 'a'.repeat(40),
+      manifest
+    };
+    const [first, second] = await Promise.all([
+      dispatchTrustedCi(request),
+      dispatchTrustedCi(request)
+    ]);
+
+    assert.equal(first.call.id, second.call.id);
+    assert.equal(first.call.status, 'awaiting_approval');
+    assert.equal(second.call.status, 'awaiting_approval');
+    assert.ok(first.call.idempotentReplay === true || second.call.idempotentReplay === true);
+    assert.equal(first.dispatchKey, second.dispatchKey);
+    assert.equal((await f.broker.listQueuedForDevice(f.devicePrincipal)).length, 0);
+
+    let state = await f.store.read();
+    assert.equal(Object.keys(state.calls).length, 1);
+    const stored = Object.values(state.calls)[0];
+    assert.equal(stored.sourceProfile, 'nymrel-ci-trusted');
+    assert.equal(stored.toolName, 'start_trusted_ci');
+
+    await f.broker.approveCall(f.operator, first.call.id);
+    assert.equal((await f.broker.listQueuedForDevice(f.devicePrincipal)).length, 1);
+    const claim = await f.broker.claimCall(f.devicePrincipal, first.call.id);
+    assert.equal(claim.toolName, 'start_trusted_ci');
+    assert.equal(claim.args.runId, first.dispatchKey);
+    assert.equal(claim.args.expectedManifestHash, first.manifestHash);
+    assert.equal(claim.args.expectedPlanHash, first.planHash);
+    assert.deepEqual(claim.args.selectedJobs, ['verify']);
+
+    const rerun = await dispatchTrustedCi({ ...request, attempt: 2 });
+    assert.notEqual(rerun.call.id, first.call.id);
+    assert.notEqual(rerun.dispatchKey, first.dispatchKey);
+    assert.equal(rerun.call.status, 'awaiting_approval');
+    state = await f.store.read();
+    assert.equal(Object.keys(state.calls).length, 2);
   } finally { await cleanup(f); }
 });
 
