@@ -1,0 +1,49 @@
+name: Crawler MCP stdio invocation canary
+
+on:
+  push:
+    branches: [chatgpt/crawler-stdio-proof-20260925]
+    paths:
+      - 'scripts/crawler-stdio-canary.py'
+      - '.github/workflows/crawler-stdio-canary.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: crawler-stdio-canary-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  live:
+    name: Python and Node MCP invocation proof
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out reviewed source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Node runtime
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24.20.0'
+          package-manager-cache: false
+      - name: Set up Python runtime
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13'
+      - name: Build exact source without provider credentials
+        run: |
+          corepack npm@12.0.2 ci
+          corepack npm@12.0.2 run build
+          python -m pip install .
+          node scripts/verify-crawler-mesh-vendor.mjs
+          python -m py_compile scripts/crawler-stdio-canary.py
+      - name: Exercise legacy and modern MCP stdio sessions
+        run: python scripts/crawler-stdio-canary.py
+      - name: Emit body-free invocation receipt
+        if: always()
+        run: |
+          if test -f crawler-stdio-canary.json; then cat crawler-stdio-canary.json; fi
