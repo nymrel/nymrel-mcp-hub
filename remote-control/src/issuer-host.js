@@ -58,6 +58,13 @@ export async function installIssuerHost(server, remoteConfig, { env = process.en
   const stat = await fs.stat(env.NYMREL_OIDC_CONFIG_FILE);
   if (process.platform !== 'win32' && ((stat.mode & 0o077) || stat.uid !== process.getuid())) throw new Error('Issuer config must be private to its runtime owner');
   const config = JSON.parse(await fs.readFile(env.NYMREL_OIDC_CONFIG_FILE, 'utf8'));
+  // The public PKCE client metadata can be supplied without reading or rewriting
+  // the private signing-key/identity configuration on the persistent volume.
+  if (env.NYMREL_OIDC_ADDITIONAL_CLIENTS !== undefined) {
+    if (Object.hasOwn(config, 'additionalClients')) throw new Error('Configure additional clients through either the private config or NYMREL_OIDC_ADDITIONAL_CLIENTS, not both');
+    const { parseAdditionalClients } = await import('../oidc-issuer/src/additional-clients.js');
+    config.additionalClients = parseAdditionalClients(env.NYMREL_OIDC_ADDITIONAL_CLIENTS, config.clientId);
+  }
   const origin = new URL(remoteConfig.publicBaseUrl).origin;
   if (!origin.startsWith('https:') || config.issuer !== origin || config.offline) throw new Error('Issuer must match the Remote HTTPS origin');
   const root = await fs.realpath(env.NYMREL_REMOTE_CONTAINER_WRITABLE_ROOT || '/data');

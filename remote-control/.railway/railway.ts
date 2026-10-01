@@ -41,6 +41,7 @@ export default defineRailway(() => {
       // remain fail-closed when these variables are absent or false.
       NYMREL_REMOTE_OIDC_ISSUER_ENABLED: preserve(),
       NYMREL_OIDC_CONFIG_FILE: preserve(),
+      NYMREL_OIDC_ADDITIONAL_CLIENTS: preserve(),
       NYMREL_REMOTE_AUTHORIZATION_SERVERS: preserve(),
       NYMREL_REMOTE_OAUTH_ISSUER: preserve(),
       NYMREL_REMOTE_OAUTH_JWKS_URL: preserve(),
