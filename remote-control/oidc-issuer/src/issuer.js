@@ -1,5 +1,6 @@
 import { Provider, errors } from 'oidc-provider';
 import { createSqliteStore } from './sqlite-adapter.js';
+import { validateAdditionalClients } from './additional-clients.js';
 
 export const RESOURCE = 'https://mcp.nymrel.com/mcp';
 export const READ_SCOPES = 'devices:read tools:read';
@@ -10,11 +11,15 @@ function exactHttps(value) {
 
 // Protocol core. HTTP interaction handlers are in http.js; never expose these
 // completion helpers directly to client-supplied identity or consent assertions.
-export function createIssuer({ issuer, clientId, callback, identity, jwks, cookieKeys, databasePath, offline = false }) {
+export function createIssuer({ issuer, clientId, callback, additionalClients = [], identity, jwks, cookieKeys, databasePath, offline = false }) {
   const url = new URL(issuer);
   const loopback = url.protocol === 'http:' && url.hostname === '127.0.0.1';
   if ((!exactHttps(issuer) && !(offline && loopback)) || url.search || url.hash) throw new Error('Invalid issuer');
   if (!clientId || typeof clientId !== 'string' || !exactHttps(callback)) throw new Error('Exact client and HTTPS callback required');
+  const clients = [{ client_id: clientId, redirect_uris: [callback], token_endpoint_auth_method: 'none',
+    response_types: ['code'], grant_types: ['authorization_code', 'refresh_token'], scope: `openid offline_access ${READ_SCOPES}` },
+  ...validateAdditionalClients(additionalClients, clientId)];
+  const clientIds = new Set(clients.map(client => client.client_id));
   if (!identity || !exactHttps(identity.issuer) || !identity.subject || !identity.accountId) throw new Error('One explicit identity is required');
   if (!jwks?.keys?.length || jwks.keys.some(k => !k.d || !k.kid || k.kty !== 'RSA' || k.alg !== 'RS256')) throw new Error('Persistent private RS256 signing keys required');
   if (!Array.isArray(cookieKeys) || !cookieKeys.length || cookieKeys.some(k => typeof k !== 'string' || k.length < 32)) throw new Error('Persistent cookie keys required');
@@ -23,9 +28,7 @@ export function createIssuer({ issuer, clientId, callback, identity, jwks, cooki
   try {
     provider = new Provider(issuer, {
       adapter: store.Adapter,
-      clients: [{ client_id: clientId, redirect_uris: [callback], token_endpoint_auth_method: 'none',
-        response_types: ['code'], grant_types: ['authorization_code', 'refresh_token'],
-        scope: `openid offline_access ${READ_SCOPES}` }],
+      clients,
       jwks,
       cookies: { keys: cookieKeys },
       scopes: ['openid', 'offline_access', ...READ_SCOPES.split(' ')],
@@ -36,13 +39,13 @@ export function createIssuer({ issuer, clientId, callback, identity, jwks, cooki
         devInteractions: { enabled: false }, registration: { enabled: false },
         clientCredentials: { enabled: false },
         clientIdMetadataDocument: { enabled: false },
-        revocation: { enabled: true, allowedPolicy: (_ctx, client, token) => client.clientId === clientId && token.clientId === clientId },
+        revocation: { enabled: true, allowedPolicy: (_ctx, client, token) => clientIds.has(client.clientId) && token.clientId === client.clientId },
         resourceIndicators: {
           enabled: true,
           defaultResource: () => undefined,
           useGrantedResource: () => true,
           getResourceServerInfo: (_ctx, resource, client) => {
-            if (resource !== RESOURCE || client.clientId !== clientId) throw new errors.InvalidTarget();
+            if (resource !== RESOURCE || !clientIds.has(client.clientId)) throw new errors.InvalidTarget();
             return { scope: READ_SCOPES, audience: RESOURCE, accessTokenFormat: 'jwt',
               accessTokenTTL: 300, jwt: { sign: { alg: 'RS256' } } };
           }
@@ -71,6 +74,7 @@ export function createIssuer({ issuer, clientId, callback, identity, jwks, cooki
 
   return {
     provider, health: store.health, close: store.close,
+    isClientAllowed: clientId => clientIds.has(clientId),
     // Call only after upstream identity verification AND interaction CSRF checks.
     async completeLogin(req, res, verifiedIdentity) {
       const details = await provider.interactionDetails(req, res);
@@ -81,7 +85,7 @@ export function createIssuer({ issuer, clientId, callback, identity, jwks, cooki
     // HTTP caller must validate Origin, CSRF and consume the bound browser stage.
     async denyAuthorization(req, res) {
       const details = await provider.interactionDetails(req, res);
-      if (details.params.client_id !== clientId || !['login', 'consent'].includes(details.prompt.name)
+      if (!clientIds.has(details.params.client_id) || !['login', 'consent'].includes(details.prompt.name)
         || (details.prompt.name === 'consent' && details.session?.accountId !== identity.accountId)) throw new Error('Denial unavailable');
       await provider.interactionFinished(req, res, {
         error: 'access_denied', error_description: 'The user cancelled authorization'
@@ -90,8 +94,8 @@ export function createIssuer({ issuer, clientId, callback, identity, jwks, cooki
     // A separate explicit consent action. Never expose this method as an unauthenticated route.
     async approveConsent(req, res) {
       const details = await provider.interactionDetails(req, res);
-      if (details.prompt.name !== 'consent' || details.session?.accountId !== identity.accountId || details.params.client_id !== clientId) throw new Error('Consent denied');
-      const grant = details.grantId ? await provider.Grant.find(details.grantId) : new provider.Grant({ accountId: identity.accountId, clientId });
+      if (details.prompt.name !== 'consent' || details.session?.accountId !== identity.accountId || !clientIds.has(details.params.client_id)) throw new Error('Consent denied');
+      const grant = details.grantId ? await provider.Grant.find(details.grantId) : new provider.Grant({ accountId: identity.accountId, clientId: details.params.client_id });
       if (!grant) throw new Error('Grant missing');
       const missing = details.prompt.details;
       if (missing.missingOIDCScope) grant.addOIDCScope(missing.missingOIDCScope.join(' '));

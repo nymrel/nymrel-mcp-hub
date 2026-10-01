@@ -6,6 +6,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createIssuer, RESOURCE, READ_SCOPES } from '../src/issuer.js';
+import { VERCEL_CALLBACK } from '../src/additional-clients.js';
 import { createSqliteStore } from '../src/sqlite-adapter.js';
 import { OAuthAccessTokenVerifier } from '../../src/oauth.js';
 
@@ -13,8 +14,8 @@ const callback = 'https://chatgpt.com/connector/oauth/offline-fixture';
 const identity = { issuer: 'https://accounts.google.com', subject: 'fixture-google-sub', accountId: 'fixture-operator' };
 const clientId = 'nymrel-offline-chatgpt';
 
-function assertAuthorizationRedirect(url, issuer) {
-  assert.equal(`${url.origin}${url.pathname}`, callback);
+function assertAuthorizationRedirect(url, issuer, expectedCallback = callback) {
+  assert.equal(`${url.origin}${url.pathname}`, expectedCallback);
   assert.equal(url.searchParams.get('state'), 'fixture-state');
   assert.equal(url.searchParams.get('iss'), issuer, 'Every advertised RFC9207 redirect must identify the issuer');
   assert.notEqual(url.searchParams.has('code'), url.searchParams.has('error'), 'Redirect must carry exactly one code or error');
@@ -33,7 +34,7 @@ function assertProtocolDenial(result, expected, issuer) {
   }
 }
 
-async function fixture(t) {
+async function fixture(t, { additionalClients = [] } = {}) {
   const dir = await mkdtemp(join(tmpdir(), 'nymrel-oidc-'));
   const privateKey = generateKeyPairSync('rsa', { modulusLength: 2048 }).privateKey;
   const key = { ...privateKey.export({ format: 'jwk' }), kid: 'fixture-signing', alg: 'RS256', use: 'sig' };
@@ -57,22 +58,25 @@ async function fixture(t) {
   });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const issuer = `http://127.0.0.1:${server.address().port}`;
-  const config = { issuer, clientId, callback, identity, jwks: { keys: [key] }, cookieKeys: [randomBytes(32).toString('hex')], databasePath: join(dir, 'issuer.sqlite'), offline: true };
+  const config = { issuer, clientId, callback, additionalClients, identity, jwks: { keys: [key] }, cookieKeys: [randomBytes(32).toString('hex')], databasePath: join(dir, 'issuer.sqlite'), offline: true };
   app = createIssuer(config);
   t.after(async () => { await new Promise(resolve => server.close(resolve)); app.close(); await rm(dir, { recursive: true, force: true }); });
-  async function authorize(overrides = {}) {
+  const callbackFor = id => id === clientId ? callback : additionalClients.find(client => client.clientId === id)?.callback;
+  async function authorize(overrides = {}, selectedClientId = clientId) {
+    const selectedCallback = callbackFor(selectedClientId);
+    if (!selectedCallback) throw new Error('Unknown fixture client');
     const verifier = randomBytes(32).toString('base64url');
-    const params = new URLSearchParams({ client_id: clientId, redirect_uri: callback, response_type: 'code',
+    const params = new URLSearchParams({ client_id: selectedClientId, redirect_uri: selectedCallback, response_type: 'code',
       scope: `openid offline_access ${READ_SCOPES}`, resource: RESOURCE, state: 'fixture-state', prompt: 'consent',
       code_challenge_method: 'S256', code_challenge: createHash('sha256').update(verifier).digest('base64url'), ...overrides });
     for (const [key, value] of Object.entries(overrides)) if (value === null) params.delete(key);
     let url = `${issuer}/auth?${params}`;
     const cookies = new Map();
     for (let i = 0; i < 12; i++) {
-      if (url.startsWith(callback)) {
+      if (url.startsWith(selectedCallback)) {
         const redirect = new URL(url);
-        assertAuthorizationRedirect(redirect, issuer);
-        return { url: redirect, verifier };
+        assertAuthorizationRedirect(redirect, issuer, selectedCallback);
+        return { url: redirect, verifier, clientId: selectedClientId, callback: selectedCallback };
       }
       const response = await fetch(url, { redirect: 'manual', headers: { cookie: [...cookies].map(([k,v]) => `${k}=${v}`).join('; ') } });
       for (const cookie of response.headers.getSetCookie()) { const [pair] = cookie.split(';'); const at = pair.indexOf('='); cookies.set(pair.slice(0,at), pair.slice(at+1)); }
@@ -81,14 +85,15 @@ async function fixture(t) {
     }
     throw new Error('redirect limit');
   }
-  async function post(path, fields) {
-    const response = await fetch(`${issuer}${path}`, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(fields) });
+  async function post(path, fields, headers = {}) {
+    const response = await fetch(`${issuer}${path}`, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded', ...headers }, body: new URLSearchParams(fields) });
     const body = await response.text();
     return { status: response.status, body: body ? JSON.parse(body) : null };
   }
-  const exchange = (auth, overrides = {}) => post('/token', { grant_type: 'authorization_code', client_id: clientId,
-    code: auth.url?.searchParams.get('code') || '', redirect_uri: callback, code_verifier: auth.verifier, resource: RESOURCE, ...overrides });
-  return { issuer, authorize, exchange, post, denyIdentity: () => { loginIdentity = { ...identity, subject: 'other' }; },
+  const exchange = (auth, overrides = {}, selectedClientId = auth.clientId) => post('/token', { grant_type: 'authorization_code', client_id: selectedClientId,
+    code: auth.url?.searchParams.get('code') || '', redirect_uri: callbackFor(selectedClientId), code_verifier: auth.verifier, resource: RESOURCE, ...overrides });
+  const clientInfo = async id => { const client = await app.provider.Client.find(id); return { clientId: client?.clientId, authMethod: client?.clientAuthMethod, redirectUris: client?.redirectUris }; };
+  return { issuer, authorize, exchange, post, clientInfo, denyIdentity: () => { loginIdentity = { ...identity, subject: 'other' }; },
     failNextAuthorization: () => { failAuthorization = true; },
     restart: () => { app.close(); app = createIssuer(config); } };
 }
@@ -186,6 +191,62 @@ test('simultaneous code and refresh replay cannot produce two valid grants', asy
   const replacement = refreshResults.find(result => result.status === 200).body.refresh_token;
   assert.equal((await f.post('/token', { ...refreshFields, refresh_token: replacement })).status, 400,
     'Replay must revoke the refresh family, including the rotated token');
+});
+
+test('optional Vercel public client is isolated and keeps the primary client compatible', async t => {
+  const vercelClient = { clientId: 'vercel-public-fixture', callback: VERCEL_CALLBACK };
+  const f = await fixture(t, { additionalClients: [vercelClient] });
+  const discovery = await (await fetch(`${f.issuer}/.well-known/openid-configuration`)).json();
+  assert.deepEqual(discovery.code_challenge_methods_supported, ['S256']);
+  assert.ok(discovery.token_endpoint_auth_methods_supported.includes('none'));
+  assert.equal(discovery.registration_endpoint, undefined);
+  assert.notEqual(discovery.client_id_metadata_document_supported, true);
+
+  const primaryAuth = await f.authorize();
+  assert.equal((await f.exchange(primaryAuth, {}, vercelClient.clientId)).status, 400,
+    'A primary code cannot be exchanged by the Vercel client');
+  assert.equal((await f.exchange(primaryAuth)).status, 200,
+    'A failed cross-client exchange must not consume the primary code');
+
+  const vercelAuth = await f.authorize({}, vercelClient.clientId);
+  assert.deepEqual(await f.clientInfo(vercelClient.clientId), { clientId: vercelClient.clientId, authMethod: 'none', redirectUris: [VERCEL_CALLBACK] });
+  const issued = await f.exchange(vercelAuth);
+  assert.equal(issued.status, 200, JSON.stringify(issued));
+  const wrongAuthorizationCallback = await f.authorize({ redirect_uri: callback }, vercelClient.clientId);
+  assert.equal(wrongAuthorizationCallback.status, 400);
+  const callbackBoundAuth = await f.authorize({}, vercelClient.clientId);
+  const wrongCallback = await f.exchange(callbackBoundAuth, { redirect_uri: callback });
+  assert.ok([400, 401].includes(wrongCallback.status));
+  assert.equal(wrongCallback.body.access_token, undefined);
+  assert.equal((await f.exchange(callbackBoundAuth)).status, 200, 'Wrong callback must not consume a valid Vercel code');
+  const clientBoundAuth = await f.authorize({}, vercelClient.clientId);
+  const wrongClient = await f.exchange(clientBoundAuth, {}, clientId);
+  assert.ok([400, 401].includes(wrongClient.status), 'A Vercel code cannot be exchanged by the primary client');
+  assert.equal(wrongClient.body.access_token, undefined);
+  assert.equal((await f.exchange(clientBoundAuth)).status, 200, 'Cross-client exchange must not consume a valid Vercel code');
+  const verifier = new OAuthAccessTokenVerifier({ issuer: f.issuer, audience: RESOURCE });
+  const claims = await verifier.verify(issued.body.access_token);
+  assert.equal(claims.aud, RESOURCE);
+  assert.deepEqual(new Set(claims.scopes), new Set(READ_SCOPES.split(' ')));
+
+  const crossRefresh = await f.post('/token', { grant_type: 'refresh_token', client_id: clientId,
+    refresh_token: issued.body.refresh_token, resource: RESOURCE });
+  assert.equal(crossRefresh.status, 400);
+  const crossRevoke = await f.post('/token/revocation', { client_id: clientId, token: issued.body.refresh_token });
+  assert.equal(crossRevoke.status, 200);
+  const properRefresh = await f.post('/token', { grant_type: 'refresh_token', client_id: vercelClient.clientId,
+    refresh_token: issued.body.refresh_token, resource: RESOURCE });
+  assert.equal(properRefresh.status, 200, 'Cross-client revocation must not revoke the Vercel grant');
+
+  const primaryFresh = await f.exchange(await f.authorize());
+  assert.equal(primaryFresh.status, 200, 'The original one-client flow remains available');
+  const crossPrimaryRefresh = await f.post('/token', { grant_type: 'refresh_token', client_id: vercelClient.clientId,
+    refresh_token: primaryFresh.body.refresh_token, resource: RESOURCE });
+  assert.equal(crossPrimaryRefresh.status, 400);
+  assert.equal((await f.post('/token/revocation', { client_id: vercelClient.clientId, token: primaryFresh.body.refresh_token })).status, 200);
+  assert.equal((await f.post('/token', { grant_type: 'refresh_token', client_id: clientId,
+    refresh_token: primaryFresh.body.refresh_token, resource: RESOURCE })).status, 200,
+  'Cross-client revocation must not revoke the primary grant');
 });
 
 test('refresh cannot escalate scope or change resource, and signed access tokens expire', async t => {
