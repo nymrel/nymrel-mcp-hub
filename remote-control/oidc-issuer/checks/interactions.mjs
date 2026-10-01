@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createIssuerHttp } from '../src/http.js';
 import { RESOURCE, READ_SCOPES } from '../src/issuer.js';
+import { VERCEL_CALLBACK } from '../src/additional-clients.js';
 import { ISSUER_RATE_LIMITS } from '../src/rate-limit.js';
 
 const googleIssuer = 'https://accounts.google.com';
@@ -63,7 +64,7 @@ function googleMock() {
   };
 }
 
-async function fixture(t) {
+async function fixture(t, { additionalClients = [] } = {}) {
   const dir = await mkdtemp(join(tmpdir(), 'nymrel-google-'));
   const google = googleMock();
   let app;
@@ -72,7 +73,7 @@ async function fixture(t) {
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const issuer = `http://127.0.0.1:${server.address().port}`;
   const key = generateKeyPairSync('rsa', { modulusLength: 2048 }).privateKey.export({ format: 'jwk' });
-  const config = { issuer, clientId: 'chatgpt-fixture', callback,
+  const config = { issuer, clientId: 'chatgpt-fixture', callback, additionalClients,
     identity: { issuer: googleIssuer, subject: 'allowed-google-sub', accountId: 'internal-operator' },
     jwks: { keys: [{ ...key, alg: 'RS256', kid: 'issuer-fixture', use: 'sig' }] },
     cookieKeys: [randomBytes(32).toString('hex')], databasePath: join(dir, 'state.sqlite'), offline: true,
@@ -103,20 +104,20 @@ async function fixture(t) {
     const post = (page, overrides = {}) => request(page.body.match(/action="([^"]+)"/)[1], {
       method: 'POST', headers: { origin: issuer, 'content-type': 'application/x-www-form-urlencoded', ...(overrides.headers || {}) },
       body: new URLSearchParams({ csrf: page.body.match(/name="csrf" value="([^"]+)"/)[1], ...(overrides.body || {}) }) });
-    async function loginPage() {
+    async function loginPage(selectedClientId = config.clientId, selectedCallback = callback) {
       const verifier = randomBytes(32).toString('base64url');
-      const q = new URLSearchParams({ client_id: config.clientId, redirect_uri: callback, response_type: 'code',
+      const q = new URLSearchParams({ client_id: selectedClientId, redirect_uri: selectedCallback, response_type: 'code',
         scope: `openid offline_access ${READ_SCOPES}`, resource: RESOURCE, prompt: 'consent', state: 'chatgpt-state',
         code_challenge: hash(verifier), code_challenge_method: 'S256' });
       return { ...(await page(`/auth?${q}`)), verifier };
     }
-    async function reachConsent() {
-      const login = await loginPage();
+    async function reachConsent(selectedClientId = config.clientId, selectedCallback = callback) {
+      const login = await loginPage(selectedClientId, selectedCallback);
       const start = await post(login); assert.equal(start.status, 303);
       const googleCallback = google.issue(start.location);
       const complete = await request(googleCallback); assert.equal(complete.status, 303, complete.body);
       const consent = await page(complete.location); assert.equal(consent.status, 200);
-      return { ...consent, verifier: login.verifier, googleCallback };
+      return { ...consent, verifier: login.verifier, googleCallback, clientId: selectedClientId, callback: selectedCallback };
     }
     return { request, page, post, loginPage, reachConsent, cookies };
   }
@@ -154,6 +155,28 @@ test('Google code verification, server-bound login and explicit consent produce 
   assert.equal(payload.sub, 'internal-operator'); assert.equal(payload.aud, RESOURCE);
   assert.equal(f.google.stats().tokenRequests, 1); assert.equal(f.google.stats().jwksRequests, 1);
   assert.equal((await b.post(consent)).status, 403, 'Consent cannot be replayed');
+});
+
+test('Vercel public client completes mocked Google login, explicit consent, exact callback, and read-only token exchange', async t => {
+  const vercelClient = { clientId: 'nymrel-vercel-connect-20261001', callback: VERCEL_CALLBACK };
+  const f = await fixture(t, { additionalClients: [vercelClient] }), b = f.browser();
+  const consent = await b.reachConsent(vercelClient.clientId, VERCEL_CALLBACK);
+  assert.match(consent.body, /Approve read-only access/);
+  const approve = await b.post(consent); assert.equal(approve.status, 303);
+  const resumed = await b.request(approve.location); assert.equal(resumed.status, 303, resumed.body);
+  const authorized = new URL(resumed.location);
+  assert.equal(authorized.origin + authorized.pathname, VERCEL_CALLBACK);
+  assert.equal(authorized.searchParams.get('iss'), f.issuer);
+  assert.equal(authorized.searchParams.get('state'), 'chatgpt-state');
+  const response = await b.request('/token', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ grant_type: 'authorization_code', client_id: vercelClient.clientId,
+      redirect_uri: VERCEL_CALLBACK, code: authorized.searchParams.get('code'), code_verifier: consent.verifier, resource: RESOURCE }) });
+  assert.equal(response.status, 200, response.body);
+  const payload = JSON.parse(Buffer.from(JSON.parse(response.body).access_token.split('.')[1], 'base64url'));
+  assert.equal(payload.sub, 'internal-operator');
+  assert.equal(payload.aud, RESOURCE);
+  assert.deepEqual(new Set(payload.scope.split(' ')), new Set(READ_SCOPES.split(' ')));
+  assert.equal(f.google.stats().tokenRequests, 1);
 });
 
 test('Google callback budget blocks upstream work without consuming pending valid login', async t => {

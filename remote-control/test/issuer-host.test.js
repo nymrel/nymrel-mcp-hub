@@ -12,7 +12,7 @@ async function fixture(t) {
   await mkdir(join(root, 'oidc'));
   const databasePath = join(root, 'oidc', 'issuer.sqlite');
   const file = join(root, 'private.json');
-  await writeFile(file, JSON.stringify({ issuer: 'https://issuer.example', databasePath }), { mode: 0o600 });
+  await writeFile(file, JSON.stringify({ issuer: 'https://issuer.example', clientId: 'primary-client', callback: 'https://chatgpt.example/callback', databasePath }), { mode: 0o600 });
   t.after(() => rm(root, { recursive: true, force: true }));
   return { root, databasePath, env: { NYMREL_REMOTE_OIDC_ISSUER_ENABLED: 'true', NYMREL_OIDC_CONFIG_FILE: file, NYMREL_REMOTE_CONTAINER_WRITABLE_ROOT: root } };
 }
@@ -26,10 +26,50 @@ const remote = () => createServer((_req, res) => { res.writeHead(200); res.end('
 test('disabled default never loads an issuer or changes the Remote listener', async t => {
   const server = remote(); const original = server.listeners('request')[0];
   assert.equal(await installIssuerHost(server, {}, { env: {} }), null);
+  assert.equal(await installIssuerHost(server, {}, { env: { NYMREL_OIDC_ADDITIONAL_CLIENTS: 'invalid JSON' } }), null);
   assert.equal(server.listeners('request')[0], original);
   const url = await listen(t, server);
   assert.equal(await (await fetch(`${url}/readyz`)).text(), 'remote');
   await assert.rejects(installIssuerHost(server, {}, { env: { NYMREL_REMOTE_OIDC_ISSUER_ENABLED: '1' } }));
+});
+
+test('additional public client metadata preserves the existing private configuration', async t => {
+  const f = await fixture(t); const server = remote(); let received;
+  const addition = { clientId: 'nymrel-vercel-connect', callback: 'https://connect.vercel.com/callback' };
+  f.env.NYMREL_OIDC_ADDITIONAL_CLIENTS = JSON.stringify([addition]);
+  const host = await installIssuerHost(server, { publicBaseUrl: 'https://issuer.example' }, { env: f.env, createApp: async config => {
+    received = config;
+    return { health() {}, close() {}, handler(_req, res) { res.end('issuer'); } };
+  } });
+  assert.equal(received.clientId, 'primary-client');
+  assert.equal(received.callback, 'https://chatgpt.example/callback');
+  assert.deepEqual(received.additionalClients, [addition]);
+  await host.ready(); await host.close();
+});
+
+test('malformed additional clients fail before storage ownership or listener mutation', async t => {
+  const f = await fixture(t);
+  for (const raw of ['bad JSON', 'null', '{}', '[{"clientId":"primary-client","callback":"https://connect.vercel.com/callback"}]',
+    '[{"clientId":"wrong-callback","callback":"https://evil.example/callback"}]']) {
+    const server = remote(); const original = server.listeners('request')[0]; let created = false;
+    await assert.rejects(installIssuerHost(server, { publicBaseUrl: 'https://issuer.example' }, {
+      env: { ...f.env, NYMREL_OIDC_ADDITIONAL_CLIENTS: raw }, createApp: async () => { created = true; }
+    }));
+    assert.equal(created, false);
+    assert.equal(server.listeners('request')[0], original);
+    const owner = await acquireIssuerOwner(f.databasePath); await owner.release();
+  }
+});
+
+test('two sources for additional clients are rejected rather than overwritten', async t => {
+  const f = await fixture(t); const server = remote(); const original = server.listeners('request')[0];
+  await writeFile(f.env.NYMREL_OIDC_CONFIG_FILE, JSON.stringify({ issuer: 'https://issuer.example', clientId: 'primary-client',
+    callback: 'https://chatgpt.example/callback', databasePath: f.databasePath, additionalClients: [] }), { mode: 0o600 });
+  await assert.rejects(installIssuerHost(server, { publicBaseUrl: 'https://issuer.example' }, {
+    env: { ...f.env, NYMREL_OIDC_ADDITIONAL_CLIENTS: '[]' }, createApp: async () => { throw new Error('Must not be called'); }
+  }), /either the private config/);
+  assert.equal(server.listeners('request')[0], original);
+  const owner = await acquireIssuerOwner(f.databasePath); await owner.release();
 });
 
 test('issuer routing is exact, forwarding is sanitized, and lost storage fails readiness closed', async t => {

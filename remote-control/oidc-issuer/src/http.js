@@ -107,7 +107,7 @@ export async function createIssuerHttp(config, { googleFetch, rateLimitClock } =
         const [, uid, action] = match;
         let details;
         try { details = await app.provider.interactionDetails(req, res); } catch { throw new Denied(); }
-        if (details.uid !== uid || details.params.client_id !== config.clientId) throw new Denied();
+        if (details.uid !== uid || !app.isClientAllowed(details.params.client_id)) throw new Denied();
         if (!action && req.method === 'GET') {
           if (details.prompt.name === 'login') {
             html(res, 'Continue with Google', `/interaction/${uid}/start`, await newBinding(req, res, uid, 'login'));

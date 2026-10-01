@@ -44,7 +44,7 @@ suite does not unexpectedly acquire this optional package's dependency.
 
 ## Implemented boundary
 
-- One predefined public client and one exact HTTPS callback supplied by the caller.
+- One existing predefined public client with its exact HTTPS callback, plus at most one optional public Vercel Connect client with the exact Connect callback.
 - Authorization code with required S256 PKCE; no DCR, CIMD or client credentials.
 - GET authorization requests must name exactly one resource, the existing plugin
   URL. Unknown resource indicators and scopes are rejected. MCP JWT access tokens
@@ -93,7 +93,8 @@ observed authorization callback is checked for RFC9207 issuer identification.
 Regression checks show that an injected HTTP 500 and an error redirect missing
 `iss` cannot pass these assertions. No live ChatGPT, Google or production acceptance
 is claimed. The HTTP suite additionally proves a complete mocked Google login and
-explicit consent through downstream code exchange, and rejects wrong Google state,
+explicit consent through downstream code exchange for both the original and optional
+Vercel clients, and rejects wrong Google state,
 nonce, signature, audience, issuer, expiry and subject, plus CSRF/origin failure,
 identity injection, altered cookies, callback replay and interaction substitution.
 
@@ -101,12 +102,22 @@ identity injection, altered cookies, callback replay and interaction substitutio
 
 `node bin/server.mjs` requires `NYMREL_OIDC_CONFIG_FILE` naming a private JSON file.
 Its fields are the `createIssuer` configuration (`issuer`, `clientId`, `callback`,
-`identity` with Google `issuer`, allowed `subject` and stable internal `accountId`,
+optional `additionalClients`, `identity` with Google `issuer`, allowed `subject` and stable internal `accountId`,
 private `jwks`, `cookieKeys`, and `databasePath`) plus `google.clientId`,
 `google.clientSecret`, and optional `trustProxy`. No credentials or safe defaults
 are supplied. The entrypoint rejects offline mode and requires an HTTPS issuer
 origin with no trailing slash/path. The Google redirect registered upstream must
 be exactly `<issuer>/google/callback`; it is distinct from ChatGPT's callback.
+
+One optional Vercel Connect public client can be configured with
+`NYMREL_OIDC_ADDITIONAL_CLIENTS`, a JSON array such as
+`[{"clientId":"vercel-registered-client-id","callback":"https://connect.vercel.com/callback"}]`.
+The value is a public client ID, not a secret. The callback is fixed to the exact
+Vercel URL, authentication is `none`, PKCE S256 remains required, and the client
+receives only the existing resource and `devices:read tools:read` scopes. An empty,
+malformed, duplicate, conflicting, or broader configuration fails closed. Do not
+set this variable until Vercel provides the client ID; do not put secrets in it.
+The existing primary client and callback remain unchanged when the variable is absent.
 
 It listens only on `127.0.0.1` (`PORT`, default 3100). A locally trusted TLS proxy
 is required. If `trustProxy` is enabled, that proxy must replace forwarding headers

@@ -7,6 +7,11 @@ import { acquireIssuerOwner, listenOwnedIssuer } from '../../src/issuer-host.js'
 const path = process.env.NYMREL_OIDC_CONFIG_FILE;
 if (!path) throw new Error('NYMREL_OIDC_CONFIG_FILE is required');
 const config = JSON.parse(await readFile(path, 'utf8'));
+if (process.env.NYMREL_OIDC_ADDITIONAL_CLIENTS !== undefined) {
+  if (Object.hasOwn(config, 'additionalClients')) throw new Error('Configure additional clients through either the private config or NYMREL_OIDC_ADDITIONAL_CLIENTS, not both');
+  const { parseAdditionalClients } = await import('../src/additional-clients.js');
+  config.additionalClients = parseAdditionalClients(process.env.NYMREL_OIDC_ADDITIONAL_CLIENTS, config.clientId);
+}
 if (config.offline || !config.issuer?.startsWith('https://')) throw new Error('Entrypoint requires an HTTPS issuer');
 const port = Number(process.env.PORT || 3100);
 if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('Invalid port');
