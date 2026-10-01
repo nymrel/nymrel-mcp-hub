@@ -140,6 +140,9 @@ function annotateContent(response, toolName, args) {
 
 export class StudioTruthfulMCPServer extends MCPServer {
   async handleRequest(request) {
+    if (request.method === 'tools/call' && !truthDisclosures[requestedTool(request)]) {
+      return { jsonrpc: '2.0', id: request.id, error: { code: -32602, message: 'Only the 15 evidence-labeled canonical tool names are exposed by this plugin.' } };
+    }
     const response = await super.handleRequest(request);
     if (!response?.result) return response;
     const result = { ...response.result };
@@ -157,7 +160,12 @@ export class StudioTruthfulMCPServer extends MCPServer {
     if (request.method === 'tools/list') {
       result.tools = (result.tools ?? []).map((tool) => ({
         ...tool,
-        description: `${tool.description}\n${truthDisclosures[tool.name] ?? '[Studio plugin evidence: implementation not classified.]'}`
+        description: `${tool.description}\n${truthDisclosures[tool.name] ?? '[Studio plugin evidence: implementation not classified.]'}`,
+        annotations: {
+          readOnlyHint: Boolean(evidence[tool.name]) && evidence[tool.name][0] !== 'process-local',
+          destructiveHint: false,
+          openWorldHint: ['nymrel_crawler_mesh', 'nymrel_web_search'].includes(tool.name)
+        }
       }));
       return { ...response, result };
     }
