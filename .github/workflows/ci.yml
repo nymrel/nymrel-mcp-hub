@@ -49,6 +49,9 @@ jobs:
       - name: Verify TypeScript, protocol behavior, and CI contracts
         run: corepack npm@12.0.2 run verify
 
+      - name: Verify local plugin evidence boundaries
+        run: node --test plugins/nymrel-studio-hub/test/truth-boundary.test.mjs
+
       - name: Audit the complete dependency graph
         run: corepack npm@12.0.2 audit --audit-level=high
 
