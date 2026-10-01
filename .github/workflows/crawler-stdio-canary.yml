@@ -1,6 +1,10 @@
 name: Crawler MCP stdio invocation canary
 
 on:
+  pull_request:
+    paths:
+      - 'scripts/crawler-stdio-canary.py'
+      - '.github/workflows/crawler-stdio-canary.yml'
   push:
     branches: [chatgpt/crawler-stdio-proof-20260925]
     paths:
