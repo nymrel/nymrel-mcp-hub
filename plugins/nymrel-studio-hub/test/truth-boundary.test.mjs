@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { StudioTruthfulMCPServer } from '../export/server/bin/studio-mcp-server.js';
+import { MCPServer } from '../export/server/dist/src/server.js';
 
 const server = new StudioTruthfulMCPServer();
 let id = 1;
@@ -29,6 +30,32 @@ test('tool discovery classifies every actual tool and removes false resource/pro
   assert.ok((await request('prompts/get', { name: 'init-two-seat-mission' })).error);
   assert.ok((await request('resources/read', { uri: 'nymrel://ecosystem' })).error);
   assert.ok((await request('tools/call', { name: 'open_ucp', arguments: { action: 'settle_x402' } })).error);
+});
+
+test('tool hints distinguish pure results from process state writes and external reads', async () => {
+  const tools = (await request('tools/list')).result.tools;
+  const writes = new Set(['nymrel_swarm_claim', 'nymrel_beacon_ping', 'nymrel_swarm_bus']);
+  const externalReads = new Set(['nymrel_crawler_mesh', 'nymrel_web_search']);
+  for (const tool of tools) {
+    assert.equal(tool.annotations.readOnlyHint, !writes.has(tool.name), tool.name);
+    assert.equal(tool.annotations.destructiveHint, false, tool.name);
+    assert.equal(tool.annotations.openWorldHint, externalReads.has(tool.name), tool.name);
+  }
+});
+
+test('unclassified and alias tool calls never reach the upstream dispatcher', async () => {
+  const original = MCPServer.prototype.handleRequest;
+  let upstreamCalls = 0;
+  MCPServer.prototype.handleRequest = async () => { upstreamCalls++; throw new Error('unclassified call reached upstream'); };
+  try {
+    for (const name of ['open_ucp', 'nymrel_unknown']) {
+      const response = await request('tools/call', { name, arguments: { action: 'settle_x402' } });
+      assert.equal(response.error.code, -32602);
+    }
+    assert.equal(upstreamCalls, 0);
+  } finally {
+    MCPServer.prototype.handleRequest = original;
+  }
 });
 
 test('every canonical tool result carries a machine-readable evidence boundary', async () => {

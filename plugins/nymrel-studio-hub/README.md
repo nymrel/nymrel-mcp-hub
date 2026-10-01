@@ -24,6 +24,8 @@ This portable local plugin starts a plugin-specific Node stdio entrypoint over a
 
 Only `nymrel_crawler_mesh` and configured `nymrel_web_search` make external read requests. `nymrel://status` reports this Node process's runtime metrics only. The plugin hides the upstream ecosystem and LLM manifest resources and all upstream prompts because they assert unverified remote/shared capabilities.
 
+Tool discovery marks pure calculations, templates, simulations and cryptographic functions as read-only. The three process-local state tools (`nymrel_swarm_claim`, `nymrel_beacon_ping`, `nymrel_swarm_bus`) are marked as writes; every tool is non-destructive. Crawler and provider search advertise open-world reads. These hints describe verified behavior; they do not change a host's approval policy. Unclassified tool calls are rejected before reaching the upstream dispatcher.
+
 ## Build the source and package
 
 Use Node.js 22 or 24 and Corepack from the Nymrel MCP Hub checkout:
@@ -34,7 +36,7 @@ corepack npm@12.0.2 run verify
 node plugins/nymrel-studio-hub/scripts/build-package.mjs
 ```
 
-The generated, self-contained plugin directory is `plugins/nymrel-studio-hub/export`, and the installable archive is `plugins/nymrel-studio-hub/nymrel-studio-hub-0.1.0.zip` with a `.sha256` sidecar. Its `mcp.json` points through `${PLUGIN_ROOT}` to the plugin wrapper at `server/bin/studio-mcp-server.js`, which delegates to the unchanged bundled upstream server and adds the evidence boundary. The builder verifies the pinned source commit and tool list, packages locked runtime dependencies with install scripts disabled, runs focused boundary tests plus stdio initialize/tool discovery/status/OpenUCP smoke checks, writes `SOURCE_RECEIPT.json` with source and bundle SHA-256 digests, and emits a deterministic ZIP archive.
+The generated, self-contained plugin directory is `plugins/nymrel-studio-hub/export`, and the installable archive is `plugins/nymrel-studio-hub/nymrel-studio-hub-0.1.1.zip` with a `.sha256` sidecar. Its `mcp.json` points through `${PLUGIN_ROOT}` to the plugin wrapper at `server/bin/studio-mcp-server.js`, which delegates to the unchanged bundled upstream server and adds the evidence boundary. The builder verifies the pinned source commit and tool list, packages locked runtime dependencies with install scripts disabled, runs focused boundary tests plus stdio initialize/tool discovery/status/OpenUCP smoke checks, writes `SOURCE_RECEIPT.json` with source and bundle SHA-256 digests, and emits a deterministic ZIP archive.
 
 The plugin source is not installed into a host and is not uploaded to an account. To connect it later, install the generated directory through the host's supported local-plugin flow. Do not edit the host cache.
 

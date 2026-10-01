@@ -15,7 +15,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const pluginRoot = path.resolve(here, '..');
 const repoRoot = path.resolve(pluginRoot, '..', '..');
 const exportRoot = path.resolve(pluginRoot, 'export');
-const zipPath = path.resolve(pluginRoot, 'nymrel-studio-hub-0.1.0.zip');
+const zipPath = path.resolve(pluginRoot, 'nymrel-studio-hub-0.1.1.zip');
 const serverRoot = path.join(exportRoot, 'server');
 if (path.dirname(exportRoot) !== pluginRoot || path.dirname(zipPath) !== pluginRoot || path.dirname(serverRoot) !== exportRoot) {
   throw new Error('Refusing to write outside the plugin export directory.');
