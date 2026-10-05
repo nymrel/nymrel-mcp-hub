@@ -85,6 +85,6 @@
     "url": "git+https://github.com/nymrel/nymrel-mcp-hub.git"
   },
   "dependencies": {
-    "undici": "8.10.2"
+    "undici": "8.11.2"
   }
 }
