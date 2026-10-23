@@ -27,6 +27,73 @@ Revocation increments the device token generation, invalidating all device token
 
 If an OAuth access token is compromised, revoke it at the authorization server and review issued scopes/audience. If the authorization server itself is compromised, block public MCP traffic at the edge until trust is restored.
 
+### Recovering trust after issuer or hosting-provider compromise
+
+Apply this procedure to the incident's identified or potentially exposed scope; a
+provider disclosure alone does not prove that every credential or paired host was
+compromised. Record unknown exposure explicitly. Preserve existing incident holds:
+an MCP front-door pause and disconnected Local Bridge stay in place until the
+recovery owner has verified the applicable gates below. This runbook does not
+authorize account changes, credential rotation, deployment or reconnection.
+
+1. Establish trusted administration independent of the suspect issuer. Do not
+   reconnect Local Bridge through that issuer to investigate it. Inventory the
+   actual projects, environments, services, integrations, historical secret
+   bindings and consumers using authenticated provider reads. A failed inventory
+   is an access blocker, not an empty inventory.
+2. Verify containment of the actual backend and issuer, including direct origins,
+   previews, existing device streams and queued/claimed work. An edge pause or
+   one failing health URL proves only that tested path. If backend isolation is
+   unavailable, use independently trusted host administration to contain verified
+   local instances; disable their verified watchdog/scheduled restart paths before
+   stopping them. Preserve evidence and inspect host integrity before re-pairing.
+3. Classify the affected credentials before replacing them:
+
+   | Credential class | Recovery boundary |
+   | --- | --- |
+   | OAuth issuer private signing keys | Replace at the issuer with new key IDs; remove compromised public keys from JWKS without a rollover overlap. |
+   | Issuer cookie/session keys, refresh grants and OAuth client secrets | Invalidate affected sessions/grants and rotate affected client secrets at their issuers; update each consumer. Signing-key replacement alone does not revoke these. |
+   | Remote internal signing and bootstrap credentials | Follow [server signing-key compromise](#server-signing-key-compromise) for `NYMREL_REMOTE_SIGNING_KEY`; separately replace any exposed bootstrap credential. These are not the OAuth issuer's signing keys. |
+   | Provider, database and registry credentials | Revoke at the issuing provider and replace every affected consumer; removing a variable from the host is not issuer-side revocation. |
+   | Remote data and audit keys | Follow the migration/preservation procedures below; do not overwrite keys and destroy recoverable state or claimed audit continuity. |
+
+   The [issuer entrypoint](../oidc-issuer/README.md#entrypoint-configuration)
+   accepts `NYMREL_OIDC_CONFIG_FILE` as a path to private configuration. Establish
+   how that file was provisioned and stored before claiming that its contents
+   were exposed; knowing the path alone does not establish access to the file.
+4. Clear cached trust in every affected verifier instance after issuer recovery,
+   normally by a controlled restart while containment remains in force. The
+   [Remote verifier](../src/oauth.js) caches JWKS for five minutes, discovery
+   metadata for ten minutes and positive introspection results for up to thirty
+   seconds. JWTs are verified locally when an issuer is configured: revoking a
+   token only at the issuer does not make a cached public signing key unusable.
+   Waiting for a legitimate token's expiry is insufficient after private-key
+   compromise, because an attacker can sign a different expiry.
+5. From the trusted recovery route, prove rejection of old issuer signatures,
+   affected refresh/session material, old internal/device tokens and revoked
+   provider credentials as applicable. Exercise the recovered service's actual
+   authorization boundary using a harmless read, keeping test credentials inside
+   the approved secret-handling route. A front-door 503, DNS error, timeout or
+   failed network connection is not evidence of credential rejection. Verify new
+   credentials work only for the intended identity, audience and scope. Never
+   paste tokens, keys, private configuration or raw credential-bearing responses
+   into a receipt.
+6. Review service/provider audit logs and billing over the incident window,
+   pending/claimed calls and host integrity. Bind any required reviewed redeploy
+   to the exact source, service and replacement configuration. Staged variables
+   are not evidence that running consumers use replacements. Prevent backup
+   restoration from rolling revocation state backward. Only then may the existing
+   recovery owner clear the applicable holds and authorize normal traffic or
+   re-pairing within their authority.
+
+Keep a minimal receipt in the existing private incident record: source locator,
+retrieval time and source-effective time, scoped non-secret resource identifiers,
+credential class and issuer, revocation time, old-credential rejection result,
+consumer/deployment revision, cache invalidation coverage, anomaly-review interval
+and result, containment/host checks, and remaining unknowns. Redact customer-linked
+identifiers when needed. Record checks as verified, failed or unavailable; provider
+availability, a successful source test or an updated runbook is not recovery proof.
+
 ## Server signing-key compromise
 
 The internal signing key protects static compatibility/operator tokens and device tokens. If compromised:
