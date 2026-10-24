@@ -74,7 +74,7 @@ async function main() {
     }
 
     const safeQuestion =
-      'Can Nymrel safely run the bounded verification command npm test?';
+      'What does the local pattern check report for npm test?';
     const safeCall = await rpc(endpoint, 2, 'tools/call', {
       name: 'nymrel_surety_guard',
       arguments: {
@@ -103,7 +103,7 @@ async function main() {
     });
 
     if (safeResult.verdict !== 'ALLOW') {
-      throw new Error('Expected the bounded verification command to be allowed');
+      throw new Error('Expected no listed unsafe pattern for the verification command');
     }
     if (blockedResult.verdict !== 'BLOCK' || blockedCall.body?.result?.isError !== true) {
       throw new Error('Expected the destructive command to fail closed');
@@ -122,7 +122,7 @@ async function main() {
         tool: 'nymrel_surety_guard',
         verdict: safeResult.verdict,
         assistant:
-          'Yes. The requested test command is bounded and passed the strict pre-execution safety check.'
+          'No listed unsafe pattern matched. This local check does not authorize or execute the command.'
       },
       safeRefusal: {
         user: destructiveQuestion,
@@ -130,7 +130,7 @@ async function main() {
         verdict: blockedResult.verdict,
         violation: blockedResult.violations?.[0] ?? 'destructive command',
         assistant:
-          'I will not run that command. Nymrel blocked it before execution because it targets recursive deletion outside a bounded worktree.'
+          'I will not run that command. The local pattern check flagged recursive deletion of the root directory.'
       },
       hostedBoundary: {
         requestedTool: 'nymrel_swarm_claim',

@@ -29,7 +29,7 @@ test('Alexa+ simulator completes one useful workflow and fails closed twice', as
 
   assert.equal(transcript.success.tool, 'nymrel_surety_guard');
   assert.equal(transcript.success.verdict, 'ALLOW');
-  assert.match(transcript.success.assistant, /passed the strict pre-execution safety check/);
+  assert.match(transcript.success.assistant, /does not authorize or execute/);
 
   assert.equal(transcript.safeRefusal.tool, 'nymrel_surety_guard');
   assert.equal(transcript.safeRefusal.verdict, 'BLOCK');

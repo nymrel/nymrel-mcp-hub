@@ -32,6 +32,14 @@ test('Alexa+ web simulator renders decisions and exportable evidence through the
 
   try {
     const baseUrl = await waitForUrl(child);
+    const invalid = await fetch(`${baseUrl}mcp`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: 'null'
+    });
+    assert.equal(invalid.status, 400);
+    assert.equal((await invalid.json()).error.code, -32600);
+    assert.equal(child.exitCode, null);
     const page = await fetch(baseUrl);
     const html = await page.text();
 

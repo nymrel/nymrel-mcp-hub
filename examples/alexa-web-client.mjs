@@ -125,7 +125,7 @@ export function createOperatorApp({
       const result = toolResult(payload);
 
       if (result?.verdict === 'ALLOW') {
-        const message = 'Yes. The requested test command is bounded and passed the strict pre-execution safety check.';
+        const message = 'No listed unsafe pattern matched. This local check does not authorize or execute the command.';
         renderDecision(run, 'ALLOW', message, buildDecisionEvidence({
           scenario: name,
           tool: 'nymrel_surety_guard',
@@ -133,7 +133,7 @@ export function createOperatorApp({
           reason: message
         }));
       } else if (result?.verdict === 'BLOCK') {
-        const message = 'I will not run that command. Nymrel blocked it before execution because it targets recursive deletion outside a bounded worktree.';
+        const message = 'I will not run that command. The local pattern check flagged recursive deletion of the root directory.';
         renderDecision(run, 'BLOCK', message, buildDecisionEvidence({
           scenario: name,
           tool: 'nymrel_surety_guard',

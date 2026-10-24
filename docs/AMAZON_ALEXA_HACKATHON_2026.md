@@ -23,7 +23,7 @@ The competition-specific capability is a separately bounded Streamable HTTP tran
 
 **Nymrel Operator for Alexa+**
 
-An Alexa+ agent can use a least-privilege subset of Nymrel inspection tools to inspect machine trust, proof receipts, routing/safety metadata, and bounded readiness without granting destructive execution authority.
+An Alexa+ agent can use a least-privilege subset of Nymrel tools to inspect local heuristic results, generated artifacts, and proof receipts without granting execution authority. The UCP audit is a template and does not measure a website.
 
 The first competition slice is read/inspect-first. No deployment, purchase, file write, credential rotation, publishing, or other destructive action belongs in the initial Alexa+ surface.
 
@@ -64,6 +64,7 @@ The hosted transport exposes only:
 - `nymrel_proof_verify`
 
 Tools outside that list fail before dispatch. Any future hosted tool addition requires its own review.
+Hosted discovery and results label the UCP audit as an unfetched template, the command check as a local heuristic, machine trust artifacts as generated but unpublished, and proof verification as a cryptographic check that does not prove execution. Resources and prompts are not exposed by this HTTP transport.
 
 ### Authentication and abuse controls
 
@@ -81,7 +82,7 @@ corepack npm@12.0.2 run demo:alexa
 
 The deterministic loopback workflow performs the real MCP handshake and demonstrates:
 
-1. bounded `npm test` inspection → **ALLOW**;
+1. local pattern check of `npm test` → **ALLOW** label, without execution or authorization;
 2. `rm -rf /` → **BLOCK** before execution;
 3. `nymrel_swarm_claim` → hosted-boundary **REFUSED** with MCP `-32602`.
 

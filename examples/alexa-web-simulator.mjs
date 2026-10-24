@@ -51,7 +51,7 @@ const html = `<!doctype html>
     <h1>Ask safely.<br>Act deliberately.</h1>
     <p class="lede">A same-origin browser proof for the reviewed Nymrel MCP surface. It inspects requests and explains the result; it never executes the commands shown here.</p>
     <div class="actions" aria-label="Simulation scenarios">
-      <button type="button" data-scenario="safe">Check a bounded command</button>
+      <button type="button" data-scenario="safe">Check a command pattern</button>
       <button type="button" data-scenario="blocked">Refuse a destructive command</button>
       <button type="button" data-scenario="restricted">Try a restricted tool</button>
     </div>
@@ -76,9 +76,30 @@ const html = `<!doctype html>
 
 const mcpHandler = createMCPHttpHandler();
 const server = createServer((req, res) => {
-  const requestUrl = new URL(req.url ?? '/', 'http://localhost');
+  let requestUrl;
+  try {
+    requestUrl = new URL(req.url ?? '/', 'http://localhost');
+  } catch {
+    res.writeHead(400, { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' });
+    res.end('Bad request');
+    return;
+  }
   if (requestUrl.pathname === '/mcp') {
-    void mcpHandler(req, res);
+    void mcpHandler(req, res).catch(() => {
+      if (res.destroyed) return;
+      if (res.headersSent) {
+        res.destroy();
+        return;
+      }
+      const body = JSON.stringify({ jsonrpc: '2.0', id: null, error: { code: -32603, message: 'Internal server error' } });
+      res.writeHead(500, {
+        'content-type': 'application/json; charset=utf-8',
+        'content-length': String(Buffer.byteLength(body)),
+        'cache-control': 'no-store',
+        'x-content-type-options': 'nosniff'
+      });
+      res.end(body);
+    });
     return;
   }
 

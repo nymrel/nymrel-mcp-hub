@@ -32,6 +32,19 @@ export const DEFAULT_HOSTED_TOOL_ALLOWLIST = Object.freeze([
 
 const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '[::1]', '::1']);
 const LOOPBACK_BIND_HOSTS = new Set(['127.0.0.1', 'localhost', '::1']);
+const HOSTED_TOOL_EVIDENCE = {
+  nymrel_ucp_audit: ['template-only', 'Scores and findings are hard-coded examples. The URL is not fetched and supplied HTML does not drive those scores. Do not report these as measured site findings.'],
+  nymrel_surety_guard: ['local-heuristic', 'Uses small pattern checks only. It does not intercept or execute commands, enforce authorization, or prove a command is safe.'],
+  nymrel_machine_trust: ['generated-template', 'Generates caller-parameterized artifacts only. It does not verify a site, publish files, or confirm any endpoint or crawler policy exists.'],
+  nymrel_proof_verify: ['local-cryptographic-check', 'Checks receipt structure and cryptographic integrity/signature against optional caller-supplied trusted key material. It does not prove execution or inspect files.']
+} as const;
+const HOSTED_TOOL_DESCRIPTIONS: Record<keyof typeof HOSTED_TOOL_EVIDENCE, string> = {
+  nymrel_ucp_audit: 'Returns an illustrative commerce-readiness template for a supplied URL or HTML. It does not fetch or measure a site.',
+  nymrel_surety_guard: 'Checks a supplied command against a small local pattern list. ALLOW means no listed pattern matched; it does not authorize or execute the command.',
+  nymrel_machine_trust: 'Generates example JSON-LD, llms.txt, and robots.txt artifacts from caller input. It does not publish them or verify a site.',
+  nymrel_proof_verify: 'Checks receipt structure and cryptographic integrity. Authentication requires independently trusted caller key material; this does not verify execution or files.'
+};
+const HOSTED_METHODS = new Set(['initialize', 'ping', 'notifications/initialized', 'tools/list', 'tools/call']);
 
 export interface MCPHttpOptions {
   path?: string;
@@ -66,8 +79,6 @@ class RequestTimeoutError extends Error {
     super('Request timed out');
   }
 }
-
-const serverState = new WeakMap<Server, { handler: MCPHttpHandler }>();
 
 function positiveInteger(name: string, value: number, minimum = 1): number {
   if (!Number.isSafeInteger(value) || value < minimum) {
@@ -334,9 +345,80 @@ function filterHostedTools(
         if (!tool || typeof tool !== 'object' || Array.isArray(tool)) return false;
         const name = (tool as Record<string, unknown>).name;
         return typeof name === 'string' && allowlist.has(name);
+      }).map((tool: Record<string, unknown>) => {
+        const name = tool.name as keyof typeof HOSTED_TOOL_EVIDENCE;
+        const [classification, limitations] = HOSTED_TOOL_EVIDENCE[name];
+        return {
+          ...tool,
+          description: `${HOSTED_TOOL_DESCRIPTIONS[name]}\n[Hosted evidence: ${classification}. ${limitations}]`,
+          annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false }
+        };
       })
     }
   };
+}
+
+function annotateHostedResult(response: JSONRPCResponse, toolName: keyof typeof HOSTED_TOOL_EVIDENCE): JSONRPCResponse {
+  const contents = response.result?.content;
+  if (!Array.isArray(contents)) {
+    return { ...response, result: { content: [{ type: 'text', text: 'Hosted tool result could not be safely classified.' }], isError: true } };
+  }
+  const [classification, limitations] = HOSTED_TOOL_EVIDENCE[toolName];
+  let normalizationFailed = false;
+  const annotated = contents.map((item: { type?: string; text?: string }) => {
+    if (item.type !== 'text' || typeof item.text !== 'string') {
+      normalizationFailed = true;
+      return { type: 'text', text: 'Hosted tool result could not be safely classified.' };
+    }
+    let value: unknown;
+    try {
+      value = JSON.parse(item.text) as unknown;
+    } catch {
+      normalizationFailed = true;
+      return { ...item, text: 'Hosted tool result could not be safely classified.' };
+    }
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      normalizationFailed = true;
+      return { ...item, text: 'Hosted tool result could not be safely classified.' };
+    }
+    const output: Record<string, unknown> = { ...value, _hostedEvidence: { classification, limitations } };
+    if (toolName === 'nymrel_ucp_audit') {
+      output.templateGeneratedAt = output.auditTimestamp;
+      output.auditTimestamp = null;
+      output.auditStatus = 'NOT_MEASURED_TEMPLATE_ONLY';
+      output.overallScore = null;
+      output.letterGrade = 'NOT_ASSESSED';
+      output.commerceReadiness = 'NOT_ASSESSED_NO_PAGE_FETCH';
+      output.layers = Object.fromEntries(Object.keys(output.layers ?? {}).map((key) => [key, null]));
+      output.findings = Array.isArray(output.findings) ? output.findings.map((finding: Record<string, unknown>) => ({
+        ...finding,
+        status: 'UNVERIFIED_TEMPLATE',
+        details: 'Example text only; no site was fetched or measured.'
+      })) : [];
+      output.networkFetchPerformed = false;
+      output.recommendations = [];
+    } else if (toolName === 'nymrel_surety_guard') {
+      output.evaluationScope = 'LOCAL_PATTERN_CHECK_ONLY';
+      output.commandExecuted = false;
+      output.authorizationGranted = false;
+      output.isSafe = null;
+      if (output.verdict === 'ALLOW') {
+        output.recommendation = 'No listed pattern matched. This heuristic does not authorize or execute the command.';
+      }
+    } else if (toolName === 'nymrel_machine_trust') {
+      output.artifactStatus = 'GENERATED_NOT_PUBLISHED_OR_VERIFIED';
+      if (typeof output.llmsTxt === 'string') {
+        output.llmsTxt = output.llmsTxt
+          .replace('Full read access authorized for autonomous reasoning and commerce engines (OAI-SearchBot, ClaudeBot, GPTBot, PerplexityBot).', "Crawler permissions were not measured; verify the target site's robots.txt.")
+          .replace('## Core Capabilities & Endpoints', '## Example Capabilities & Endpoints (not verified as deployed)');
+      }
+    } else if (toolName === 'nymrel_proof_verify') {
+      output.executionVerified = false;
+      output.filesInspected = false;
+    }
+    return { ...item, text: JSON.stringify(output, null, 2) };
+  });
+  return { ...response, result: { ...response.result, content: annotated, isError: Boolean(response.result.isError) || normalizationFailed } };
 }
 
 export function createMCPHttpHandler(options: MCPHttpOptions = {}): MCPHttpHandler {
@@ -370,6 +452,11 @@ export function createMCPHttpHandler(options: MCPHttpOptions = {}): MCPHttpHandl
   const allowedHosts = options.allowedHosts ?? [];
   const allowedOrigins = options.allowedOrigins ?? [];
   const hostedToolAllowlist = new Set(options.hostedToolAllowlist ?? DEFAULT_HOSTED_TOOL_ALLOWLIST);
+  for (const toolName of hostedToolAllowlist) {
+    if (!Object.hasOwn(HOSTED_TOOL_EVIDENCE, toolName)) {
+      throw new TypeError(`Hosted tool has no reviewed evidence boundary: ${toolName}`);
+    }
+  }
   const core = new MCPServer();
 
   let activeRequests = 0;
@@ -482,14 +569,9 @@ export function createMCPHttpHandler(options: MCPHttpOptions = {}): MCPHttpHandl
         return;
       }
 
-      let rpcRequest: JSONRPCRequest;
+      let parsed: unknown;
       try {
-        const parsed = JSON.parse(body) as unknown;
-        if (exceedsJsonDepth(parsed, maxJsonDepth)) {
-          writeTransportError(res, 400, 'Request JSON exceeds configured nesting limit', maxResponseBytes);
-          return;
-        }
-        rpcRequest = parsed as JSONRPCRequest;
+        parsed = JSON.parse(body) as unknown;
       } catch {
         writeJson(
           res,
@@ -506,6 +588,20 @@ export function createMCPHttpHandler(options: MCPHttpOptions = {}): MCPHttpHandl
         );
         return;
       }
+
+      if (exceedsJsonDepth(parsed, maxJsonDepth)) {
+        writeTransportError(res, 400, 'Request JSON exceeds configured nesting limit', maxResponseBytes);
+        return;
+      }
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        writeJson(res, 400, {
+          jsonrpc: '2.0',
+          id: null,
+          error: { code: -32600, message: 'Invalid Request: Expected JSON-RPC object' }
+        }, maxResponseBytes);
+        return;
+      }
+      const rpcRequest = parsed as JSONRPCRequest;
 
       const id = requestId(rpcRequest);
 
@@ -544,6 +640,14 @@ export function createMCPHttpHandler(options: MCPHttpOptions = {}): MCPHttpHandl
           );
           return;
         }
+      }
+
+      if (!HOSTED_METHODS.has(rpcRequest.method)) {
+        writeJson(res, 200, {
+          jsonrpc: '2.0', id,
+          error: { code: -32601, message: 'Method is not available over hosted transport' }
+        }, maxResponseBytes);
+        return;
       }
 
       if (
@@ -593,10 +697,21 @@ export function createMCPHttpHandler(options: MCPHttpOptions = {}): MCPHttpHandl
         return;
       }
 
-      const response =
-        rpcRequest.method === 'tools/list'
-          ? filterHostedTools(coreResponse, hostedToolAllowlist)
-          : coreResponse;
+      let response = coreResponse;
+      if (rpcRequest.method === 'initialize' && response.result) {
+        response = { ...response, result: {
+          ...response.result,
+          capabilities: { tools: { listChanged: false } },
+          instructions: 'Hosted evidence boundary: UCP scores are templates, command checks are local heuristics, machine-trust artifacts are generated, and proof verification checks cryptography only. This endpoint does not fetch audit URLs, execute commands, publish artifacts, or prove real-world actions.'
+        } };
+      } else if (rpcRequest.method === 'tools/list') {
+        response = filterHostedTools(response, hostedToolAllowlist);
+      } else if (rpcRequest.method === 'tools/call' && response.result) {
+        const toolName = rpcRequest.params?.name;
+        if (typeof toolName === 'string' && Object.hasOwn(HOSTED_TOOL_EVIDENCE, toolName)) {
+          response = annotateHostedResult(response, toolName as keyof typeof HOSTED_TOOL_EVIDENCE);
+        }
+      }
 
       writeJson(res, 200, response, maxResponseBytes);
     } finally {
@@ -640,7 +755,6 @@ export function startMCPHttpServer(options: MCPHttpListenOptions = {}): Server {
   server.requestTimeout = requestTimeoutMs;
   server.headersTimeout = requestTimeoutMs;
   server.keepAliveTimeout = Math.min(5_000, requestTimeoutMs);
-  serverState.set(server, { handler });
   server.listen(port, host);
   return server;
 }
@@ -650,8 +764,6 @@ export async function drainMCPHttpServer(
   timeoutMs = DEFAULT_DRAIN_TIMEOUT_MS
 ): Promise<MCPHttpDrainResult> {
   const timeout = positiveInteger('drainTimeoutMs', timeoutMs);
-  const state = serverState.get(server);
-
   let closeError: Error | undefined;
   const closed = new Promise<void>((resolve) => {
     server.close((error) => {
@@ -661,14 +773,13 @@ export async function drainMCPHttpServer(
   });
   server.closeIdleConnections();
 
-  const deadline = Date.now() + timeout;
-  while ((state?.handler.activeRequestCount() ?? 0) > 0 && Date.now() < deadline) {
-    await new Promise<void>((resolve) => {
-      const timer = setTimeout(resolve, Math.min(10, Math.max(1, deadline - Date.now())));
-    });
-  }
-
-  const forced = (state?.handler.activeRequestCount() ?? 0) > 0;
+  let deadlineTimer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<boolean>((resolve) => {
+    deadlineTimer = setTimeout(() => resolve(false), timeout);
+  });
+  const closedBeforeDeadline = await Promise.race([closed.then(() => true), deadline]);
+  clearTimeout(deadlineTimer);
+  const forced = !closedBeforeDeadline;
   if (forced) {
     server.closeAllConnections();
   }
