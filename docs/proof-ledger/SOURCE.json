@@ -1,6 +1,6 @@
 {
   "repository": "https://github.com/nymrel/nymrel-proof-ledger",
-  "revision": "c0cd721c7435421e9203af0852da7596397b762d",
+  "revision": "7bccbf05ecc10b5f0951cd2e99a0e82c0bca1bda",
   "files": [
     {
       "source": "src/core/canonical.ts",
@@ -30,22 +30,22 @@
     {
       "source": "python/nymrel_proof_ledger/merkle.py",
       "destination": "python/nymrel_mcp_hub/_proof_ledger/merkle.py",
-      "sha256": "acd040172600aee4788f2578f0c09bc8affa1a26568ad30e2e22c4bccdccb4d6"
+      "sha256": "111ae3293169c064eabe7195d1bda0a9b1ff2beeb579b3a37026d84db064e30f"
     },
     {
       "source": "src/core/receipt.ts",
       "destination": "src/vendor/proof-ledger/receipt.ts",
-      "sha256": "c41c41ca9b12fa66a3b370a9d746802669d21bdd08b76c7ea2afdf656ca9f6e1"
+      "sha256": "57f41d06340b762a109a7080f03a5257f29d9ff36c26a9a2acaeaf9834927d6d"
     },
     {
       "source": "python/nymrel_proof_ledger/receipt.py",
       "destination": "python/nymrel_mcp_hub/_proof_ledger/receipt.py",
-      "sha256": "5805edc8b715f8230a7a9ce50e4a7b45f56ffde61a1152e4fb15197b13741a4e"
+      "sha256": "033fd86771e28e6f8fd64df193756f86be898f9804b564bf418d8e96702e425a"
     },
     {
       "source": "src/core/signer.ts",
       "destination": "src/vendor/proof-ledger/signer.ts",
-      "sha256": "4b6ebb75ce2bb403182d3d0f17db094d69f70851498df8c2847e88f0a99919b5"
+      "sha256": "9c38cbe6595b454acc203ecb63cdf0510ade51b1da311de7136b4bf13e3b9abb"
     },
     {
       "source": "python/nymrel_proof_ledger/signer.py",

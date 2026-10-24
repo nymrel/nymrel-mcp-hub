@@ -7,7 +7,7 @@ import test from 'node:test';
 import { executeProofLedger, proofLedgerToolDefinition } from '../src/tools/proofLedgerTool.js';
 import { executeProofVerify, proofVerifyToolDefinition } from '../src/tools/proofVerifyTool.js';
 import { canonicalize } from '../src/vendor/proof-ledger/canonical.js';
-import { ProofSigner } from '../src/vendor/proof-ledger/signer.js';
+import { ProofSigner, decodeSignatureAlgorithm } from '../src/vendor/proof-ledger/signer.js';
 import { verifyReceipt } from '../src/vendor/proof-ledger/receipt.js';
 import { MerkleTree } from '../src/vendor/proof-ledger/merkle.js';
 
@@ -43,6 +43,17 @@ test('upstream canonical vectors and independent RFC8032 Ed25519 vector', () => 
   assert.notEqual(new MerkleTree(['a', 'b', 'c']).getRoot(), new MerkleTree(['a', 'b', 'c', 'c']).getRoot());
 });
 
+test('vendored signer rejects unsupported runtime algorithm values before verification', () => {
+  const payload = { task: 'algorithm boundary' };
+  const secret = 'synthetic-test-secret';
+  const signature = ProofSigner.signPayload(payload, secret, 'HMAC-SHA256');
+  for (const value of ['hmac-sha256', 'constructor', null, { toString: () => 'HMAC-SHA256' }]) {
+    assert.equal(decodeSignatureAlgorithm(value), undefined);
+    assert.equal(ProofSigner.verifySignature(payload, signature, secret, value as never), false);
+  }
+  assert.equal(ProofSigner.verifySignature(payload, signature, secret, 'HMAC-SHA256'), true);
+});
+
 for (const algorithm of ['HMAC-SHA256', 'Ed25519'] as const) {
   test(`generated ${algorithm} receipt authenticates and seals metadata/identity`, async () => {
     const privateKey = algorithm === 'Ed25519' ? vectors.ed25519.secretKey : vectors.protocolV2.secret;
@@ -71,7 +82,7 @@ test('creation fails closed without supplied key or with invalid options', async
 
 test('vendored core and fixtures match reviewed upstream source digests', () => {
   const manifest = readJson('docs/proof-ledger/SOURCE.json');
-  assert.equal(manifest.revision, 'c0cd721c7435421e9203af0852da7596397b762d');
+  assert.equal(manifest.revision, '7bccbf05ecc10b5f0951cd2e99a0e82c0bca1bda');
   for (const entry of manifest.files) {
     const source = readFileSync(new URL(entry.destination, root), 'utf8').replace(/\r\n/g, '\n');
     assert.equal(createHash('sha256').update(source).digest('hex'), entry.sha256, entry.destination);

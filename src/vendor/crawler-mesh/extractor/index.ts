@@ -33,8 +33,8 @@ export function extractMetadata(html: string, baseUrl?: string): DocumentMetadat
   let publishedTime = '';
   let modifiedTime = '';
   let language = '';
-  const openGraph: Record<string, string> = {};
-  const twitterCard: Record<string, string> = {};
+  const openGraph: Record<string, string> = Object.create(null);
+  const twitterCard: Record<string, string> = Object.create(null);
   const keywords: string[] = [];
 
   // Extract <title>

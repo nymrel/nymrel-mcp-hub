@@ -3,7 +3,7 @@
 [![Registry status](https://img.shields.io/badge/registry%20publication-unverified-lightgrey.svg?style=flat-square)](#distribution-status)
 [![License: MIT](https://img.shields.io/badge/License-MIT-A8541F.svg?style=flat-square)](./LICENSE)
 [![MCP Spec](https://img.shields.io/badge/MCP-2026--07--28-2A332E.svg?style=flat-square)](https://modelcontextprotocol.io/specification/2026-07-28)
-[![Node runtime dependency](https://img.shields.io/badge/Node%20runtime-undici%208.10.2-success.svg?style=flat-square)](#validation)
+[![Node runtime dependency](https://img.shields.io/badge/Node%20runtime-undici%208.12.3-success.svg?style=flat-square)](#validation)
 [![Engines](https://img.shields.io/badge/engines-TypeScript%20%2B%20Python-FAF8F2.svg?style=flat-square)](#run-from-source)
 
 A dual-engine Model Context Protocol server exposing 15 Nymrel tools, 3 resources, and 3 prompt templates through TypeScript/Node.js and Python stdio entry points.
@@ -145,7 +145,7 @@ Search does not fetch arbitrary result URLs. Escalate selected URLs to `nymrel_c
 - Responses identify `nymrel-crawler-mesh` as the provider and use zero Firecrawl/provider credits.
 - Firecrawl Cloud is not a fallback and no Firecrawl key is required.
 
-Both the TypeScript/Node and Python stdio engines expose these crawler actions. Their required upstream modules are pinned to `nymrel/nymrel-crawler-mesh@35634d2109bb8c33cb17e38acf70c584e891c2e6`. See [vendored source and license provenance](./THIRD_PARTY_NOTICES.md).
+Both the TypeScript/Node and Python stdio engines expose these crawler actions. Their required upstream modules are pinned to `nymrel/nymrel-crawler-mesh@ec1d71db066a8b788bb544955d8ab46ffceb54df`. See [vendored source and license provenance](./THIRD_PARTY_NOTICES.md).
 
 ## Resources
 
@@ -219,7 +219,7 @@ See [SECURITY.md](./SECURITY.md) for responsible disclosure and supply-chain con
 
 ## Validation
 
-The repository pins npm `12.0.2` and targets Node.js 22/24 plus Python 3.11-3.14. The Node runtime pins `undici@8.10.2` for Crawler Mesh DNS/IP-pinned HTTP transport; the crawler implementation itself is vendored verbatim from a reviewed Nymrel revision with an exact Git-blob manifest. Python uses `cryptography>=50.0.1,<51` for Ed25519 and `rfc8785==0.1.4` for canonical JSON, matching the pinned Proof Ledger implementation.
+The repository pins npm `12.0.2` and targets Node.js 22/24 plus Python 3.11-3.14. The Node runtime pins `undici@8.12.3` for Crawler Mesh DNS/IP-pinned HTTP transport; the crawler implementation itself is vendored verbatim from a reviewed Nymrel revision with an exact Git-blob manifest. Python uses `cryptography>=50.0.1,<51` for Ed25519 and `rfc8785==0.1.4` for canonical JSON, matching the pinned Proof Ledger implementation.
 
 ### Node.js
 
@@ -248,7 +248,7 @@ python -m build --outdir dist-py
 python -m twine check dist-py/*
 ```
 
-The Bandit gate scans all runtime sources and recognizes only nine exact reviewed low-severity findings for fixed-argument Git context collection in the pinned vendor source. Changed or additional findings fail; see `docs/proof-ledger/bandit-reviewed.json`.
+The Bandit gate scans all runtime sources and recognizes only five exact reviewed low-severity findings for fixed-argument Git context collection in the pinned Proof Ledger source. Changed or additional findings fail; see `docs/proof-ledger/bandit-reviewed.json`.
 
 Local validation proves a source candidate; it does not prove a hosted check or registry publication.
 

@@ -16,7 +16,7 @@ interface HtmlToken {
 }
 
 export function parseAttributes(attrString: string): Record<string, string> {
-  const attrs: Record<string, string> = {};
+  const attrs: Record<string, string> = Object.create(null);
   const attrRegex = /([a-zA-Z0-9_:-]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+)))?/g;
   let match: RegExpExecArray | null;
 
