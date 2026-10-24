@@ -9,7 +9,7 @@ const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
 if (manifest.repository !== 'https://github.com/nymrel/nymrel-crawler-mesh') {
   throw new Error('Unexpected Crawler Mesh source repository');
 }
-if (manifest.revision !== 'ec1d71db066a8b788bb544955d8ab46ffceb54df') {
+if (manifest.revision !== '73bd0c49a47bf191b8bacc96021fdc860d3f77b8') {
   throw new Error('Unexpected Crawler Mesh source revision');
 }
 
