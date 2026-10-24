@@ -70,7 +70,7 @@ def test_creation_rejects_invalid_inputs_without_echoing_key():
 
 def test_upstream_source_digests():
     manifest = json.loads((ROOT / 'docs/proof-ledger/SOURCE.json').read_text())
-    assert manifest['revision'] == '7bccbf05ecc10b5f0951cd2e99a0e82c0bca1bda'
+    assert manifest['revision'] == '90c5e13b6bea8c4f3196cb2c4507a842203fbed4'
     for entry in manifest['files']:
         content = (ROOT / entry['destination']).read_bytes().replace(b'\r\n', b'\n')
         assert hashlib.sha256(content).hexdigest() == entry['sha256'], entry['destination']

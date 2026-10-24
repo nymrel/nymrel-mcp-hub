@@ -16,17 +16,17 @@ interface HtmlToken {
 }
 
 export function parseAttributes(attrString: string): Record<string, string> {
-  const attrs: Record<string, string> = Object.create(null);
+  const attrs = new Map<string, string>();
   const attrRegex = /([a-zA-Z0-9_:-]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+)))?/g;
   let match: RegExpExecArray | null;
 
   while ((match = attrRegex.exec(attrString)) !== null) {
     const name = match[1].toLowerCase();
     const value = match[2] ?? match[3] ?? match[4] ?? '';
-    attrs[name] = decodeHtmlEntities(value);
+    attrs.set(name, decodeHtmlEntities(value));
   }
 
-  return attrs;
+  return Object.setPrototypeOf(Object.fromEntries(attrs), null) as Record<string, string>;
 }
 
 export function tokenizeHtml(html: string): HtmlToken[] {

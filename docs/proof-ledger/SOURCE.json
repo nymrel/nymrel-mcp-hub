@@ -1,6 +1,6 @@
 {
   "repository": "https://github.com/nymrel/nymrel-proof-ledger",
-  "revision": "7bccbf05ecc10b5f0951cd2e99a0e82c0bca1bda",
+  "revision": "90c5e13b6bea8c4f3196cb2c4507a842203fbed4",
   "files": [
     {
       "source": "src/core/canonical.ts",
@@ -35,7 +35,7 @@
     {
       "source": "src/core/receipt.ts",
       "destination": "src/vendor/proof-ledger/receipt.ts",
-      "sha256": "57f41d06340b762a109a7080f03a5257f29d9ff36c26a9a2acaeaf9834927d6d"
+      "sha256": "5cf9567336c0a1ba3fa78becfc37d6cd3e56ebf4715dddf08b0e658f55a4c874"
     },
     {
       "source": "python/nymrel_proof_ledger/receipt.py",

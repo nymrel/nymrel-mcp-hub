@@ -1,5 +1,5 @@
 {
-  "reason": "Exact low-severity Bandit findings in the verbatim Python Crawler Mesh vendor copy pinned at 73bd0c49a47bf191b8bacc96021fdc860d3f77b8. B110 sites are deliberate best-effort/nonfatal cache, robots, URL-discovery, and sitemap handling. B311 is rate-limit retry jitter only and is not used for secrets, tokens, identifiers, authentication, authorization, or cryptography. The vendor Git-blob verifier runs before runtime tests; changed files or changed/new findings fail closed.",
+  "reason": "Exact low-severity Bandit findings in the verbatim Python Crawler Mesh vendor copy pinned at 02e96d9c5e32d002160f9af70f6297010a11aa73. B110 sites are deliberate best-effort/nonfatal cache, robots, URL-discovery, and sitemap handling. B311 is rate-limit retry jitter only and is not used for secrets, tokens, identifiers, authentication, authorization, or cryptography. The vendor Git-blob verifier runs before runtime tests; changed files or changed/new findings fail closed.",
   "findings": [
     {
       "filename": "python/nymrel_mcp_hub/_crawler_mesh/cache.py",

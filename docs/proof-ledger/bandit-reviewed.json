@@ -1,5 +1,5 @@
 {
-  "reason": "Five exact low-severity Bandit findings in the verbatim Proof Ledger Python receipt pinned at 7bccbf05ecc10b5f0951cd2e99a0e82c0bca1bda. Git context collection defaults off and both MCP creation adapters disable it. When explicitly enabled outside MCP, the code resolves an absolute executable outside the working root and runs four fixed argument lists without a shell. B404 flags the subprocess import and B603 flags those four bounded calls. The scanner still rejects changed or additional findings.",
+  "reason": "Five exact low-severity Bandit findings in the verbatim Proof Ledger Python receipt pinned at 90c5e13b6bea8c4f3196cb2c4507a842203fbed4. Git context collection defaults off and both MCP creation adapters disable it. When explicitly enabled outside MCP, the code resolves an absolute executable outside the working root and runs four fixed argument lists without a shell. B404 flags the subprocess import and B603 flags those four bounded calls. The scanner still rejects changed or additional findings.",
   "findings": [
     {
       "code": "9 import re\n10 import subprocess\n11 from datetime import UTC, datetime\n",

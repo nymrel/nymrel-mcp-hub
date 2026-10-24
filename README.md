@@ -145,7 +145,7 @@ Search does not fetch arbitrary result URLs. Escalate selected URLs to `nymrel_c
 - Responses identify `nymrel-crawler-mesh` as the provider and use zero Firecrawl/provider credits.
 - Firecrawl Cloud is not a fallback and no Firecrawl key is required.
 
-Both the TypeScript/Node and Python stdio engines expose these crawler actions. Their required upstream modules are pinned to `nymrel/nymrel-crawler-mesh@73bd0c49a47bf191b8bacc96021fdc860d3f77b8`. See [vendored source and license provenance](./THIRD_PARTY_NOTICES.md).
+Both the TypeScript/Node and Python stdio engines expose these crawler actions. Their required upstream modules are pinned to `nymrel/nymrel-crawler-mesh@02e96d9c5e32d002160f9af70f6297010a11aa73`. See [vendored source and license provenance](./THIRD_PARTY_NOTICES.md).
 
 ## Resources
 

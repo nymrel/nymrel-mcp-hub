@@ -1,6 +1,6 @@
 {
   "repository": "https://github.com/nymrel/nymrel-crawler-mesh",
-  "revision": "73bd0c49a47bf191b8bacc96021fdc860d3f77b8",
+  "revision": "02e96d9c5e32d002160f9af70f6297010a11aa73",
   "license": "MIT",
   "files": [
     {
@@ -26,7 +26,7 @@
     {
       "source": "src/extractor/index.ts",
       "destination": "src/vendor/crawler-mesh/extractor/index.ts",
-      "gitBlobSha": "b037e30772fc6ff46f0a2479b3a11511ca96e46a"
+      "gitBlobSha": "55ce87ed80f23474d21e537b7fe6ff113c69d716"
     },
     {
       "source": "src/extractor/types.ts",
@@ -41,7 +41,7 @@
     {
       "source": "src/extractor/ast.ts",
       "destination": "src/vendor/crawler-mesh/extractor/ast.ts",
-      "gitBlobSha": "0c619bba11ee9a2230c14c43f1e0537296747c31"
+      "gitBlobSha": "85fdaad06c7d2d03a7262d65ef234367d1f31832"
     },
     {
       "source": "src/crawler/mesh.ts",

@@ -345,6 +345,12 @@ export async function createReceipt(options: CreateReceiptOptions): Promise<Proo
   };
 }
 
+function stripTrailingAsciiSpaces(value: string): string {
+  let end = value.length;
+  while (end > 0 && value.charCodeAt(end - 1) === 0x20) end--;
+  return value.slice(0, end);
+}
+
 async function artifactPathWithin(cwd: string, artifactPath: string): Promise<string | undefined> {
   // Reject network/drive paths and lexical escapes before any filesystem lookup.
   if (path.posix.isAbsolute(artifactPath) || path.win32.isAbsolute(artifactPath) || /^[A-Za-z]:/.test(artifactPath)) return undefined;
@@ -352,7 +358,7 @@ async function artifactPathWithin(cwd: string, artifactPath: string): Promise<st
   const portablePath = artifactPath.replace(/\\/g, '/');
   // Apply the same portable filename policy on every host, before realpath.
   if (portablePath.split('/').some(part => /[\u0000-\u001f<>:"|?*]/u.test(part) ||
-    /^(con|prn|aux|nul|conin\$|conout\$|com[0-9¹²³]|lpt[0-9¹²³])$/iu.test(part.split('.')[0].replace(/ +$/, '')) ||
+    /^(con|prn|aux|nul|conin\$|conout\$|com[0-9¹²³]|lpt[0-9¹²³])$/iu.test(stripTrailingAsciiSpaces(part.split('.')[0])) ||
     (part !== '.' && part !== '..' && /[. ]$/.test(part)))) return undefined;
   const lexicalRelative = path.relative(unresolvedRoot, path.resolve(unresolvedRoot, portablePath));
   if (lexicalRelative === '..' || lexicalRelative.startsWith(`..${path.sep}`) || path.isAbsolute(lexicalRelative)) return undefined;
