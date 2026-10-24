@@ -15,6 +15,13 @@ import { canonicalize, type CanonicalizationProfile } from './canonical.js';
 
 export type SignatureAlgorithm = 'HMAC-SHA256' | 'Ed25519';
 
+/** Decode untrusted runtime input into one of the two supported algorithm literals. */
+export function decodeSignatureAlgorithm(value: unknown): SignatureAlgorithm | undefined {
+  if (value === 'HMAC-SHA256') return 'HMAC-SHA256';
+  if (value === 'Ed25519') return 'Ed25519';
+  return undefined;
+}
+
 export interface KeyPair {
   publicKey: string;
   privateKey: string;
@@ -85,19 +92,21 @@ export class ProofSigner {
     algorithm: SignatureAlgorithm = 'HMAC-SHA256',
     canonicalizationProfile: CanonicalizationProfile = 'rfc8785'
   ): string {
+    const selectedAlgorithm = decodeSignatureAlgorithm(algorithm);
+    if (selectedAlgorithm === undefined) throw new Error('Unsupported signature algorithm');
     if (typeof privateKeyOrSecret !== 'string' || privateKeyOrSecret.length === 0) throw new TypeError('Signing key must be a non-empty string');
     canonicalize(privateKeyOrSecret); // Validate Unicode without changing the key bytes.
     const canonicalPayload = typeof payload === 'string'
       ? payload
       : canonicalize(payload, canonicalizationProfile);
     const payloadBuffer = Buffer.from(canonicalPayload, 'utf8');
-    if (algorithm === 'HMAC-SHA256') {
+    if (selectedAlgorithm === 'HMAC-SHA256') {
       return createHmac('sha256', privateKeyOrSecret).update(payloadBuffer).digest('hex');
     }
-    if (algorithm === 'Ed25519') {
+    if (selectedAlgorithm === 'Ed25519') {
       return cryptoSign(null, payloadBuffer, privateEd25519Key(privateKeyOrSecret)).toString('hex');
     }
-    throw new Error(`Unsupported signature algorithm: ${String(algorithm)}`);
+    throw new Error('Unsupported signature algorithm');
   }
 
   public static verifySignature(
@@ -108,18 +117,20 @@ export class ProofSigner {
     canonicalizationProfile: CanonicalizationProfile = 'rfc8785'
   ): boolean {
     try {
+      const selectedAlgorithm = decodeSignatureAlgorithm(algorithm);
+      if (selectedAlgorithm === undefined) return false;
       if (typeof publicKeyOrSecret !== 'string' || publicKeyOrSecret.length === 0) return false;
       canonicalize(publicKeyOrSecret);
       const canonicalPayload = typeof payload === 'string'
         ? payload
         : canonicalize(payload, canonicalizationProfile);
       const payloadBuffer = Buffer.from(canonicalPayload, 'utf8');
-      if (algorithm === 'HMAC-SHA256') {
+      if (selectedAlgorithm === 'HMAC-SHA256') {
         if (!HMAC_SIGNATURE.test(signatureHex)) return false;
         const expected = createHmac('sha256', publicKeyOrSecret).update(payloadBuffer).digest();
         return timingSafeEqual(Buffer.from(signatureHex, 'hex'), expected);
       }
-      if (algorithm === 'Ed25519') {
+      if (selectedAlgorithm === 'Ed25519') {
         if (!ED25519_SIGNATURE.test(signatureHex)) return false;
         return cryptoVerify(
           null,

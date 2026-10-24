@@ -1,6 +1,26 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { executeCrawler } from '../src/tools/crawlerTool.js';
+import { extractMetadata, parseAttributes } from '../src/vendor/crawler-mesh/extractor/index.js';
+
+test('vendored extractor keeps attacker-controlled keys as own metadata strings', () => {
+  const attrs = parseAttributes('__proto__="first" __proto__="attribute" constructor="ctor" prototype="proto"');
+  assert.equal(Object.getPrototypeOf(attrs), null);
+  assert.equal(Object.hasOwn(attrs, '__proto__'), true);
+  assert.equal(attrs['__proto__'], 'attribute');
+  assert.equal(attrs['constructor'], 'ctor');
+  assert.equal(attrs['prototype'], 'proto');
+  assert.equal(JSON.parse(JSON.stringify(attrs))['__proto__'], 'attribute');
+  const metadata = extractMetadata('<meta property="og:__proto__" content="first"><meta property="og:__proto__" content="graph"><meta property="og:constructor" content="graph-ctor"><meta name="twitter:__proto__" content="card"><meta name="twitter:constructor" content="card-ctor">');
+  assert.equal(Object.getPrototypeOf(metadata.openGraph), null);
+  assert.equal(Object.getPrototypeOf(metadata.twitterCard), null);
+  assert.equal(metadata.openGraph['__proto__'], 'graph');
+  assert.equal(metadata.openGraph['constructor'], 'graph-ctor');
+  assert.equal(metadata.twitterCard['__proto__'], 'card');
+  assert.equal(metadata.twitterCard['constructor'], 'card-ctor');
+  assert.equal(JSON.parse(JSON.stringify(metadata.openGraph))['__proto__'], 'graph');
+  assert.equal(({} as Record<string, unknown>).graph, undefined);
+});
 
 const publicResolver = async (hostname: string): Promise<string[]> => {
   if (hostname === 'private.example.com') return ['127.0.0.1'];

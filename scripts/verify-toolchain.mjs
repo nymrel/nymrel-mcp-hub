@@ -43,7 +43,7 @@ assert(!packageJson.files.includes("dist"), "npm packaging must not sweep compil
 
 const pyproject = read("pyproject.toml");
 for (const marker of [
-  'requires = ["setuptools==84.0.0"]',
+  'requires = ["setuptools==84.1.0"]',
   'requires-python = ">=3.11,<3.15"',
   'license = "MIT"',
   'where = ["python"]',

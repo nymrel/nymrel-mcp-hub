@@ -38,6 +38,7 @@ const publicFiles = new Set([
   "SECURITY.md",
   "bin/mcp-server",
   "bin/mcp-server.js",
+  "bin/mcp-http-server.js",
   "llms.txt",
   "package.json",
 ]);

@@ -4,7 +4,7 @@ import { cp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const UPSTREAM_COMMIT = '8c689189b065d4164d1f00a0ebec6e3508a543e5';
+const UPSTREAM_COMMIT = 'ada6f4c9b1017bda52543705687ca0baecbb789e';
 const EXPECTED_TOOLS = [
   'nymrel_ucp_audit', 'nymrel_surety_guard', 'nymrel_swarm_claim', 'nymrel_machine_trust',
   'nymrel_proof_ledger', 'nymrel_crawler_mesh', 'nymrel_beacon_ping', 'nymrel_headless_quote',
@@ -124,7 +124,7 @@ if (packageJson.version !== '1.0.0' || packageLock.packages?.['']?.version !== p
   throw new Error('Upstream package version and lockfile do not match the pinned release.');
 }
 const runtimeDependency = packageJson.dependencies?.undici;
-if (runtimeDependency !== '8.10.2') throw new Error(`Unexpected undici runtime dependency: ${runtimeDependency}`);
+if (runtimeDependency !== '8.12.3') throw new Error(`Unexpected undici runtime dependency: ${runtimeDependency}`);
 
 const toolListing = run(process.execPath, [path.join(repoRoot, 'bin', 'mcp-server.js'), '--list-tools'], repoRoot);
 const actualTools = [...toolListing.matchAll(/^\d+\. \[([^\]]+)\]/gm)].map((match) => match[1]);

@@ -11,7 +11,7 @@ import { extractMarkdown, extractMetadata } from '../vendor/crawler-mesh/extract
 import type { CrawlOptions } from '../vendor/crawler-mesh/types.js';
 
 const CANONICAL_CRAWLER_REPOSITORY = 'https://github.com/nymrel/nymrel-crawler-mesh';
-const CANONICAL_CRAWLER_MERGE = '041b0b26c6ed4b9d31e87bdf397bbbd7d1017171';
+const CANONICAL_CRAWLER_MERGE = '02e96d9c5e32d002160f9af70f6297010a11aa73';
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
 const DEFAULT_DEPTH = 2;

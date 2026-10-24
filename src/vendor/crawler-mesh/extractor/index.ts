@@ -33,8 +33,8 @@ export function extractMetadata(html: string, baseUrl?: string): DocumentMetadat
   let publishedTime = '';
   let modifiedTime = '';
   let language = '';
-  const openGraph: Record<string, string> = {};
-  const twitterCard: Record<string, string> = {};
+  const openGraph = new Map<string, string>();
+  const twitterCard = new Map<string, string>();
   const keywords: string[] = [];
 
   // Extract <title>
@@ -67,12 +67,12 @@ export function extractMetadata(html: string, baseUrl?: string): DocumentMetadat
       else if (key === 'keywords') {
         keywords.push(...val.split(',').map(k => k.trim()).filter(Boolean));
       } else if (key.startsWith('og:')) {
-        openGraph[key.substring(3)] = val;
+        openGraph.set(key.substring(3), val);
         if (key === 'og:title' && !title) title = val;
         if (key === 'og:description' && !description) description = val;
         if (key === 'og:url' && !canonical) canonical = val;
       } else if (key.startsWith('twitter:')) {
-        twitterCard[key.substring(8)] = val;
+        twitterCard.set(key.substring(8), val);
       } else if (key === 'article:published_time' || key === 'published_time') {
         publishedTime = val;
       } else if (key === 'article:modified_time' || key === 'modified_time') {
@@ -110,8 +110,8 @@ export function extractMetadata(html: string, baseUrl?: string): DocumentMetadat
     publishedTime: publishedTime || undefined,
     modifiedTime: modifiedTime || undefined,
     language: language || undefined,
-    openGraph,
-    twitterCard,
+    openGraph: Object.setPrototypeOf(Object.fromEntries(openGraph), null) as Record<string, string>,
+    twitterCard: Object.setPrototypeOf(Object.fromEntries(twitterCard), null) as Record<string, string>,
     keywords,
     wordCount: 0,
     characterCount: 0,
