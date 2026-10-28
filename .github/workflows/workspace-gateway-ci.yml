@@ -1,0 +1,50 @@
+name: Workspace Gateway CI
+
+on:
+  pull_request:
+    paths:
+      - "workspace-gateway/**"
+      - ".github/workflows/workspace-gateway-ci.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "workspace-gateway/**"
+      - ".github/workflows/workspace-gateway-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    name: contract (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+
+    defaults:
+      run:
+        working-directory: workspace-gateway
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Contract suite
+        run: npm run check
+
+      - name: Fail if runtime gained dependencies
+        shell: bash
+        run: |
+          node -e "const p=require('./package.json'); if (p.dependencies && Object.keys(p.dependencies).length) process.exit(1)"
