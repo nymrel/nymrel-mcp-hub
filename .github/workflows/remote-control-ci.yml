@@ -110,7 +110,7 @@ jobs:
         run: ./test/watchdog-nymrel-chatgpt-studio.test.ps1
 
       - name: Run native backend contracts on Windows
-        run: node --test test/native-local-client.test.js test/native-read-policy.test.js
+        run: node --test test/native-local-client.test.js test/native-read-policy.test.js test/ci-local-runner.test.js
 
   container-contract:
     name: Container production smoke
