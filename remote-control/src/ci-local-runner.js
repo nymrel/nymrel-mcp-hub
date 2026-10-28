@@ -63,16 +63,21 @@ function defaultExecuteJob(job, { repoRoot, environment, maxOutputBytes = 2 * 10
     let limitExceeded = false;
     let timedOut = false;
     let settled = false;
+    let terminationStarted = false;
+    let settlementTimer;
     const cwd = job.resolvedCwd || path.resolve(repoRoot, job.cwd);
     const child = spawn(job.command, {
       cwd,
       env: environment,
       shell: true,
+      // Give this job its own POSIX process group, never the runner's group.
+      detached: process.platform !== 'win32',
       windowsHide: true,
       stdio: ['ignore', 'pipe', 'pipe']
     });
 
     const absorb = (stream, chunk) => {
+      if (settled) return;
       const buffer = Buffer.from(chunk);
       if (stream === 'stdout') {
         stdoutBytes += buffer.length;
@@ -83,7 +88,7 @@ function defaultExecuteJob(job, { repoRoot, environment, maxOutputBytes = 2 * 10
       }
       if (stdoutBytes > maxOutputBytes || stderrBytes > maxOutputBytes) {
         limitExceeded = true;
-        try { child.kill('SIGKILL'); } catch { /* best effort */ }
+        terminateJob();
         return;
       }
       onOutput(stream, buffer);
@@ -93,7 +98,7 @@ function defaultExecuteJob(job, { repoRoot, environment, maxOutputBytes = 2 * 10
 
     const timer = setTimeout(() => {
       timedOut = true;
-      try { child.kill('SIGKILL'); } catch { /* best effort */ }
+      terminateJob();
     }, job.timeoutSeconds * 1000);
     timer.unref?.();
 
@@ -101,6 +106,7 @@ function defaultExecuteJob(job, { repoRoot, environment, maxOutputBytes = 2 * 10
       if (settled) return;
       settled = true;
       clearTimeout(timer);
+      clearTimeout(settlementTimer);
       resolve({
         durationMs: Date.now() - started,
         stdoutBytes,
@@ -111,6 +117,28 @@ function defaultExecuteJob(job, { repoRoot, environment, maxOutputBytes = 2 * 10
         outputLimitExceeded: limitExceeded,
         ...payload
       });
+    };
+
+    const terminateJob = () => {
+      if (terminationStarted || settled) return;
+      terminationStarted = true;
+      // Descendants can retain stdout/stderr after their shell exits. Bound
+      // settlement even if OS termination fails or a child escaped the group.
+      settlementTimer = setTimeout(() => {
+        child.stdout.destroy();
+        child.stderr.destroy();
+        child.unref();
+        finish({ status: timedOut ? 'timed_out' : 'output_limit', exitCode: null, signal: null });
+      }, 1000);
+      if (!child.pid) return;
+      if (process.platform === 'win32') {
+        // Structured argv; /T targets only this job's descendants. Do not kill
+        // by executable name, which could terminate unrelated runner jobs.
+        execFile('taskkill.exe', ['/PID', String(child.pid), '/T', '/F'],
+          { windowsHide: true, timeout: 1000 }, () => {});
+      } else {
+        try { process.kill(-child.pid, 'SIGKILL'); } catch { /* best effort; bounded settlement above */ }
+      }
     };
 
     child.once('error', (error) => finish({ status: 'infrastructure_error', exitCode: null, error: String(error?.message || error).slice(0, 1000) }));

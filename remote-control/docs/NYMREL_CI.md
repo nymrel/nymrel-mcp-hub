@@ -105,6 +105,8 @@ The command verifies that the worktree root is exact, `HEAD` equals the requeste
 
 This is still not an operating-system sandbox. A trusted job can read files available to its OS account and can make network requests unless the host itself prevents them. Run this lane under a dedicated CI account/workspace with no production credentials, SSH keys, package-registry auth files (for example `.npmrc`), cloud profiles, or other secrets. Public or otherwise untrusted pull-request code belongs only on disposable workers.
 
+Job deadlines and output limits terminate the job's own POSIX process group or use Windows `taskkill /PID /T /F` for its process tree. If inherited pipes remain open, the runner closes its pipe handles and settles the failed job within one additional second rather than waiting indefinitely. This is best-effort cleanup, not containment: a process that deliberately escapes the group/tree, OS permission failures, or termination of the runner itself can leave work running. A timeout or output-limit receipt does not prove rollback or that every descendant has stopped; inspect the dedicated worker before retrying an ambiguous operation. Linux descendant cleanup is covered by real process fixtures; Windows cleanup requires the native Windows CI lane.
+
 ### Current Remote dispatch slice
 
 The control plane can now preflight a trusted manifest for one specific Remote device and call `dispatchTrustedCi()`. The dispatcher:

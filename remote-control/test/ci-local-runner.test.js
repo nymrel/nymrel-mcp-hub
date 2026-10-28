@@ -137,3 +137,69 @@ test('refuses mismatched or dirty checkouts before execution', async () => {
     await assert.rejects(() => runTrustedCiCheckout({ ...base, git: fakeGit(root, { dirty: ' M file.js' }) }), /must be clean/);
   });
 });
+
+for (const trigger of ['deadline', 'output_limit']) {
+  test(`real shell job ${trigger} terminates its descendant and settles promptly`, async () => {
+    await withRoot(async (root) => {
+      const marker = path.join(root, 'late-side-effect');
+      await fs.writeFile(path.join(root, 'descendant.cjs'), `
+        const fs = require('node:fs');
+        setTimeout(() => fs.writeFileSync('late-side-effect', 'escaped termination'), 2200);
+        setTimeout(() => {}, 4000);
+      `);
+      await fs.writeFile(path.join(root, 'parent.cjs'), `
+        const { spawn } = require('node:child_process');
+        spawn(process.execPath, ['descendant.cjs'], { stdio: 'inherit' });
+        ${trigger === 'output_limit' ? "process.stdout.write('x'.repeat(2 * 1024 * 1024 + 1));" : ''}
+        setTimeout(() => {}, 4000);
+      `);
+      const started = Date.now();
+      const receipt = await runTrustedCiCheckout({
+        repoRoot: root, repository: 'nymrel/fixture', commitSha: sha,
+        git: fakeGit(root),
+        manifest: { version: 1, jobs: [{
+          id: 'process-tree', command: `"${process.execPath}" parent.cjs`,
+          timeoutSeconds: trigger === 'deadline' ? 1 : 10
+        }] }
+      });
+      assert.equal(receipt.jobs[0].status, trigger === 'deadline' ? 'timed_out' : 'output_limit');
+      assert.equal(receipt.conclusion, 'failure');
+      assert.ok(Date.now() - started < 3000, 'must not wait for the 4-second descendant lifetime');
+      // Observe beyond its scheduled write, not just immediately after kill.
+      await new Promise((resolve) => setTimeout(resolve, Math.max(0, 2700 - (Date.now() - started))));
+      await assert.rejects(fs.access(marker), { code: 'ENOENT' });
+    });
+  });
+}
+
+test('deadline settlement stays bounded when POSIX group termination fails', {
+  skip: process.platform === 'win32'
+}, async (t) => {
+  await withRoot(async (root) => {
+    await fs.writeFile(path.join(root, 'wait.cjs'), 'setTimeout(() => {}, 4000);');
+    const kill = process.kill.bind(process);
+    let ownedGroup;
+    const mockedKill = t.mock.method(process, 'kill', (pid) => {
+      ownedGroup = pid;
+      throw new Error('fixture termination failure');
+    });
+    try {
+      const started = Date.now();
+      const receipt = await runTrustedCiCheckout({
+        repoRoot: root, repository: 'nymrel/fixture', commitSha: sha,
+        git: fakeGit(root), manifest: { version: 1, jobs: [{
+          id: 'cleanup-failure', command: `"${process.execPath}" wait.cjs`, timeoutSeconds: 1
+        }] }
+      });
+      assert.equal(receipt.jobs[0].status, 'timed_out');
+      assert.ok(Date.now() - started < 3000, 'settlement must not depend on child close');
+      assert.ok(Number.isInteger(ownedGroup) && ownedGroup < -1);
+    } finally {
+      mockedKill.mock.restore();
+      // This is solely the newly spawned fixture's dedicated process group.
+      if (Number.isInteger(ownedGroup) && ownedGroup < -1) {
+        try { kill(ownedGroup, 'SIGKILL'); } catch (error) { if (error.code !== 'ESRCH') throw error; }
+      }
+    }
+  });
+});
