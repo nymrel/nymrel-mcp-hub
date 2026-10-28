@@ -13,8 +13,11 @@ Nymrel Workspace CLI
 Environment:
   NYMREL_WORKSPACE_URL    Gateway origin (for example https://workspace.example)
   NYMREL_WORKSPACE_TOKEN  Bearer token for the requested operation
-  NYMREL_WORKSPACE_PRINCIPAL  Optional stable agent/node identity
+  NYMREL_WORKSPACE_PRINCIPAL  Optional stable, self-asserted coordination label
   NYMREL_WORKSPACE_ALLOW_LOOPBACK_HTTP  Set to 1 only for literal-loopback development
+
+Bearer tokens authenticate shared roles only. Principal labels are not verified
+agent identity; this service has one operator authority and no tenant isolation.
 
 Commands:
   list

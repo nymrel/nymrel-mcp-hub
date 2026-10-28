@@ -115,7 +115,7 @@ const TOOL_DEFINITIONS = Object.freeze([
   {
     name: "lease_renew",
     role: "write",
-    description: "Renew an active lease after re-validating owner and fencing token.",
+    description: "Renew an active lease after checking its fencing token and cooperative caller label; the label is self-asserted, and an admin may override label matching.",
     inputSchema: {
       type: "object",
       properties: {

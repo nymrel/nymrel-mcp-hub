@@ -28,6 +28,12 @@ The service has three bearer roles:
 - write: read privileges plus leases, tasks, handoffs, node reports, deployment reports, and artifact uploads.
 - admin: write privileges plus registry import and canonical repo promotion/head updates.
 
+This deployment has one operator trust boundary. Bearer tokens authenticate these shared roles only. Every holder of a role token has that role's access across the deployment's repositories and artifacts; there is no independent-tenant isolation or per-agent credential binding.
+
+`NYMREL_WORKSPACE_PRINCIPAL`, the `x-nymrel-principal` header, and `*_principal` fields are self-asserted cooperative labels. Use a stable label for coordination, but do not treat it as authenticated attribution. A holder of the shared write token can supply another caller's label. Lease-owner and handoff-target checks catch accidental label mismatches; they do not prevent hostile impersonation by another holder of the same role token. Audit entries record the supplied label, and audit-chain integrity does not establish who supplied it. Fencing, expiry, role checks, and canonical-head compare-and-swap retain their separate purposes.
+
+An isolated synthetic HTTP review demonstrated this boundary: a lease acquired with the label `agent:alice` rejected a release using `agent:bob` with HTTP 403, then accepted the same write credential and fencing token with `agent:alice` as the header label (HTTP 200). This demonstrates shared-role behavior; it is not a role-escalation or live-exploitation claim. Use this service only among cooperating callers within one operator authority. Separate tenants or authenticated per-agent custody require a separately reviewed authentication design before rollout.
+
 Required production variables:
 
 - NYMREL_WORKSPACE_READ_TOKEN
@@ -68,6 +74,7 @@ Then in another terminal:
 ~~~powershell
 $env:NYMREL_WORKSPACE_URL = "http://127.0.0.1:8787"
 $env:NYMREL_WORKSPACE_TOKEN = "unused-in-insecure-local"
+$env:NYMREL_WORKSPACE_ALLOW_LOOPBACK_HTTP = "1"
 node bin/nymrel-workspace.mjs list
 ~~~
 
@@ -85,6 +92,8 @@ $env:NYMREL_WORKSPACE_TOKEN = "<admin bearer>"
 $env:NYMREL_WORKSPACE_PRINCIPAL = "node:jalenpc"
 node bin/nymrel-workspace.mjs bootstrap-candidate C:\path\candidate.json node:jalenpc
 ~~~
+
+The principal value above is a caller-selected coordination label, not verified machine or agent identity. Share role tokens only within the single operator trust boundary described above.
 
 Bootstrap imports candidate identities and publishes the local node snapshot. It never fetches, resets, moves, cleans, commits, or otherwise mutates a Git worktree.
 
