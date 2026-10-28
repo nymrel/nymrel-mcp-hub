@@ -2,7 +2,7 @@
 
 Nymrel Workspace Gateway is the canonical coordination service for Nymrel local and cloud agents.
 
-It does not synchronize mutable filesystem trees. It gives every agent the same logical workspace identity: repository, canonical Git state, active writer lease, task and handoff state, local mirror observations, deployment observations, and immutable artifacts.
+It does not synchronize mutable filesystem trees. It gives every agent the same logical workspace identity: repository, canonical Git state, active writer lease, task and handoff state, local mirror observations, deployment observations, and artifacts whose registered contents cannot be changed through the API.
 
 ## Authority model
 
@@ -206,9 +206,11 @@ REST JSON mutations require Idempotency-Key. MCP mutation tools carry idempotenc
 
 ## Artifact CAS
 
-Upload bytes with PUT /v1/artifacts/<sha256>. The URI digest must match the streamed bytes.
+Upload bytes with PUT /v1/artifacts/<sha256>. For a new artifact, the URI digest must match the streamed bytes. An already registered digest returns its existing metadata without replacing the stored contents.
 
 Content is persisted before metadata. A crash can therefore create an unreferenced orphan blob, which startup recovery may later delete after a grace period. The reverse condition, a database record pointing to missing bytes, is treated as storage corruption and fails closed.
+
+Uploads validate the full SHA-256 digest before registration. Reads and repeated uploads of an already registered artifact check file existence and size; they do not rehash its stored bytes. The service trusts its operator-managed filesystem, so same-length corruption or out-of-band replacement is not detected on those paths. Consumers must verify returned bytes against the requested SHA-256 before using an artifact as evidence. Content-addressed naming and audit-chain integrity do not certify the underlying storage against tampering.
 
 ## Startup recovery
 

@@ -18,6 +18,8 @@ Environment:
 
 Bearer tokens authenticate shared roles only. Principal labels are not verified
 agent identity; this service has one operator authority and no tenant isolation.
+Artifact metadata does not verify stored bytes; check the requested SHA-256
+against downloaded bytes before using an artifact as evidence.
 
 Commands:
   list

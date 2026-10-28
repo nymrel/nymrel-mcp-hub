@@ -31,7 +31,7 @@ const TOOL_DEFINITIONS = Object.freeze([
   {
     name: "artifact_metadata",
     role: "read",
-    description: "Read metadata for a content-addressed artifact.",
+    description: "Read stored metadata for a content-addressed artifact; stored bytes are not rehashed. Verify downloaded bytes against the requested SHA-256 before using them as evidence.",
     inputSchema: {
       type: "object",
       properties: { sha256: { type: "string" } },
@@ -307,8 +307,10 @@ function callTool(name, args, principal, store) {
       return store.resolveWorkspace(args.repo);
     case "audit_verify":
       return store.auditStatus();
-    case "artifact_metadata":
-      return store.getArtifact(args.sha256);
+    case "artifact_metadata": {
+      const { storage_path: _storagePath, ...artifact } = store.getArtifact(args.sha256);
+      return artifact;
+    }
     case "registry_import":
       return store.importRegistry(args.candidate, principal, args.idempotency_key);
     case "repo_promote":

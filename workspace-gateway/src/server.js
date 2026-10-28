@@ -93,10 +93,14 @@ function privateRole(req, config, role) {
 export function createGatewayServer({ config, store, cas, runtime }) {
   return http.createServer(async (req, res) => {
     const method = req.method ?? "GET";
-    const url = new URL(req.url ?? "/", "http://workspace.local");
-    const pathname = url.pathname;
+    let pathname = null;
 
     try {
+      try {
+        pathname = new URL(req.url ?? "/", "http://workspace.local").pathname;
+      } catch {
+        throw new HttpError(400, "invalid_request_target", "Request target is invalid");
+      }
       if (method === "GET" && pathname === "/healthz") {
         return sendJson(res, 200, {
           status: "ok",

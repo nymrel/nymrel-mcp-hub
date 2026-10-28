@@ -307,6 +307,26 @@ test("CAS upload verifies hash and round-trips bytes without exposing storage pa
     assert.equal(metaBody.artifact.size_bytes, content.length);
     assert.equal("storage_path" in metaBody.artifact, false);
 
+    const mcpMeta = await fetch(`${ctx.origin}/mcp`, {
+      method: "POST",
+      headers: {
+        ...auth(ctx.config.readToken, "agent:reader"),
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: "artifact-metadata",
+        method: "tools/call",
+        params: { name: "artifact_metadata", arguments: { sha256: hash } },
+      }),
+    });
+    assert.equal(mcpMeta.status, 200);
+    const mcpBody = await jsonResponse(mcpMeta);
+    assert.equal(mcpBody.result.isError, false);
+    assert.equal("storage_path" in mcpBody.result.structuredContent, false);
+    assert.deepEqual(mcpBody.result.structuredContent, metaBody.artifact);
+    assert.deepEqual(JSON.parse(mcpBody.result.content[0].text), metaBody.artifact);
+
     const get = await fetch(`${ctx.origin}/v1/artifacts/${hash}`, {
       headers: auth(ctx.config.readToken, "agent:reader"),
     });
