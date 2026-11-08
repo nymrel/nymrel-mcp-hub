@@ -39,7 +39,7 @@ jobs:
           persist-credentials: false
 
       - name: Use Node.js ${{ matrix.node }}
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ matrix.node }}
           package-manager-cache: false
@@ -80,7 +80,7 @@ jobs:
           persist-credentials: false
 
       - name: Use Node.js 22.23.2
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '22.23.2'
           package-manager-cache: false
@@ -154,7 +154,7 @@ jobs:
           docker exec nymrel-remote-ci node -e "Promise.all(['/auth','/.well-known/openid-configuration','/nymrel/plugin/readonly/mcp'].map(p=>fetch('http://127.0.0.1:8787'+p).then(r=>{if(r.status!==404)throw Error(p)}))).catch(()=>process.exit(1))"
 
       - name: Use Node.js for the isolated container recovery fixture
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '24.20.0'
           package-manager-cache: false

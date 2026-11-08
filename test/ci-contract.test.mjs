@@ -12,13 +12,13 @@ const dependabot = read(".github/dependabot.yml");
 
 const pins = {
   checkout: "3d3c42e5aac5ba805825da76410c181273ba90b1",
-  setupNode: "820762786026740c76f36085b0efc47a31fe5020",
-  setupPython: "5fda3b95a4ea91299a34e894583c3862153e4b97",
-  uploadArtifact: "043fb46d1a93c77aae656e7c1c64a875d1fc6a0a",
-  downloadArtifact: "3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c",
-  codeql: "cdf488f595d80d6e07e03d4674febd5ab45fa938",
-  pypiPublish: "dc37677b2e1c63e2034f94d8a5b11f265b73ba33",
-  zizmor: "70fb788f84895a7701f5643d103d587e460b5c99",
+  setupNode: "949feb2413d6458794dcd2491c4babbbce0c15c1",
+  setupPython: "6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+  uploadArtifact: "cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+  downloadArtifact: "9000827ccba6bdab643e8b6fd33ac0654aef8333",
+  codeql: "9b3254085494b55a0f7c4c2b3d2d52cc712ce370",
+  pypiPublish: "7245906fb61fa33a13554f9d5fb856fe61758086",
+  zizmor: "53290badfa369cb0bf7ad16342cb62c2fa47ac7b",
 };
 
 function assertedActionPins(workflow) {
