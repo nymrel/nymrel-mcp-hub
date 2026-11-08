@@ -176,4 +176,6 @@ test("Dependabot covers both package ecosystems and GitHub Actions", () => {
   }
   assert.equal((dependabot.match(/interval: weekly/gu) ?? []).length, 3);
   assert.equal((dependabot.match(/default-days: 7/gu) ?? []).length, 3);
+  assert(dependabot.includes('dependency-name: "@types/node"'));
+  assert(dependabot.includes('version-update:semver-major'));
 });
