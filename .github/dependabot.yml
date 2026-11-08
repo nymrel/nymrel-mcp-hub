@@ -10,6 +10,11 @@ updates:
     open-pull-requests-limit: 5
     cooldown:
       default-days: 7
+    # @types/node must track a supported runtime major; Node 22/24 are the
+    # reviewed LTS lines and a major type bump describes newer APIs.
+    ignore:
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
     groups:
       npm-development:
         dependency-type: development
