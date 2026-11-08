@@ -151,7 +151,7 @@ test("release is tag-only, tokenless, artifact-gated, and environment-scoped", (
 test("Python packaging is single-source and excludes tests", () => {
   const pyproject = read("pyproject.toml");
   assert(!existsSync(new URL("../setup.py", import.meta.url)), "legacy setup.py must stay removed");
-  assert(pyproject.includes('requires = ["setuptools==84.1.0"]'));
+  assert(pyproject.includes('requires = ["setuptools==84.2.1"]'));
   assert(pyproject.includes('requires-python = ">=3.11,<3.15"'));
   assert(pyproject.includes('license = "MIT"'));
   assert(pyproject.includes('include = ["nymrel_mcp_hub*"]'));
@@ -160,12 +160,12 @@ test("Python packaging is single-source and excludes tests", () => {
   assert(pyproject.includes('select = ["E4", "E7", "E9", "F"]'));
   assert.deepEqual(read("requirements-dev.txt").trim().split(/\r?\n/u), [
     "bandit==1.9.4",
-    "build==1.6.0",
+    "build==1.6.1",
     "pip-audit==2.10.1",
     "pytest==9.1.1",
     "PyYAML==6.0.3",
-    "ruff==0.16.5",
-    "setuptools==84.1.0",
+    "ruff==0.17.2",
+    "setuptools==84.2.1",
     "twine==7.0.0",
   ]);
 });
