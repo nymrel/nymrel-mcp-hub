@@ -21,7 +21,7 @@ python -m pip install --requirement requirements-dev.txt
 python -m pip install --editable .
 python -m pip check
 python -m ruff check python tests
-python -m bandit -q -r python/nymrel_mcp_hub
+python scripts/check-bandit.py
 python -m pytest -q
 python -m pip uninstall --yes nymrel-mcp-hub
 python -m pip_audit --strict

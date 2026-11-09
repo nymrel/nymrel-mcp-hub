@@ -1,5 +1,12 @@
 # Nymrel MCP Hub
 
+## Choose your starting point
+
+- **People using Nymrel through a connected assistant:** ask for a specific outcome in your existing conversation. An installed package alone does not establish a working connection; your host must support and enable this server. The example simulators are development previews rather than a hosted customer app.
+- **Developers configuring an MCP client:** use the [source setup](#run-from-source), build once, and run `--list-tools`, `--list-resources`, or `--list-prompts` to inspect a catalog without starting a long-running server. Configure your client with an absolute path and `--stdio`.
+- **Agents:** use the [protocol contract](#protocol-contract) for your negotiated MCP revision and the discovered input schemas. Keep protocol stdout free of progress text, inspect errors and structured results, and retain source/version context when handing an outcome back to a person.
+
+
 [![Registry status](https://img.shields.io/badge/registry%20publication-unverified-lightgrey.svg?style=flat-square)](#distribution-status)
 [![License: MIT](https://img.shields.io/badge/License-MIT-A8541F.svg?style=flat-square)](./LICENSE)
 [![MCP Spec](https://img.shields.io/badge/MCP-2026--07--28-2A332E.svg?style=flat-square)](https://modelcontextprotocol.io/specification/2026-07-28)
@@ -248,7 +255,7 @@ python -m build --outdir dist-py
 python -m twine check dist-py/*
 ```
 
-The Bandit gate scans all runtime sources and recognizes only five exact reviewed low-severity findings for fixed-argument Git context collection in the pinned Proof Ledger source. Changed or additional findings fail; see `docs/proof-ledger/bandit-reviewed.json`.
+The Bandit gate scans all runtime sources and recognizes only the exact reviewed vendor findings recorded for the pinned Proof Ledger and Crawler Mesh sources. Changed or additional findings fail; see `docs/proof-ledger/bandit-reviewed.json` and `docs/crawler-mesh/bandit-reviewed.json`.
 
 Local validation proves a source candidate; it does not prove a hosted check or registry publication.
 

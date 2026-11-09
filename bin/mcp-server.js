@@ -7,20 +7,22 @@
 
 import { MCPServer } from '../dist/src/server.js';
 import { ALL_MCP_TOOLS } from '../dist/src/tools/index.js';
+import { ALL_MCP_RESOURCES } from '../dist/src/resources/index.js';
+import { ALL_MCP_PROMPTS } from '../dist/src/prompts/index.js';
 
 const args = process.argv.slice(2);
 
 if (args.includes('--help') || args.includes('-h')) {
   console.log(`
 @nymrel/mcp-hub v1.0.0 - Unified Model Context Protocol (MCP) Server
-Exposes 14 Nymrel tools through a zero-runtime-dependency TypeScript engine.
+Exposes ${ALL_MCP_TOOLS.length} Nymrel tools through the TypeScript engine.
 
 Usage:
   nymrel-mcp [options]
 
 Options:
   --stdio            Run MCP JSON-RPC 2.0 stdio server (default)
-  --list-tools       List all 14 registered MCP tools with descriptions
+  --list-tools       List all ${ALL_MCP_TOOLS.length} registered MCP tools with descriptions
   --list-resources   List all registered MCP resources
   --list-prompts     List all registered MCP prompt templates
   --version, -v      Print version
@@ -43,11 +45,25 @@ if (args.includes('--version') || args.includes('-v')) {
 }
 
 if (args.includes('--list-tools')) {
-  console.log('\n=== @nymrel/mcp-hub: 14 Registered Tools ===\n');
+  console.log(`\n=== @nymrel/mcp-hub: ${ALL_MCP_TOOLS.length} Registered Tools ===\n`);
   ALL_MCP_TOOLS.forEach((tool, idx) => {
     console.log(`${idx + 1}. [${tool.name}] - ${tool.description}`);
   });
   console.log('\nTotal tools:', ALL_MCP_TOOLS.length);
+  process.exit(0);
+}
+
+if (args.includes('--list-resources')) {
+  for (const resource of ALL_MCP_RESOURCES) {
+    console.log(`[${resource.uri}] ${resource.name} - ${resource.description}`);
+  }
+  process.exit(0);
+}
+
+if (args.includes('--list-prompts')) {
+  for (const prompt of ALL_MCP_PROMPTS) {
+    console.log(`[${prompt.name}] - ${prompt.description}`);
+  }
   process.exit(0);
 }
 

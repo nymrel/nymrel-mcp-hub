@@ -42,4 +42,12 @@ The plugin source is not installed into a host and is not uploaded to an account
 
 ## Provenance
 
+The reviewed hub source is pinned to
+`c1ebbf2296d22882690e90af4d5c9234887b38dd`. This advances the previous
+`ada6f4c9b1017bda52543705687ca0baecbb789e` pin only for the Node CLI catalog/help
+correction; the runtime source, dependency manifests and compiler configuration
+are unchanged between those commits. A future change to a pinned source file
+requires a reviewed pin update and a complete package rebuild; the builder still
+rejects source that differs from its exact pin.
+
 The bundle includes the upstream MIT license, security notice, third-party notices, and licenses and provenance records for the vendored Proof Ledger and Crawler Mesh code.
