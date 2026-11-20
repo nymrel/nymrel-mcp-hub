@@ -16,9 +16,9 @@ const pins = {
   setupPython: "6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
   uploadArtifact: "cf430e030ddbb5b0abf93d22962f4752f3646cd9",
   downloadArtifact: "9000827ccba6bdab643e8b6fd33ac0654aef8333",
-  codeql: "9b3254085494b55a0f7c4c2b3d2d52cc712ce370",
+  codeql: "33d7b85da1a04171e211befe2c739303b9a4c066",
   pypiPublish: "7245906fb61fa33a13554f9d5fb856fe61758086",
-  zizmor: "53290badfa369cb0bf7ad16342cb62c2fa47ac7b",
+  zizmor: "45d7276c9ca790aabd705e31ca99c6185c3e76dd",
 };
 
 function assertedActionPins(workflow) {
@@ -162,9 +162,9 @@ test("Python packaging is single-source and excludes tests", () => {
     "bandit==1.9.4",
     "build==1.6.1",
     "pip-audit==2.10.1",
-    "pytest==9.1.1",
+    "pytest==9.2.0",
     "PyYAML==6.0.3",
-    "ruff==0.17.2",
+    "ruff==0.17.3",
     "setuptools==84.2.1",
     "twine==7.0.0",
   ]);
