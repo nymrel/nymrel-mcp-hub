@@ -42,11 +42,10 @@ The plugin source is not installed into a host and is not uploaded to an account
 
 ## Provenance
 
-The builder pins hub source to `3cdf74f122c10d6e7f11f794fed5a5e424ec6cab`.
-Compared with `c1ebbf2296d22882690e90af4d5c9234887b38dd`, the package
-manifest and lockfile update the Node development declarations to 24.19.2
-and their transitive `undici-types` dependency. The bundled runtime uses
-`undici` 8.12.3. Each change to a pinned input requires review and a full
+The builder pins hub source to `d8ad1397ec3624395228921a01fc75c29b0dc5ee`.
+The bundled runtime uses `undici` 8.12.4. The builder checks that the pinned
+commit is an ancestor of the package build and that the tracked source files
+match that commit. Each change to a pinned input requires review and a full
 package rebuild.
 
 The bundle includes the upstream MIT license, security notice, third-party notices, and licenses and provenance records for the vendored Proof Ledger and Crawler Mesh code.
