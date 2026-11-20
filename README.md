@@ -10,7 +10,7 @@
 [![Registry status](https://img.shields.io/badge/registry%20publication-unverified-lightgrey.svg?style=flat-square)](#distribution-status)
 [![License: MIT](https://img.shields.io/badge/License-MIT-A8541F.svg?style=flat-square)](./LICENSE)
 [![MCP Spec](https://img.shields.io/badge/MCP-2026--07--28-2A332E.svg?style=flat-square)](https://modelcontextprotocol.io/specification/2026-07-28)
-[![Node runtime dependency](https://img.shields.io/badge/Node%20runtime-undici%208.12.3-success.svg?style=flat-square)](#validation)
+[![Node runtime dependency](https://img.shields.io/badge/Node%20runtime-undici%208.12.4-success.svg?style=flat-square)](#validation)
 [![Engines](https://img.shields.io/badge/engines-TypeScript%20%2B%20Python-FAF8F2.svg?style=flat-square)](#run-from-source)
 
 A dual-engine Model Context Protocol server exposing 15 Nymrel tools, 3 resources, and 3 prompt templates through TypeScript/Node.js and Python stdio entry points.
@@ -226,7 +226,7 @@ See [SECURITY.md](./SECURITY.md) for responsible disclosure and supply-chain con
 
 ## Validation
 
-The repository pins npm `12.0.2` and targets Node.js 22/24 plus Python 3.11-3.14. The Node runtime pins `undici@8.12.3` for Crawler Mesh DNS/IP-pinned HTTP transport; the crawler implementation itself is vendored verbatim from a reviewed Nymrel revision with an exact Git-blob manifest. Python uses `cryptography>=50.0.1,<51` for Ed25519 and `rfc8785==0.1.4` for canonical JSON, matching the pinned Proof Ledger implementation.
+The repository pins npm `12.0.2` and targets Node.js 22/24 plus Python 3.11-3.14. The Node runtime pins `undici@8.12.4` for Crawler Mesh DNS/IP-pinned HTTP transport; the crawler implementation itself is vendored verbatim from a reviewed Nymrel revision with an exact Git-blob manifest. Python uses `cryptography>=50.0.1,<51` for Ed25519 and `rfc8785==0.1.4` for canonical JSON, matching the pinned Proof Ledger implementation.
 
 ### Node.js
 

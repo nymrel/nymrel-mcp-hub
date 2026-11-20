@@ -32,5 +32,5 @@ The TypeScript crawler, extractor, cache, Firecrawl-compatibility facade, and ne
 
 `scripts/verify-crawler-mesh-vendor.mjs` recomputes Git blob IDs from the local bytes during the normal package verification gate. The Node and Python MCP adapters remain local to this repository and only shape the public tool contract. Upstream network protections remain authoritative, including public-only HTTP(S), DNS/IP validation, redirect revalidation, response-size limits, robots handling, and bounded concurrency.
 
-The vendored runtime depends on upstream-pinned `undici@8.12.3` for DNS/IP-pinned outbound requests. No Firecrawl Cloud client, Firecrawl API key, or Firecrawl source code is included.
+The vendored runtime depends on upstream-pinned `undici@8.12.4` for DNS/IP-pinned outbound requests. No Firecrawl Cloud client, Firecrawl API key, or Firecrawl source code is included.
 
