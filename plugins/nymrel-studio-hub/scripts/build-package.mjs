@@ -4,7 +4,7 @@ import { cp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const UPSTREAM_COMMIT = '60092837e4fe28dd7df137043bdeb4f1a501ad5b';
+const UPSTREAM_COMMIT = 'd8ad1397ec3624395228921a01fc75c29b0dc5ee';
 const EXPECTED_TOOLS = [
   'nymrel_ucp_audit', 'nymrel_surety_guard', 'nymrel_swarm_claim', 'nymrel_machine_trust',
   'nymrel_proof_ledger', 'nymrel_crawler_mesh', 'nymrel_beacon_ping', 'nymrel_headless_quote',

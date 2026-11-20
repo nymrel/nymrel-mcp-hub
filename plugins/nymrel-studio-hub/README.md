@@ -42,7 +42,7 @@ The plugin source is not installed into a host and is not uploaded to an account
 
 ## Provenance
 
-The builder pins hub source to `60092837e4fe28dd7df137043bdeb4f1a501ad5b`.
+The builder pins hub source to `d8ad1397ec3624395228921a01fc75c29b0dc5ee`.
 The bundled runtime uses `undici` 8.12.4. The builder checks that the pinned
 commit is an ancestor of the package build and that the tracked source files
 match that commit. Each change to a pinned input requires review and a full
